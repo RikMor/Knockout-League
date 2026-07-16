@@ -1,16 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
 :root {
-  --bg: #FAF9F5;
-  --surface: #FFFFFF;
-  --ink: #15151A;
-  --muted: #6B6B76;
-  --line: #E6E3D9;
-  --accent: #E14B2A;   /* corner red — ações principais */
+  --bg: #131215;
+  --surface: #1C1B20;
+  --ink: #F3F1EA;
+  --muted: #9C99A6;
+  --line: #322F38;
+  --accent: #E85A36;   /* corner red — ações principais */
   --accent-ink: #FFFFFF;
-  --gold: #E3AC2B;     /* cinturão — vencedor, destaque */
-  --win: #1F7A4D;
-  --danger: #C23B2E;
+  --gold: #E8B93B;     /* cinturão — vencedor, destaque */
+  --win: #35A870;
+  --danger: #E15C4C;
   --radius: 3px;
 }
 
@@ -51,7 +51,7 @@ body > nav {
   position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 5vw; height: 64px;
-  background: rgba(250,249,245,0.92);
+  background: rgba(19,18,21,0.92);
   backdrop-filter: blur(10px);
   border-bottom: 2px solid var(--ink);
 }
@@ -184,7 +184,7 @@ section { padding: 64px 0; }
   display: flex; align-items: center; justify-content: center; margin: 0 auto;
   font-family: 'Anton', sans-serif; font-size: 1.6rem; text-align: center; padding: 20px;
   transition: transform 2.2s cubic-bezier(.17,.67,.2,1.01);
-  background: repeating-conic-gradient(var(--surface) 0deg 18deg, #F0EDE3 18deg 36deg);
+  background: repeating-conic-gradient(var(--surface) 0deg 18deg, #26242B 18deg 36deg);
 }
 
 /* COIN / DICE */
@@ -207,7 +207,7 @@ section { padding: 64px 0; }
 .badge-open { border-color: var(--win); color: var(--win); }
 .badge-live { border-color: var(--accent); color: var(--accent); }
 .badge-closed { border-color: var(--muted); color: var(--muted); }
-.badge-private { border-color: var(--gold); color: #7a5e0f; background: rgba(227,172,43,0.12); }
+.badge-private { border-color: var(--gold); color: var(--gold); background: rgba(232,185,59,0.12); }
 
 /* GRID */
 .grid { display: grid; gap: 20px; }
