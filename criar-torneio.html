@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Criar torneio — Knockout League</title>
-<link rel="stylesheet" href="shared.css"/>
+<link rel="stylesheet" href="shared.css?v=2"/>
 <style>
   .maps-input { display: flex; gap: 8px; margin-bottom: 10px; }
   .maps-input input { flex: 1; }
@@ -43,8 +43,9 @@
   </div>
 
   <div class="form-group">
-    <label>Número de equipas</label>
+    <label id="maxteams-label">Número de equipas</label>
     <input type="number" id="t-maxteams" min="2" max="64" value="8"/>
+    <p class="form-hint" id="maxteams-hint">Quantas equipas vão disputar o torneio.</p>
   </div>
 
   <div class="form-group">
@@ -54,7 +55,7 @@
       <div class="pill" data-v="double">Eliminação dupla</div>
       <div class="pill" data-v="round-robin">Todos contra todos</div>
     </div>
-    <p class="form-hint">Podes ajustar isto mais tarde na sala, antes de gerar a bracket.</p>
+    <p class="form-hint" id="bracket-explain"></p>
   </div>
 
   <div class="form-group">
@@ -133,6 +134,38 @@ bindPills('pill-assign','roulette');
 bindPills('pill-draft','organizer');
 bindPills('pill-coin','coin');
 function selected(id){ var s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
+
+// Rótulo "equipas" vs "jogadores" consoante o formato
+function updateMaxTeamsLabel(){
+  var size = parseInt(selected('pill-teamsize'), 10);
+  var label = document.getElementById('maxteams-label');
+  var hint = document.getElementById('maxteams-hint');
+  if(size === 1){
+    label.textContent = 'Número de jogadores';
+    hint.textContent = 'Em 1v1 cada jogador é a sua própria equipa.';
+  } else {
+    label.textContent = 'Número de equipas';
+    hint.textContent = 'Quantas equipas de ' + size + ' vão disputar o torneio (cada uma com ' + size + ' jogadores).';
+  }
+}
+document.querySelectorAll('#pill-teamsize .pill').forEach(function(p){
+  p.addEventListener('click', updateMaxTeamsLabel);
+});
+updateMaxTeamsLabel();
+
+// Explicação do tipo de bracket
+var bracketExplanations = {
+  'single': 'Quem perde uma vez fica fora. O caminho mais curto até um vencedor.',
+  'double': 'Quem perde uma vez desce para a bracket de perdedores e ainda pode ganhar o torneio; só é eliminado à segunda derrota.',
+  'round-robin': 'Todas as equipas jogam entre si. Vence quem tiver mais vitórias no final — sem eliminação direta.'
+};
+function updateBracketExplain(){
+  document.getElementById('bracket-explain').textContent = bracketExplanations[selected('pill-bracket')] || '';
+}
+document.querySelectorAll('#pill-bracket .pill').forEach(function(p){
+  p.addEventListener('click', updateBracketExplain);
+});
+updateBracketExplain();
 
 var maps = [];
 function renderMaps(){
