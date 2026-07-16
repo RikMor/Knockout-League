@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Knockout League – Entrar</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+  .auth-wrap { max-width: 440px; margin: 0 auto; padding: 64px 5vw 100px; }
+  .auth-tabs { display: flex; border: 1px solid var(--ink); margin-bottom: 28px; }
+  .auth-tab { flex: 1; text-align: center; padding: 12px 4px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: transparent; border: none; border-right: 1px solid var(--ink); }
+  .auth-tab:last-child { border-right: none; }
+  .auth-tab.active { background: var(--ink); color: var(--bg); }
+  .auth-panel { display: none; }
+  .auth-panel.active { display: block; }
+  #pass-match-error { display: none; color: var(--danger); font-size: 0.78rem; margin-top: 6px; }
+  .auth-userbox { display: none; text-align: center; border: 1px solid var(--ink); padding: 40px 28px; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li id="nav-user-area"><a href="login.html" class="active">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="auth-wrap">
+  <div class="eyebrow">Conta</div>
+  <h2 style="margin:10px 0 32px;">Acede à tua conta</h2>
+
+  <div class="auth-userbox" id="userbox">
+    <div class="display" style="font-size:1.8rem;">Bem-vindo, <span id="userbox-name"></span></div>
+    <div class="muted" id="userbox-email" style="margin-bottom:24px;"></div>
+    <a href="perfil.html" style="display:block;margin-bottom:12px;"><button class="btn btn-accent" style="width:100%;">Ver o meu perfil</button></a>
+    <button class="btn btn-outline" id="logout-btn" style="width:100%;">Terminar sessão</button>
+  </div>
+
+  <div id="auth-forms">
+    <div class="auth-tabs">
+      <button class="auth-tab active" type="button" onclick="switchTab('login')">Entrar</button>
+      <button class="auth-tab" type="button" onclick="switchTab('register')">Registar</button>
+      <button class="auth-tab" type="button" onclick="switchTab('guest')">Convidado</button>
+    </div>
+    <div class="form-error" id="auth-error"></div>
+
+    <div class="auth-panel active" id="panel-login">
+      <div class="form-group"><label>Email</label><input type="email" id="login-email" autocomplete="email"/></div>
+      <div class="form-group"><label>Palavra-passe</label><input type="password" id="login-password" autocomplete="current-password"/></div>
+      <button type="button" class="btn btn-accent" id="login-submit" style="width:100%;">Entrar</button>
+    </div>
+
+    <div class="auth-panel" id="panel-register">
+      <div class="form-group"><label>Nome completo</label><input type="text" id="reg-name" autocomplete="name"/></div>
+      <div class="form-group"><label>Nickname</label><input type="text" id="reg-nickname" placeholder="Ex: ShadowBlade99" maxlength="24"/></div>
+      <div class="form-group"><label>Email</label><input type="email" id="reg-email" autocomplete="email"/></div>
+      <div class="form-group"><label>Palavra-passe</label><input type="password" id="reg-password" autocomplete="new-password"/></div>
+      <div class="form-group">
+        <label>Confirmar palavra-passe</label>
+        <input type="password" id="reg-password2" autocomplete="new-password"/>
+        <div id="pass-match-error">As palavras-passe não coincidem.</div>
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+        <input type="checkbox" id="reg-age" style="width:auto;margin-top:4px;"/>
+        <label for="reg-age" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Confirmo que tenho pelo menos 13 anos.</label>
+      </div>
+      <button type="button" class="btn btn-accent" id="register-submit" disabled style="width:100%;opacity:.5;">A carregar...</button>
+    </div>
+
+    <div class="auth-panel" id="panel-guest">
+      <div class="form-group"><label>Nickname</label><input type="text" id="guest-nickname" placeholder="Ex: Shadow99" maxlength="24"/></div>
+      <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+        <input type="checkbox" id="guest-age" style="width:auto;margin-top:4px;"/>
+        <label for="guest-age" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Confirmo que tenho pelo menos 13 anos.</label>
+      </div>
+      <p class="form-hint" style="text-align:center;margin-bottom:18px;">Sessão temporária — desaparece ao fechar o browser.</p>
+      <button type="button" class="btn btn-accent" id="guest-btn" disabled style="width:100%;opacity:.5;">A carregar...</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>© 2026 Knockout League</span>
+</footer>
+
+<script src="shared.js"></script>
+<script>
+function switchTab(tab) {
+  ['login','register','guest'].forEach(function(t) {
+    var btn = document.querySelector('[onclick="switchTab(\''+t+'\')"]');
+    var panel = document.getElementById('panel-'+t);
+    if (btn) btn.classList.toggle('active', t===tab);
+    if (panel) panel.classList.toggle('active', t===tab);
+  });
+  document.getElementById('auth-error').style.display = 'none';
+  document.getElementById('pass-match-error').style.display = 'none';
+}
+
+function showError(msg){ var el=document.getElementById('auth-error'); el.textContent=msg; el.style.display='block'; }
+
+document.getElementById('login-submit').addEventListener('click', function(){
+  var email=document.getElementById('login-email').value.trim();
+  var pass=document.getElementById('login-password').value;
+  document.getElementById('auth-error').style.display='none';
+  if(!email){showError('Introduz o teu email.');return;}
+  if(!pass){showError('Introduz a palavra-passe.');return;}
+  if(!window._fbLogin){showError('A carregar Firebase... aguarda um segundo.');return;}
+  window._fbLogin(email,pass);
+});
+
+document.getElementById('register-submit').addEventListener('click', function(){
+  var name=document.getElementById('reg-name').value.trim();
+  var nick=document.getElementById('reg-nickname').value.trim();
+  var email=document.getElementById('reg-email').value.trim();
+  var pass=document.getElementById('reg-password').value;
+  var pass2=document.getElementById('reg-password2').value;
+  var ageOk=document.getElementById('reg-age').checked;
+  document.getElementById('auth-error').style.display='none';
+  document.getElementById('pass-match-error').style.display='none';
+  document.getElementById('reg-password2').style.borderColor='';
+  if(!name){showError('Introduz o teu nome.');return;}
+  if(!nick){showError('Escolhe um nickname.');return;}
+  if(!/^[a-zA-Z0-9_.]{3,24}$/.test(nick)){showError('Nickname: 3–24 caracteres, letras, números, _ ou .');return;}
+  if(!email){showError('Introduz o teu email.');return;}
+  if(!pass){showError('Introduz uma palavra-passe.');return;}
+  if(pass.length<6){showError('A palavra-passe deve ter pelo menos 6 caracteres.');return;}
+  if(pass!==pass2){
+    document.getElementById('pass-match-error').style.display='block';
+    document.getElementById('reg-password2').style.borderColor='var(--danger)';
+    return;
+  }
+  if(!ageOk){showError('Confirma que tens pelo menos 13 anos.');return;}
+  if(!window._fbRegister){showError('A carregar Firebase... aguarda um segundo.');return;}
+  window._fbRegister({name:name,nickname:nick,email:email,password:pass});
+});
+
+document.getElementById('guest-btn').addEventListener('click', function(){
+  document.getElementById('auth-error').style.display='none';
+  var nick=document.getElementById('guest-nickname').value.trim();
+  var ageOk=document.getElementById('guest-age').checked;
+  if(!nick){showError('Escolhe um nickname.');return;}
+  if(!/^[a-zA-Z0-9_.]{3,24}$/.test(nick)){showError('Nickname: 3–24 caracteres, letras, números, _ ou .');return;}
+  if(!ageOk){showError('Confirma que tens pelo menos 13 anos.');return;}
+  if(!window._fbGuest){showError('A carregar Firebase... aguarda um segundo.');return;}
+  window._fbGuest(nick);
+});
+
+document.getElementById('logout-btn').addEventListener('click', function(){
+  if(window._fbLogout) window._fbLogout();
+});
+</script>
+
+<script type="module">
+import { auth, db, doc, setDoc } from './firebase.js';
+import { collection, getDocs, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+         onAuthStateChanged, updateProfile, signInAnonymously,
+         browserSessionPersistence, browserLocalPersistence, setPersistence }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+function showError(msg){var el=document.getElementById('auth-error');el.textContent=msg;el.style.display='block';}
+function setBtn(id,dis,txt){var b=document.getElementById(id);if(b){b.disabled=dis;b.style.opacity=dis?'0.5':'1';b.textContent=txt;}}
+function translateError(code){
+  var map={'auth/email-already-in-use':'Este email já está registado.','auth/invalid-email':'Email inválido.','auth/weak-password':'Palavra-passe com pelo menos 6 caracteres.','auth/user-not-found':'Não existe conta com este email.','auth/wrong-password':'Palavra-passe incorreta.','auth/invalid-credential':'Email ou palavra-passe incorretos.','auth/too-many-requests':'Demasiadas tentativas. Tenta mais tarde.','auth/operation-not-allowed':'Ativa Email/Password na Firebase Console → Authentication.','auth/admin-restricted-operation':'Ativa o login Anónimo na Firebase Console → Authentication.'};
+  return map[code]||'Erro: '+code;
+}
+
+async function isNicknameTaken(nick){
+  try{var snap=await getDocs(collection(db,'users'));var l=nick.toLowerCase();return snap.docs.some(function(d){return(d.data().nickname||'').toLowerCase()===l;});}catch(e){return false;}
+}
+
+window._fbLogin=function(email,pass){
+  setBtn('login-submit',true,'A entrar...');
+  setPersistence(auth,browserLocalPersistence)
+    .then(function(){return signInWithEmailAndPassword(auth,email,pass);})
+    .then(function(){window.location.href='perfil.html';})
+    .catch(function(err){showError(translateError(err.code));})
+    .finally(function(){setBtn('login-submit',false,'Entrar');});
+};
+
+window._fbRegister=async function(d){
+  setBtn('register-submit',true,'A verificar...');
+  try{
+    var taken=await isNicknameTaken(d.nickname);
+    if(taken){showError('Nickname já em uso. Escolhe outro.');setBtn('register-submit',false,'Criar conta');return;}
+    setBtn('register-submit',true,'A criar conta...');
+    var cred=await createUserWithEmailAndPassword(auth,d.email,d.password);
+    await updateProfile(cred.user,{displayName:d.nickname});
+    await setDoc(doc(db,'users',cred.user.uid),{name:d.name,nickname:d.nickname,nicknameLower:d.nickname.toLowerCase(),email:d.email,avatarUrl:'',role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},ageConfirmed:true,createdAt:new Date().toISOString()});
+    window.location.href='perfil.html';
+  }catch(err){showError(translateError(err.code)||('Erro: '+err.message));setBtn('register-submit',false,'Criar conta');}
+};
+
+window._fbGuest=async function(nick){
+  setBtn('guest-btn',true,'A entrar...');
+  try{
+    await setPersistence(auth,browserSessionPersistence);
+    var cred=await signInAnonymously(auth);
+    var uid=cred.user.uid;
+    await setDoc(doc(db,'users',uid),{name:'Utilizador Convidado',nickname:nick,nicknameLower:nick.toLowerCase(),email:'',avatarUrl:'',isGuest:true,role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},createdAt:new Date().toISOString()});
+    window.location.href='perfil.html';
+  }catch(err){showError(translateError(err.code)||('Erro: '+err.message));setBtn('guest-btn',false,'Entrar como convidado');}
+};
+
+window._fbLogout=function(){signOut(auth);};
+
+onAuthStateChanged(auth,function(user){
+  if(user){
+    document.getElementById('auth-forms').style.display='none';
+    document.getElementById('userbox').style.display='block';
+    document.getElementById('userbox-name').textContent=user.isAnonymous?'Convidado':(user.displayName||'Jogador');
+    document.getElementById('userbox-email').textContent=user.isAnonymous?'Sessão temporária':user.email;
+  }else{
+    document.getElementById('auth-forms').style.display='block';
+    document.getElementById('userbox').style.display='none';
+    getDocs(collection(db,'users')).then(function(snap){
+      var umaHora=60*60*1000;
+      snap.docs.forEach(function(d){
+        var data=d.data();
+        if(data.isGuest&&data.createdAt&&(Date.now()-new Date(data.createdAt).getTime())>umaHora){
+          deleteDoc(doc(db,'users',d.id)).catch(function(){});
+        }
+      });
+    }).catch(function(){});
+  }
+});
+
+setBtn('register-submit',false,'Criar conta');
+setBtn('guest-btn',false,'Entrar como convidado');
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

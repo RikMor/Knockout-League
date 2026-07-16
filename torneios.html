@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Torneios — Knockout League</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+  .t-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 24px; }
+  .join-private { display: flex; gap: 10px; max-width: 420px; }
+  @media(max-width:760px){ .t-list{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html" class="active">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="wrap page-head">
+  <div class="eyebrow">Salas</div>
+  <h1>Torneios</h1>
+</div>
+
+<div class="wrap" style="padding-bottom:60px;">
+  <div class="card" style="margin-bottom:36px;">
+    <h3 style="margin-bottom:12px;">Tenho um código de sala privada</h3>
+    <div class="join-private">
+      <input type="text" id="code-input" placeholder="Ex: A1B2C3" class="mono" style="text-transform:uppercase;padding:12px 14px;border:1px solid var(--line);"/>
+      <button class="btn btn-accent" id="code-go">Entrar</button>
+    </div>
+    <p class="form-error" id="code-error" style="margin-top:12px;"></p>
+  </div>
+
+  <h2 style="margin-bottom:6px;">Torneios públicos</h2>
+  <div class="t-list" id="t-list"><p class="muted">A carregar...</p></div>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script type="module">
+import { db, collection, query, where, getDocs } from './firebase.js';
+
+async function loadPublic(){
+  const el = document.getElementById('t-list');
+  try{
+    const q = query(collection(db,'tournaments'), where('visibility','==','public'));
+    const snap = await getDocs(q);
+    if(snap.empty){ el.innerHTML = '<p class="muted">Ainda não há torneios públicos. <a href="criar-torneio.html">Cria o primeiro.</a></p>'; return; }
+    el.innerHTML = '';
+    snap.forEach(d=>{
+      const t = d.data();
+      const card = document.createElement('a');
+      card.href = 'torneio.html?id=' + d.id;
+      card.className = 't-card';
+      card.innerHTML = `<span class="badge badge-open">${t.status || 'inscrições'}</span><h3>${t.name}</h3><span class="muted">${t.game||''} · ${t.teamSize}v${t.teamSize} · até ${t.maxTeams} equipas</span>`;
+      el.appendChild(card);
+    });
+  }catch(e){ el.innerHTML = '<p class="muted">Liga o teu projeto Firebase em firebase.js para ver torneios reais.</p>'; }
+}
+loadPublic();
+
+document.getElementById('code-go').addEventListener('click', async function(){
+  const err = document.getElementById('code-error');
+  err.style.display = 'none';
+  const code = document.getElementById('code-input').value.trim().toUpperCase();
+  if(!code){ err.textContent = 'Introduz um código.'; err.style.display='block'; return; }
+  try{
+    const q = query(collection(db,'tournaments'), where('inviteCode','==',code));
+    const snap = await getDocs(q);
+    if(snap.empty){ err.textContent = 'Nenhum torneio com esse código.'; err.style.display='block'; return; }
+    window.location.href = 'torneio.html?id=' + snap.docs[0].id;
+  }catch(e){ err.textContent = 'Erro a procurar o código.'; err.style.display='block'; }
+});
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

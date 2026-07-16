@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Torneio — Knockout League</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+  .tabs { display: flex; border-bottom: 2px solid var(--ink); margin-bottom: 30px; gap: 0; }
+  .tab-btn { padding: 12px 20px; background: none; border: none; cursor: pointer; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.5px; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tab-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .team-card { border: 1px solid var(--ink); padding: 16px; }
+  .team-card h4 { font-family:'Anton'; font-size:1.1rem; margin-bottom:6px; }
+  .player-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+  .player-row:last-child { border-bottom: none; }
+  .cap-tag { font-family:'IBM Plex Mono'; font-size: 0.6rem; color: var(--gold); border:1px solid var(--gold); padding:1px 6px; margin-left:6px; }
+  .pool-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); gap: 10px; flex-wrap: wrap; }
+  .pool-row select { padding: 6px 8px; border: 1px solid var(--line); font-size: 0.78rem; }
+  .modal-backdrop { display:none; position: fixed; inset: 0; background: rgba(21,21,26,0.55); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--ink); max-width: 560px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 26px; }
+  .modal-close { float: right; background: none; border: none; font-size: 1.3rem; cursor: pointer; }
+  .draft-banner { border: 1px solid var(--gold); background: rgba(227,172,43,0.12); padding: 12px 16px; margin-bottom: 20px; font-weight: 600; font-size: 0.9rem; }
+  .invite-code { font-family:'IBM Plex Mono'; letter-spacing: 3px; font-size: 1.1rem; border: 1px dashed var(--ink); padding: 8px 14px; display: inline-block; }
+  .coin-result, .roulette-result { text-align: center; margin-top: 16px; font-weight: 700; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="wrap page-head" id="t-header">
+  <p class="muted">A carregar torneio...</p>
+</div>
+
+<div class="wrap" style="padding-bottom:80px;">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="equipas">Equipas</button>
+    <button class="tab-btn" data-tab="mapas">Mapas</button>
+    <button class="tab-btn" data-tab="bracket">Bracket</button>
+  </div>
+
+  <!-- EQUIPAS -->
+  <div class="tab-panel active" id="panel-equipas">
+    <div id="join-box" class="card" style="margin-bottom:24px;display:none;"></div>
+    <div id="draft-banner"></div>
+
+    <div id="admin-team-controls" style="display:none;margin-bottom:24px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" id="add-team-btn">+ Equipa</button>
+      <button class="btn btn-outline btn-sm" id="roulette-btn">Girar roleta</button>
+      <button class="btn btn-outline btn-sm" id="add-manual-btn">+ Jogador manual</button>
+      <button class="btn btn-gold btn-sm" id="gen-bracket-btn">Gerar bracket</button>
+    </div>
+
+    <h3 style="margin-bottom:10px;">Pool de jogadores</h3>
+    <div class="card" id="pool-box" style="margin-bottom:30px;"><p class="muted">Sem jogadores ainda.</p></div>
+
+    <h3 style="margin-bottom:10px;">Equipas</h3>
+    <div class="grid grid-3" id="teams-box"></div>
+  </div>
+
+  <!-- MAPAS -->
+  <div class="tab-panel" id="panel-mapas">
+    <div id="maps-admin" style="display:none;margin-bottom:20px;">
+      <div class="maps-input" style="display:flex;gap:8px;max-width:420px;">
+        <input type="text" id="map-add-input" placeholder="Novo mapa" style="flex:1;padding:10px 12px;border:1px solid var(--line);"/>
+        <button class="btn btn-outline btn-sm" id="map-add-btn">Adicionar</button>
+      </div>
+    </div>
+    <div class="pill-group" id="maps-display"></div>
+  </div>
+
+  <!-- BRACKET -->
+  <div class="tab-panel" id="panel-bracket">
+    <div id="bracket-box"><p class="muted">A bracket ainda não foi gerada.</p></div>
+  </div>
+</div>
+
+<!-- MODAL DE LOBBY DO MATCH -->
+<div class="modal-backdrop" id="match-modal">
+  <div class="modal">
+    <button class="modal-close" id="match-modal-close">×</button>
+    <div class="eyebrow">Lobby da partida</div>
+    <h3 id="mm-title" style="margin:8px 0 18px;"></h3>
+
+    <div id="mm-maps-section" style="margin-bottom:20px;">
+      <label style="display:block;font-family:'IBM Plex Mono';font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Mapas (clica para banir)</label>
+      <div class="pill-group" id="mm-maps"></div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-family:'IBM Plex Mono';font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Quem começa</label>
+      <div id="mm-coin-area" style="text-align:center;"></div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-family:'IBM Plex Mono';font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Servidor / forma de entrar no jogo</label>
+      <input type="text" id="mm-server-input" placeholder="Ex: IP 123.45.6.7:27015, senha knockout" style="width:100%;padding:11px 13px;border:1px solid var(--line);"/>
+      <button class="btn btn-sm btn-outline" id="mm-server-save" style="margin-top:8px;">Guardar</button>
+      <p class="muted" id="mm-server-current" style="margin-top:8px;font-size:0.85rem;"></p>
+    </div>
+
+    <div id="mm-winner-section">
+      <label style="display:block;font-family:'IBM Plex Mono';font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Declarar vencedor</label>
+      <div style="display:flex;gap:10px;" id="mm-winner-btns"></div>
+    </div>
+  </div>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script>
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+document.getElementById('match-modal-close').addEventListener('click', function(){
+  document.getElementById('match-modal').classList.remove('open');
+});
+</script>
+
+<script type="module">
+import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, onSnapshot, query, orderBy } from './firebase.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+const params = new URLSearchParams(window.location.search);
+const tId = params.get('id');
+if(!tId){ document.getElementById('t-header').innerHTML = '<p>Torneio não encontrado.</p>'; }
+
+let currentUser = null;
+let currentUserData = null;
+let tournament = null;
+let players = [];   // pool subcollection docs {id,...}
+let teams = [];      // teams subcollection docs
+let matches = [];    // matches subcollection docs
+
+const tRef = doc(db, 'tournaments', tId);
+const playersCol = collection(db, 'tournaments', tId, 'players');
+const teamsCol = collection(db, 'tournaments', tId, 'teams');
+const matchesCol = collection(db, 'tournaments', tId, 'matches');
+
+function isAdmin(){
+  if(!currentUser) return false;
+  if(tournament && tournament.creatorUid === currentUser.uid) return true;
+  if(currentUserData && currentUserData.role === 'admin') return true;
+  return false;
+}
+
+onAuthStateChanged(auth, async function(user){
+  currentUser = user;
+  if(user && !user.isAnonymous){
+    try{ const s = await getDoc(doc(db,'users',user.uid)); if(s.exists()) currentUserData = s.data(); }catch(e){}
+  }
+  renderAll();
+});
+
+onSnapshot(tRef, function(snap){
+  if(!snap.exists()){ document.getElementById('t-header').innerHTML = '<p>Este torneio não existe.</p>'; return; }
+  tournament = { id: snap.id, ...snap.data() };
+  renderHeader();
+  renderAll();
+});
+onSnapshot(playersCol, function(snap){ players = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
+onSnapshot(teamsCol, function(snap){ teams = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
+onSnapshot(matchesCol, function(snap){ matches = snap.docs.map(d=>({id:d.id,...d.data()})); renderBracket(); });
+
+function renderHeader(){
+  const badgeClass = tournament.visibility==='private' ? 'badge-private' : 'badge-open';
+  const badgeText = tournament.visibility==='private' ? 'Privado' : 'Público';
+  document.getElementById('t-header').innerHTML = `
+    <div class="eyebrow">${tournament.game || ''} · ${tournament.teamSize}v${tournament.teamSize}</div>
+    <h1>${tournament.name}</h1>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap;">
+      <span class="badge ${badgeClass}">${badgeText}</span>
+      <span class="badge badge-live">${tournament.status}</span>
+      ${tournament.visibility==='private' && isAdmin() ? '<span class="invite-code">'+tournament.inviteCode+'</span>' : ''}
+    </div>`;
+}
+
+// ── POOL / EQUIPAS ──────────────────────────────────────────────
+function myPoolEntry(){
+  if(!currentUser) return null;
+  return players.find(p => p.uid === currentUser.uid);
+}
+
+function renderAll(){
+  if(!tournament) return;
+  renderHeader();
+  renderJoinBox();
+  renderAdminControls();
+  renderPool();
+  renderTeams();
+  renderMaps();
+  renderDraftBanner();
+}
+
+function renderJoinBox(){
+  const box = document.getElementById('join-box');
+  if(tournament.status !== 'inscricoes'){ box.style.display='none'; return; }
+  if(!currentUser){
+    box.style.display='block';
+    box.innerHTML = 'Precisas de <a href="login.html" style="color:var(--accent);font-weight:700;">entrar</a> para te juntares a este torneio.';
+    return;
+  }
+  if(myPoolEntry()){ box.style.display='none'; return; }
+  box.style.display='block';
+  box.innerHTML = '<button class="btn btn-accent" id="join-tournament-btn">Entrar neste torneio</button>';
+  document.getElementById('join-tournament-btn').addEventListener('click', async function(){
+    const nick = currentUser.isAnonymous ? 'Convidado' : (currentUserData?.nickname || currentUser.displayName || 'Jogador');
+    await addDoc(playersCol, { uid: currentUser.uid, name: nick, source: 'platform', isCaptain: false, teamId: null });
+  });
+}
+
+function renderAdminControls(){
+  document.getElementById('admin-team-controls').style.display = isAdmin() ? 'flex' : 'none';
+  document.getElementById('maps-admin').style.display = isAdmin() && !bracketGenerated() ? 'block' : 'none';
+}
+
+function bracketGenerated(){ return matches.length > 0; }
+
+function unassignedPlayers(){ return players.filter(p => !p.teamId); }
+
+function renderPool(){
+  const box = document.getElementById('pool-box');
+  const pool = unassignedPlayers();
+  if(pool.length === 0){ box.innerHTML = '<p class="muted">Sem jogadores por atribuir.</p>'; return; }
+  box.innerHTML = '';
+  pool.forEach(function(p){
+    const row = document.createElement('div');
+    row.className = 'pool-row';
+    let controls = '';
+    if(isAdmin() && !bracketGenerated()){
+      const teamOpts = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+      controls = `
+        <button class="btn btn-sm btn-outline" data-cap="${p.id}">Tornar capitão</button>
+        <select data-assign="${p.id}"><option value="">Atribuir a...</option>${teamOpts}</select>`;
+    }
+    row.innerHTML = `<span>${p.name} ${p.source==='manual' ? '<span class="muted">(externo)</span>' : ''}</span><span style="display:flex;gap:8px;align-items:center;">${controls}</span>`;
+    box.appendChild(row);
+  });
+  if(isAdmin()){
+    box.querySelectorAll('[data-cap]').forEach(btn=>{
+      btn.addEventListener('click', ()=> makeCaptain(btn.dataset.cap));
+    });
+    box.querySelectorAll('[data-assign]').forEach(sel=>{
+      sel.addEventListener('change', function(){ if(this.value) assignPlayerToTeam(sel.dataset.assign, this.value); });
+    });
+  }
+}
+
+async function makeCaptain(playerId){
+  // pede a que equipa fica associado como capitão
+  if(teams.length === 0){ alert('Cria uma equipa primeiro.'); return; }
+  const names = teams.map((t,i)=> (i+1)+'. '+t.name).join('\n');
+  const pick = prompt('A que equipa é capitão?\n'+names+'\n\nEscreve o número:');
+  const idx = parseInt(pick,10) - 1;
+  if(isNaN(idx) || !teams[idx]) return;
+  const team = teams[idx];
+  await updateDoc(doc(playersCol, playerId), { isCaptain: true, teamId: team.id });
+  await updateDoc(doc(teamsCol, team.id), { captainPlayerId: playerId, players: [...(team.players||[]), playerId] });
+}
+
+async function assignPlayerToTeam(playerId, teamId){
+  const team = teams.find(t=>t.id===teamId);
+  if(!team) return;
+  if((team.players||[]).length >= tournament.teamSize){ alert('Essa equipa já está cheia.'); return; }
+  await updateDoc(doc(playersCol, playerId), { teamId: teamId });
+  await updateDoc(doc(teamsCol, teamId), { players: [...(team.players||[]), playerId] });
+  if(tournament.draftMode === 'captains'){ await advanceDraftTurn(); }
+}
+
+async function advanceDraftTurn(){
+  const openTeams = teams.filter(t => (t.players||[]).length < tournament.teamSize);
+  if(openTeams.length === 0) return;
+  let next = ((tournament.draftTurn||0) + 1) % teams.length;
+  let tries = 0;
+  while((teams[next]?.players||[]).length >= tournament.teamSize && tries < teams.length){ next = (next+1)%teams.length; tries++; }
+  await updateDoc(tRef, { draftTurn: next });
+}
+
+function renderDraftBanner(){
+  const el = document.getElementById('draft-banner');
+  if(tournament.draftMode !== 'captains' || bracketGenerated() || teams.length < 3){ el.innerHTML=''; return; }
+  const turnTeam = teams[tournament.draftTurn || 0];
+  if(!turnTeam) { el.innerHTML=''; return; }
+  const cap = players.find(p=>p.id===turnTeam.captainPlayerId);
+  el.innerHTML = `<div class="draft-banner">É a vez de <strong>${turnTeam.name}</strong>${cap ? ' ('+cap.name+')' : ''} escolher um jogador do pool.</div>`;
+}
+
+function renderTeams(){
+  const box = document.getElementById('teams-box');
+  if(teams.length === 0){ box.innerHTML = '<p class="muted">Ainda não há equipas.</p>'; return; }
+  box.innerHTML = '';
+  teams.forEach(function(t){
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    const tplayers = (t.players||[]).map(pid => players.find(p=>p.id===pid)).filter(Boolean);
+    card.innerHTML = `<h4>${t.name}</h4><p class="muted" style="font-size:0.78rem;margin-bottom:10px;">${tplayers.length}/${tournament.teamSize} jogadores</p>` +
+      tplayers.map(p => `<div class="player-row">${p.name}${p.isCaptain ? '<span class="cap-tag">CAPITÃO</span>' : ''}</div>`).join('');
+    box.appendChild(card);
+  });
+}
+
+document.getElementById('add-team-btn').addEventListener('click', async function(){
+  const name = prompt('Nome da equipa:');
+  if(!name) return;
+  await addDoc(teamsCol, { name, captainPlayerId: null, players: [], seed: teams.length });
+});
+
+document.getElementById('add-manual-btn').addEventListener('click', async function(){
+  const name = prompt('Nome do jogador (fora da plataforma):');
+  if(!name) return;
+  await addDoc(playersCol, { uid: null, name, source: 'manual', isCaptain: false, teamId: null });
+});
+
+document.getElementById('roulette-btn').addEventListener('click', async function(){
+  const pool = unassignedPlayers();
+  const openTeams = teams.filter(t => (t.players||[]).length < tournament.teamSize);
+  if(pool.length === 0 || openTeams.length === 0){ alert('Sem jogadores ou equipas disponíveis.'); return; }
+  const player = pool[Math.floor(Math.random()*pool.length)];
+  const team = openTeams[Math.floor(Math.random()*openTeams.length)];
+  const ok = confirm(`Roleta: ${player.name} → ${team.name}?`);
+  if(ok) await assignPlayerToTeam(player.id, team.id);
+});
+
+document.getElementById('gen-bracket-btn').addEventListener('click', async function(){
+  if(bracketGenerated()){ alert('A bracket já foi gerada para este torneio.'); return; }
+  const readyTeams = teams.filter(t => (t.players||[]).length === tournament.teamSize);
+  if(readyTeams.length < 2){ alert('Precisas de pelo menos 2 equipas completas.'); return; }
+  if(!confirm('Gerar a bracket agora com '+readyTeams.length+' equipas? Não será possível voltar atrás.')) return;
+  await generateBracket(readyTeams.map(t=>t.id));
+  await updateDoc(tRef, { status: 'em-curso' });
+  document.querySelector('.tab-btn[data-tab="bracket"]').click();
+});
+
+// ── MAPAS ────────────────────────────────────────────────────────
+function renderMaps(){
+  const el = document.getElementById('maps-display');
+  el.innerHTML = (tournament.maps||[]).map(m => `<div class="pill">${m}${isAdmin() && !bracketGenerated() ? ' <span data-rm="'+m+'" style="cursor:pointer;color:var(--danger);margin-left:6px;">×</span>' : ''}</div>`).join('');
+  if(isAdmin()){
+    el.querySelectorAll('[data-rm]').forEach(function(x){
+      x.addEventListener('click', async function(e){
+        e.stopPropagation();
+        const newMaps = (tournament.maps||[]).filter(m=>m!==x.dataset.rm);
+        await updateDoc(tRef, { maps: newMaps });
+      });
+    });
+  }
+}
+document.getElementById('map-add-btn').addEventListener('click', async function(){
+  const input = document.getElementById('map-add-input');
+  const v = input.value.trim();
+  if(!v) return;
+  await updateDoc(tRef, { maps: [...(tournament.maps||[]), v] });
+  input.value = '';
+});
+
+// ── BRACKET GERAÇÃO ─────────────────────────────────────────────
+async function generateBracket(teamIds){
+  let plan = [];
+  if(tournament.bracketType === 'round-robin'){
+    let idx = 0;
+    for(let i=0;i<teamIds.length;i++){
+      for(let j=i+1;j<teamIds.length;j++){
+        plan.push({ id:'m'+idx, round:0, matchIndex:idx, teamAId:teamIds[i], teamBId:teamIds[j] });
+        idx++;
+      }
+    }
+  } else {
+    // single elimination (também usado como base para double elimination — bracket de vencedores)
+    let size = 1; while(size < teamIds.length) size *= 2;
+    let slots = teamIds.slice(); while(slots.length < size) slots.push(null);
+    let rounds = [];
+    let m0 = [];
+    for(let i=0;i<size/2;i++) m0.push({ id:'r0m'+i, round:0, matchIndex:i, teamAId:slots[i*2], teamBId:slots[i*2+1] });
+    rounds.push(m0);
+    let count = size/2, r = 1;
+    while(count > 1){
+      let ms = [];
+      for(let i=0;i<count/2;i++) ms.push({ id:'r'+r+'m'+i, round:r, matchIndex:i, teamAId:null, teamBId:null });
+      rounds.push(ms); count/=2; r++;
+    }
+    for(let ri=0; ri<rounds.length-1; ri++){
+      rounds[ri].forEach((m,i)=>{
+        m.nextMatchId = rounds[ri+1][Math.floor(i/2)].id;
+        m.nextSlot = i%2===0 ? 'A' : 'B';
+      });
+    }
+    plan = rounds.flat();
+  }
+
+  for(const m of plan){
+    await setDoc(doc(matchesCol, m.id), {
+      round: m.round, matchIndex: m.matchIndex,
+      teamAId: m.teamAId || null, teamBId: m.teamBId || null,
+      winnerId: null, mapsBanned: [], mapPicked: null, coinResult: null,
+      serverInfo: null, status: 'por-jogar',
+      nextMatchId: m.nextMatchId || null, nextSlot: m.nextSlot || null
+    });
+  }
+  // resolve byes automaticamente
+  for(const m of plan){
+    if(m.teamAId && !m.teamBId) await declareWinnerInternal(m.id, m.teamAId, plan);
+    if(m.teamBId && !m.teamAId) await declareWinnerInternal(m.id, m.teamBId, plan);
+  }
+}
+
+async function declareWinnerInternal(matchId, winnerId, planRef){
+  await updateDoc(doc(matchesCol, matchId), { winnerId, status: 'terminado' });
+  const m = (planRef||matches).find(x=>x.id===matchId);
+  if(m && m.nextMatchId){
+    const field = m.nextSlot === 'A' ? 'teamAId' : 'teamBId';
+    await updateDoc(doc(matchesCol, m.nextMatchId), { [field]: winnerId });
+  }
+}
+
+// ── BRACKET RENDER ──────────────────────────────────────────────
+function teamName(id){ const t = teams.find(x=>x.id===id); return t ? t.name : (id ? '—' : 'A definir'); }
+
+function renderBracket(){
+  const box = document.getElementById('bracket-box');
+  if(matches.length === 0){ box.innerHTML = '<p class="muted">A bracket ainda não foi gerada.</p>'; return; }
+  const byRound = {};
+  matches.forEach(m => { (byRound[m.round] = byRound[m.round] || []).push(m); });
+  const roundNums = Object.keys(byRound).map(Number).sort((a,b)=>a-b);
+  const labels = ['Ronda 1','Ronda 2','Quartos','Meias','Final'];
+  let html = '<div class="bracket">';
+  roundNums.forEach(rn => {
+    const label = tournament.bracketType==='round-robin' ? 'Todos contra todos' : (labels[roundNums.length-1-roundNums.indexOf(rn)] || ('Ronda '+(rn+1)));
+    html += `<div class="bracket-round"><div class="round-label">${tournament.bracketType==='round-robin' ? 'Jogos' : 'Ronda '+(rn+1)}</div>`;
+    byRound[rn].sort((a,b)=>a.matchIndex-b.matchIndex).forEach(m=>{
+      const aWin = m.winnerId && m.winnerId===m.teamAId;
+      const bWin = m.winnerId && m.winnerId===m.teamBId;
+      html += `<div class="match-card" data-match="${m.id}">
+        <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId)}</div>
+        <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId)}</div>
+        <div class="match-meta">${m.status}</div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+  box.querySelectorAll('[data-match]').forEach(el=>{
+    el.addEventListener('click', ()=> openMatchModal(el.dataset.match));
+  });
+}
+
+// ── MODAL DE LOBBY ──────────────────────────────────────────────
+let activeMatchId = null;
+function isInMatch(m){
+  if(!currentUser) return false;
+  const teamA = teams.find(t=>t.id===m.teamAId);
+  const teamB = teams.find(t=>t.id===m.teamBId);
+  const uidsA = (teamA?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
+  const uidsB = (teamB?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
+  return uidsA.includes(currentUser.uid) || uidsB.includes(currentUser.uid);
+}
+
+function openMatchModal(matchId){
+  activeMatchId = matchId;
+  renderMatchModal();
+  document.getElementById('match-modal').classList.add('open');
+}
+
+function renderMatchModal(){
+  const m = matches.find(x=>x.id===activeMatchId);
+  if(!m) return;
+  const canManage = isAdmin() || isInMatch(m);
+  document.getElementById('mm-title').textContent = teamName(m.teamAId) + '  vs  ' + teamName(m.teamBId);
+
+  // mapas
+  const mapsEl = document.getElementById('mm-maps');
+  mapsEl.innerHTML = (tournament.maps||[]).map(map=>{
+    const banned = (m.mapsBanned||[]).includes(map);
+    return `<div class="pill ${banned?'banned':''}" data-map="${map}">${map}</div>`;
+  }).join('');
+  if(tournament.mapBanEnabled && canManage && m.status !== 'terminado'){
+    mapsEl.querySelectorAll('[data-map]').forEach(p=>{
+      p.addEventListener('click', async function(){
+        const map = p.dataset.map;
+        let banned = m.mapsBanned || [];
+        banned = banned.includes(map) ? banned.filter(x=>x!==map) : [...banned, map];
+        await updateDoc(doc(matchesCol, m.id), { mapsBanned: banned });
+      });
+    });
+  }
+
+  // moeda / dado
+  const coinArea = document.getElementById('mm-coin-area');
+  if(m.coinResult){
+    coinArea.innerHTML = `<div class="${tournament.coinMethod==='dice'?'die':'coin'}">${tournament.coinMethod==='dice' ? m.coinResult.value : (m.coinResult.teamAId===m.teamAId?'A':'B')}</div><p class="coin-result">${teamName(m.coinResult.teamAId)} começa</p>`;
+  } else if(canManage && m.status !== 'terminado'){
+    coinArea.innerHTML = `<button class="btn btn-outline btn-sm" id="mm-coin-btn">${tournament.coinMethod==='dice' ? 'Lançar dado' : 'Lançar moeda'}</button>`;
+    document.getElementById('mm-coin-btn').addEventListener('click', async function(){
+      let winnerTeam, value;
+      if(tournament.coinMethod === 'dice'){
+        value = 1 + Math.floor(Math.random()*6);
+        winnerTeam = value % 2 === 0 ? m.teamAId : m.teamBId;
+      } else {
+        winnerTeam = Math.random() < 0.5 ? m.teamAId : m.teamBId;
+        value = null;
+      }
+      await updateDoc(doc(matchesCol, m.id), { coinResult: { teamAId: winnerTeam, value } });
+    });
+  } else {
+    coinArea.innerHTML = '<p class="muted">Ainda por decidir.</p>';
+  }
+
+  // servidor
+  document.getElementById('mm-server-current').textContent = m.serverInfo ? ('Atual: ' + m.serverInfo.value) : 'Ainda não definido.';
+  const serverInput = document.getElementById('mm-server-input');
+  const serverSave = document.getElementById('mm-server-save');
+  serverInput.style.display = isAdmin() ? 'block' : 'none';
+  serverSave.style.display = isAdmin() ? 'block' : 'none';
+  serverSave.onclick = async function(){
+    const v = serverInput.value.trim();
+    if(!v) return;
+    await updateDoc(doc(matchesCol, m.id), { serverInfo: { value: v }, status: 'lobby' });
+    serverInput.value = '';
+  };
+
+  // vencedor
+  const winBtns = document.getElementById('mm-winner-btns');
+  document.getElementById('mm-winner-section').style.display = isAdmin() && m.status !== 'terminado' && m.teamAId && m.teamBId ? 'block' : 'none';
+  winBtns.innerHTML = '';
+  if(isAdmin() && m.teamAId && m.teamBId){
+    [m.teamAId, m.teamBId].forEach(tid=>{
+      const b = document.createElement('button');
+      b.className = 'btn btn-accent btn-sm';
+      b.textContent = teamName(tid) + ' venceu';
+      b.addEventListener('click', async ()=>{ await declareWinnerInternal(m.id, tid); document.getElementById('match-modal').classList.remove('open'); });
+      winBtns.appendChild(b);
+    });
+  }
+}
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

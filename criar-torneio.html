@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Criar torneio — Knockout League</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+  .maps-input { display: flex; gap: 8px; margin-bottom: 10px; }
+  .maps-input input { flex: 1; }
+  .map-tag { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--ink); padding: 7px 10px; font-size: 0.82rem; font-weight: 600; }
+  .map-tag button { background: none; border: none; cursor: pointer; color: var(--danger); font-weight: 700; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html" class="active">Criar torneio</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="wrap-narrow" style="padding-top:48px;padding-bottom:100px;">
+  <div class="eyebrow">Novo torneio</div>
+  <h2 style="margin:10px 0 30px;">Configura a sala</h2>
+  <div class="form-error" id="form-error"></div>
+  <div id="need-login" class="card" style="display:none;margin-bottom:20px;">
+    Precisas de <a href="login.html" style="color:var(--accent);font-weight:700;">entrar</a> (ou entrar como convidado) para criar um torneio.
+  </div>
+
+  <div class="form-group"><label>Nome do torneio</label><input type="text" id="t-name" placeholder="Ex: Taça de Verão CS2"/></div>
+  <div class="form-group"><label>Jogo</label><input type="text" id="t-game" placeholder="Ex: Counter-Strike 2"/></div>
+
+  <div class="form-group">
+    <label>Formato</label>
+    <div class="pill-group" id="pill-teamsize">
+      <div class="pill" data-v="1">1v1</div><div class="pill" data-v="2">2v2</div><div class="pill" data-v="3">3v3</div>
+      <div class="pill" data-v="4">4v4</div><div class="pill" data-v="5">5v5</div><div class="pill" data-v="6">6v6</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Número de equipas</label>
+    <input type="number" id="t-maxteams" min="2" max="64" value="8"/>
+  </div>
+
+  <div class="form-group">
+    <label>Tipo de bracket</label>
+    <div class="pill-group" id="pill-bracket">
+      <div class="pill" data-v="single">Eliminação simples</div>
+      <div class="pill" data-v="double">Eliminação dupla</div>
+      <div class="pill" data-v="round-robin">Todos contra todos</div>
+    </div>
+    <p class="form-hint">Podes ajustar isto mais tarde na sala, antes de gerar a bracket.</p>
+  </div>
+
+  <div class="form-group">
+    <label>Visibilidade</label>
+    <div class="pill-group" id="pill-visibility">
+      <div class="pill" data-v="public">Pública</div>
+      <div class="pill" data-v="private">Privada (código)</div>
+    </div>
+  </div>
+
+  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+    <input type="checkbox" id="t-participo" style="width:auto;margin-top:4px;"/>
+    <label for="t-participo" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Eu, organizador, também vou jogar.</label>
+  </div>
+
+  <div class="form-group">
+    <label>Atribuição de jogadores às equipas</label>
+    <div class="pill-group" id="pill-assign">
+      <div class="pill" data-v="roulette">Roleta</div>
+      <div class="pill" data-v="manual">Manual</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Quando houver mais de 2 capitães, quem escolhe os jogadores?</label>
+    <div class="pill-group" id="pill-draft">
+      <div class="pill" data-v="organizer">Eu decido (organizador)</div>
+      <div class="pill" data-v="captains">Os capitães escolhem</div>
+      <div class="pill" data-v="random">Aleatório</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Mapas do torneio</label>
+    <div class="maps-input">
+      <input type="text" id="map-input" placeholder="Nome do mapa e Enter"/>
+      <button type="button" class="btn btn-outline btn-sm" id="map-add">Adicionar</button>
+    </div>
+    <div class="pill-group" id="maps-list"></div>
+  </div>
+
+  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+    <input type="checkbox" id="t-banmaps" checked style="width:auto;margin-top:4px;"/>
+    <label for="t-banmaps" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Ativar banimento de mapas no lobby.</label>
+  </div>
+
+  <div class="form-group">
+    <label>Como decidir quem começa</label>
+    <div class="pill-group" id="pill-coin">
+      <div class="pill" data-v="coin">Moeda ao ar</div>
+      <div class="pill" data-v="dice">Dado</div>
+    </div>
+  </div>
+
+  <button type="button" class="btn btn-accent" id="create-btn" style="width:100%;margin-top:10px;">Criar torneio</button>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script>
+function bindPills(id, def){
+  var el = document.getElementById(id);
+  el.querySelectorAll('.pill').forEach(function(p){
+    if(p.dataset.v === def) p.classList.add('selected');
+    p.addEventListener('click', function(){
+      el.querySelectorAll('.pill').forEach(function(x){x.classList.remove('selected');});
+      p.classList.add('selected');
+    });
+  });
+}
+bindPills('pill-teamsize','5');
+bindPills('pill-bracket','single');
+bindPills('pill-visibility','public');
+bindPills('pill-assign','roulette');
+bindPills('pill-draft','organizer');
+bindPills('pill-coin','coin');
+function selected(id){ var s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
+
+var maps = [];
+function renderMaps(){
+  var el = document.getElementById('maps-list');
+  el.innerHTML = '';
+  maps.forEach(function(m,i){
+    var tag = document.createElement('div');
+    tag.className = 'map-tag';
+    tag.innerHTML = '<span>'+m+'</span><button type="button">×</button>';
+    tag.querySelector('button').addEventListener('click', function(){ maps.splice(i,1); renderMaps(); });
+    el.appendChild(tag);
+  });
+}
+function addMap(){
+  var input = document.getElementById('map-input');
+  var v = input.value.trim();
+  if(v && !maps.includes(v)){ maps.push(v); renderMaps(); }
+  input.value = '';
+}
+document.getElementById('map-add').addEventListener('click', addMap);
+document.getElementById('map-input').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addMap(); } });
+
+function showError(msg){ var el = document.getElementById('form-error'); el.textContent = msg; el.style.display='block'; }
+</script>
+
+<script type="module">
+import { auth, db, collection, addDoc, serverTimestamp } from './firebase.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+let currentUser = null;
+onAuthStateChanged(auth, function(user){
+  currentUser = user;
+  document.getElementById('need-login').style.display = user ? 'none' : 'block';
+  document.getElementById('create-btn').disabled = !user;
+});
+
+function genCode(){
+  return Math.random().toString(36).slice(2,8).toUpperCase();
+}
+
+document.getElementById('create-btn').addEventListener('click', async function(){
+  document.getElementById('form-error').style.display = 'none';
+  if(!currentUser){ showError('Entra na tua conta primeiro.'); return; }
+  const name = document.getElementById('t-name').value.trim();
+  const game = document.getElementById('t-game').value.trim();
+  const teamSize = parseInt(selected('pill-teamsize'), 10);
+  const maxTeams = parseInt(document.getElementById('t-maxteams').value, 10);
+  const bracketType = selected('pill-bracket');
+  const visibility = selected('pill-visibility');
+  const assignMode = selected('pill-assign');
+  const draftMode = selected('pill-draft');
+  const coinMethod = selected('pill-coin');
+  const mapBanEnabled = document.getElementById('t-banmaps').checked;
+  const creatorParticipates = document.getElementById('t-participo').checked;
+
+  if(!name){ showError('Dá um nome ao torneio.'); return; }
+  if(!game){ showError('Indica o jogo do torneio.'); return; }
+  if(!maxTeams || maxTeams < 2){ showError('Precisas de pelo menos 2 equipas.'); return; }
+  if(maps.length === 0){ showError('Adiciona pelo menos um mapa.'); return; }
+
+  const btn = document.getElementById('create-btn');
+  btn.disabled = true; btn.textContent = 'A criar...';
+
+  try{
+    const docRef = await addDoc(collection(db,'tournaments'), {
+      name, game, teamSize, maxTeams, bracketType, visibility,
+      inviteCode: visibility === 'private' ? genCode() : null,
+      assignMode, draftMode, coinMethod, mapBanEnabled, maps,
+      creatorUid: currentUser.uid, creatorParticipates,
+      status: 'inscricoes', draftTurn: 0,
+      createdAt: serverTimestamp()
+    });
+    window.location.href = 'torneio.html?id=' + docRef.id;
+  }catch(err){
+    showError('Erro ao criar torneio: ' + err.message);
+    btn.disabled = false; btn.textContent = 'Criar torneio';
+  }
+});
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

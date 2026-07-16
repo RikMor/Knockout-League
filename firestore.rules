@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /users/{uid} {
+      allow read: if true;
+      allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+    }
+
+    match /tournaments/{tid} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() &&
+        (resource.data.creatorUid == request.auth.uid || isAdmin());
+
+      match /players/{pid} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() &&
+          (resource.data.uid == request.auth.uid ||
+           get(/databases/$(database)/documents/tournaments/$(tid)).data.creatorUid == request.auth.uid ||
+           isAdmin());
+      }
+
+      match /teams/{teamId} {
+        allow read: if true;
+        allow write: if isSignedIn() &&
+          (get(/databases/$(database)/documents/tournaments/$(tid)).data.creatorUid == request.auth.uid || isAdmin());
+      }
+
+      match /matches/{matchId} {
+        allow read: if true;
+        allow write: if isSignedIn(); // afinar depois: só jogadores do match + admin
+      }
+    }
+  }
+}

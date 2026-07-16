@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Knockout League — Organiza o teu torneio</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+  .hero { padding: 80px 0 60px; border-bottom: 2px solid var(--ink); }
+  .hero-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: end; }
+  .hero p.lead { font-size: 1.15rem; color: var(--muted); max-width: 46ch; margin: 18px 0 30px; }
+  .stat-ticket { border: 1px solid var(--ink); padding: 16px 18px; }
+  .stat-ticket .n { font-family: 'Anton'; font-size: 2.2rem; }
+  .stat-ticket .l { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .how-step { display: flex; gap: 18px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .how-num { font-family: 'Anton'; font-size: 1.6rem; color: var(--accent); width: 50px; flex-shrink: 0; }
+  .t-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 28px; }
+  @media(max-width:760px){ .hero-grid{grid-template-columns:1fr;} .t-list{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">1v1 até 6v6</div>
+      <h1>A tua bracket.<br>As tuas regras.</h1>
+      <p class="lead">Organiza torneios eliminatórios para qualquer jogo: equipas por roleta ou por escolha dos capitães, mapas à tua medida, e um lobby onde tudo se resolve antes do primeiro round.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <a href="criar-torneio.html" class="btn btn-accent">Criar um torneio</a>
+        <a href="torneios.html" class="btn btn-outline">Ver torneios abertos</a>
+      </div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;">
+      <div class="stat-ticket"><div class="n">1–6</div><div class="l">Jogadores por equipa</div></div>
+      <div class="stat-ticket"><div class="n">∞</div><div class="l">Jogos suportados</div></div>
+      <div class="stat-ticket"><div class="n">2</div><div class="l">Modos de sala</div></div>
+      <div class="stat-ticket"><div class="n">1</div><div class="l">Lobby por partida</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow">Como funciona</div>
+    <h2 style="margin:12px 0 10px;">Do registo ao vencedor</h2>
+    <div style="max-width:700px;">
+      <div class="how-step"><div class="how-num">01</div><div><h3>Cria a sala</h3><p class="muted">Define o jogo, o formato (1v1 a 6v6), o tipo de bracket e os mapas. Escolhe se é pública ou privada.</p></div></div>
+      <div class="how-step"><div class="how-num">02</div><div><h3>Monta as equipas</h3><p class="muted">Jogadores da plataforma ou de fora dela entram no pool. Define capitães e atribui jogadores por roleta ou manualmente — com vários capitães, cada um pode escolher o seu jogador.</p></div></div>
+      <div class="how-step"><div class="how-num">03</div><div><h3>Gera a bracket</h3><p class="muted">A bracket é criada automaticamente a partir das equipas prontas.</p></div></div>
+      <div class="how-step"><div class="how-num">04</div><div><h3>Lobby de cada partida</h3><p class="muted">As equipas banem mapas, a moeda ou o dado decide quem começa, e o organizador partilha o servidor quando estiver tudo pronto.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:2px solid var(--ink);padding-top:48px;">
+  <div class="wrap">
+    <div class="eyebrow">Agora a decorrer</div>
+    <h2 style="margin:12px 0 0;">Torneios públicos</h2>
+    <div class="t-list" id="t-list"><p class="muted">A carregar torneios...</p></div>
+  </div>
+</section>
+
+<footer>
+  <span>© 2026 Knockout League</span>
+  <span>Porto, Portugal</span>
+</footer>
+
+<script src="shared.js"></script>
+<script type="module">
+import { db, collection, query, where, getDocs } from './firebase.js';
+
+async function loadPublic(){
+  const el = document.getElementById('t-list');
+  try{
+    const q = query(collection(db,'tournaments'), where('visibility','==','public'));
+    const snap = await getDocs(q);
+    if(snap.empty){ el.innerHTML = '<p class="muted">Ainda não há torneios públicos. <a href="criar-torneio.html">Cria o primeiro.</a></p>'; return; }
+    el.innerHTML = '';
+    snap.forEach(d=>{
+      const t = d.data();
+      const card = document.createElement('a');
+      card.href = 'torneio.html?id=' + d.id;
+      card.className = 't-card';
+      card.innerHTML = `<span class="badge badge-open">${t.status || 'inscrições'}</span><h3>${t.name}</h3><span class="muted">${t.game || ''} · ${t.teamSize}v${t.teamSize}</span>`;
+      el.appendChild(card);
+    });
+  }catch(e){ el.innerHTML = '<p class="muted">Liga o teu projeto Firebase em firebase.js para ver torneios reais.</p>'; }
+}
+loadPublic();
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>
