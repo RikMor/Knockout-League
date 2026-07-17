@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Definições — Knockout League</title>
+<link rel="stylesheet" href="shared.css?v=2"/>
+<style>
+  .def-wrap { max-width: 640px; margin: 0 auto; padding: 56px 5vw 100px; }
+  .def-section { border: 1px solid var(--line); padding: 24px; margin-bottom: 20px; }
+  .def-title { font-family: 'Anton'; font-size: 1rem; letter-spacing: 1px; color: var(--accent); margin-bottom: 18px; }
+  .def-msg { display: none; margin-top: 12px; padding: 10px 14px; font-size: 0.8rem; }
+  .def-msg.ok { background: rgba(53,168,112,0.1); border: 1px solid var(--win); color: var(--win); }
+  .def-msg.err { background: rgba(225,92,76,0.1); border: 1px solid var(--danger); color: var(--danger); }
+  .avatar-preview-wrap { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; }
+  .avatar-preview { width: 70px; height: 70px; border-radius: 50%; border: 3px solid var(--gold); object-fit: cover; }
+  .not-logged { text-align: center; padding: 100px 20px; }
+  .provider-note { font-size: 0.82rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="def-wrap">
+  <div class="not-logged" id="not-logged" style="display:none;">
+    <div class="eyebrow">Definições</div>
+    <h2 style="margin:12px 0 20px;">Acesso restrito</h2>
+    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para aceder às definições.</p>
+    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+  </div>
+
+  <div id="def-content" style="display:none;">
+    <div class="eyebrow">Conta</div>
+    <h2 style="margin:12px 0 30px;">Definições</h2>
+
+    <!-- AVATAR -->
+    <div class="def-section">
+      <div class="def-title">Imagem de perfil</div>
+      <div class="avatar-preview-wrap">
+        <img class="avatar-preview" id="def-avatar-img" src="" alt="Avatar"/>
+        <div style="flex:1;">
+          <label style="display:block;font-family:'IBM Plex Mono';font-size:0.65rem;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">URL da imagem</label>
+          <input type="url" id="def-avatar-url" placeholder="Link direto para a imagem" style="width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--line);color:var(--ink);"/>
+        </div>
+      </div>
+      <button class="btn btn-accent btn-sm" id="btn-avatar">Guardar avatar</button>
+      <div class="def-msg" id="msg-avatar"></div>
+    </div>
+
+    <!-- NICKNAME -->
+    <div class="def-section">
+      <div class="def-title">Nickname</div>
+      <div class="form-group"><label>Novo nickname</label><input type="text" id="def-nick" maxlength="24" placeholder="3–24 caracteres"/></div>
+      <button class="btn btn-accent btn-sm" id="btn-nick">Guardar nickname</button>
+      <div class="def-msg" id="msg-nick"></div>
+    </div>
+
+    <!-- EMAIL (só password) -->
+    <div class="def-section" id="section-email">
+      <div class="def-title">Email</div>
+      <div class="form-group"><label>Novo email</label><input type="email" id="def-email"/></div>
+      <div class="form-group"><label>Palavra-passe atual (para confirmar)</label><input type="password" id="def-email-pass"/></div>
+      <button class="btn btn-accent btn-sm" id="btn-email">Guardar email</button>
+      <div class="def-msg" id="msg-email"></div>
+    </div>
+
+    <!-- PASSWORD (só password) -->
+    <div class="def-section" id="section-pass">
+      <div class="def-title">Alterar palavra-passe</div>
+      <div class="form-group"><label>Palavra-passe atual</label><input type="password" id="def-pass-old"/></div>
+      <div class="form-group"><label>Nova palavra-passe</label><input type="password" id="def-pass-new" minlength="6"/></div>
+      <div class="form-group"><label>Confirmar nova palavra-passe</label><input type="password" id="def-pass-new2" minlength="6"/></div>
+      <button class="btn btn-accent btn-sm" id="btn-pass">Alterar palavra-passe</button>
+      <div class="def-msg" id="msg-pass"></div>
+    </div>
+
+    <!-- CONTA GOOGLE — nota -->
+    <div class="def-section" id="section-google-note" style="display:none;">
+      <div class="def-title">Conta Google</div>
+      <p class="provider-note">Entraste com uma conta Google. O email e a palavra-passe são geridos pela tua conta Google, não aqui.</p>
+    </div>
+
+    <!-- TERMINAR NOUTROS DISPOSITIVOS -->
+    <div class="def-section">
+      <div class="def-title">Terminar sessão noutros dispositivos</div>
+      <p class="muted" style="font-size:0.85rem;margin-bottom:16px;">Termina a tua sessão em todos os outros dispositivos.</p>
+      <button class="btn btn-outline btn-sm" id="btn-logout-devices">Terminar sessão em todos os dispositivos</button>
+      <div class="def-msg" id="msg-logout-devices"></div>
+    </div>
+  </div>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script type="module">
+import { auth, db, doc } from './firebase.js';
+import { getDoc, updateDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { onAuthStateChanged, updateEmail, updatePassword, updateProfile,
+         reauthenticateWithCredential, EmailAuthProvider, signOut }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+let currentUser = null;
+let userDocData = null;
+
+function showMsg(id, text, ok){
+  const el = document.getElementById(id);
+  el.textContent = text; el.className = 'def-msg ' + (ok ? 'ok' : 'err'); el.style.display = 'block';
+  setTimeout(()=>{ el.style.display='none'; }, 4000);
+}
+function setBtn(id, dis){ const b = document.getElementById(id); if(b) b.disabled = dis; }
+
+async function isNicknameTaken(nick, myUid){
+  try{
+    const snap = await getDocs(collection(db,'users'));
+    const l = nick.toLowerCase();
+    return snap.docs.some(d => d.id !== myUid && (d.data().nickname||'').toLowerCase() === l);
+  }catch(e){ return false; }
+}
+
+onAuthStateChanged(auth, async function(user){
+  currentUser = user;
+  if(!user){ document.getElementById('not-logged').style.display = 'block'; return; }
+
+  const snap = await getDoc(doc(db,'users',user.uid));
+  if(!snap.exists()) return;
+  userDocData = snap.data();
+
+  document.getElementById('def-avatar-img').src = userDocData.avatarUrl || ('https://api.dicebear.com/8.x/pixel-art/svg?seed='+encodeURIComponent(userDocData.nickname||''));
+  document.getElementById('def-avatar-url').value = userDocData.avatarUrl || '';
+  document.getElementById('def-nick').value = userDocData.nickname || '';
+  document.getElementById('def-email').value = user.email || '';
+
+  const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+  const isGuest = user.isAnonymous;
+  document.getElementById('section-email').style.display = (!isGoogle && !isGuest) ? 'block' : 'none';
+  document.getElementById('section-pass').style.display = (!isGoogle && !isGuest) ? 'block' : 'none';
+  document.getElementById('section-google-note').style.display = isGoogle ? 'block' : 'none';
+
+  document.getElementById('def-content').style.display = 'block';
+});
+
+document.getElementById('btn-avatar').addEventListener('click', async function(){
+  const url = document.getElementById('def-avatar-url').value.trim();
+  setBtn('btn-avatar', true);
+  try{
+    await updateDoc(doc(db,'users',currentUser.uid), { avatarUrl: url });
+    document.getElementById('def-avatar-img').src = url || document.getElementById('def-avatar-img').src;
+    showMsg('msg-avatar','Avatar atualizado.', true);
+  }catch(e){ showMsg('msg-avatar','Erro: '+e.message, false); }
+  setBtn('btn-avatar', false);
+});
+
+document.getElementById('btn-nick').addEventListener('click', async function(){
+  const nick = document.getElementById('def-nick').value.trim();
+  if(!/^[a-zA-Z0-9_.]{3,24}$/.test(nick)){ showMsg('msg-nick','Nickname: 3–24 caracteres, letras, números, _ ou .', false); return; }
+  setBtn('btn-nick', true);
+  try{
+    if(await isNicknameTaken(nick, currentUser.uid)){ showMsg('msg-nick','Esse nickname já está em uso.', false); setBtn('btn-nick', false); return; }
+    await updateDoc(doc(db,'users',currentUser.uid), { nickname: nick, nicknameLower: nick.toLowerCase() });
+    if(!currentUser.isAnonymous) await updateProfile(currentUser, { displayName: nick });
+    showMsg('msg-nick','Nickname atualizado.', true);
+  }catch(e){ showMsg('msg-nick','Erro: '+e.message, false); }
+  setBtn('btn-nick', false);
+});
+
+document.getElementById('btn-email').addEventListener('click', async function(){
+  const newEmail = document.getElementById('def-email').value.trim();
+  const pass = document.getElementById('def-email-pass').value;
+  if(!newEmail || !pass){ showMsg('msg-email','Preenche o email e a palavra-passe atual.', false); return; }
+  setBtn('btn-email', true);
+  try{
+    const cred = EmailAuthProvider.credential(currentUser.email, pass);
+    await reauthenticateWithCredential(currentUser, cred);
+    await updateEmail(currentUser, newEmail);
+    await updateDoc(doc(db,'users',currentUser.uid), { email: newEmail });
+    showMsg('msg-email','Email atualizado.', true);
+    document.getElementById('def-email-pass').value = '';
+  }catch(e){ showMsg('msg-email','Erro: palavra-passe incorreta ou email inválido.', false); }
+  setBtn('btn-email', false);
+});
+
+document.getElementById('btn-pass').addEventListener('click', async function(){
+  const oldPass = document.getElementById('def-pass-old').value;
+  const newPass = document.getElementById('def-pass-new').value;
+  const newPass2 = document.getElementById('def-pass-new2').value;
+  if(newPass.length < 6){ showMsg('msg-pass','A nova palavra-passe deve ter pelo menos 6 caracteres.', false); return; }
+  if(newPass !== newPass2){ showMsg('msg-pass','As palavras-passe não coincidem.', false); return; }
+  setBtn('btn-pass', true);
+  try{
+    const cred = EmailAuthProvider.credential(currentUser.email, oldPass);
+    await reauthenticateWithCredential(currentUser, cred);
+    await updatePassword(currentUser, newPass);
+    showMsg('msg-pass','Palavra-passe alterada.', true);
+    document.getElementById('def-pass-old').value = '';
+    document.getElementById('def-pass-new').value = '';
+    document.getElementById('def-pass-new2').value = '';
+  }catch(e){ showMsg('msg-pass','Erro: palavra-passe atual incorreta.', false); }
+  setBtn('btn-pass', false);
+});
+
+document.getElementById('btn-logout-devices').addEventListener('click', async function(){
+  if(!confirm('Isto vai terminar a tua sessão neste e em todos os outros dispositivos. Continuar?')) return;
+  await signOut(auth);
+  window.location.href = 'login.html';
+});
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

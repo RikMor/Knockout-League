@@ -27,10 +27,12 @@
   <div class="eyebrow">Novo torneio</div>
   <h2 style="margin:10px 0 30px;">Configura a sala</h2>
   <div class="form-error" id="form-error"></div>
-  <div id="need-login" class="card" style="display:none;margin-bottom:20px;">
-    Precisas de <a href="login.html" style="color:var(--accent);font-weight:700;">entrar</a> (ou entrar como convidado) para criar um torneio.
+  <div id="need-login" class="card" style="margin-bottom:20px;">
+    <p style="margin-bottom:14px;" id="need-login-text">A verificar sessão...</p>
+    <a href="login.html"><button class="btn btn-accent" style="width:100%;">Entrar para criar um torneio</button></a>
   </div>
 
+  <div id="torneio-form" style="display:none;">
   <div class="form-group"><label>Nome do torneio</label><input type="text" id="t-name" placeholder="Ex: Taça de Verão CS2"/></div>
   <div class="form-group"><label>Jogo</label><input type="text" id="t-game" placeholder="Ex: Counter-Strike 2"/></div>
 
@@ -111,6 +113,7 @@
   </div>
 
   <button type="button" class="btn btn-accent" id="create-btn" style="width:100%;margin-top:10px;">Criar torneio</button>
+  </div>
 </div>
 
 <footer><span>© 2026 Knockout League</span></footer>
@@ -199,6 +202,8 @@ let currentUser = null;
 onAuthStateChanged(auth, function(user){
   currentUser = user;
   document.getElementById('need-login').style.display = user ? 'none' : 'block';
+  document.getElementById('need-login-text').textContent = 'Precisas de entrar (ou entrar como convidado) para criar um torneio.';
+  document.getElementById('torneio-form').style.display = user ? 'block' : 'none';
   document.getElementById('create-btn').disabled = !user;
 });
 

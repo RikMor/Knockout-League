@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>O meu perfil — Knockout League</title>
+<link rel="stylesheet" href="shared.css?v=2"/>
+<style>
+  .perfil-wrap { max-width: 760px; margin: 0 auto; padding: 56px 5vw 100px; }
+  .perfil-head { display: flex; align-items: center; gap: 22px; padding-bottom: 30px; border-bottom: 2px solid var(--ink); margin-bottom: 30px; flex-wrap: wrap; }
+  .perfil-avatar { width: 84px; height: 84px; border-radius: 50%; border: 3px solid var(--gold); background: var(--surface); object-fit: cover; }
+  .perfil-nick { font-family: 'Anton'; font-size: 2rem; }
+  .perfil-since { font-family: 'IBM Plex Mono'; font-size: 0.72rem; color: var(--muted); letter-spacing: 1px; margin-top: 4px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 34px; }
+  .stat-box { background: var(--surface); padding: 22px 12px; text-align: center; }
+  .stat-value { font-family: 'Anton'; font-size: 2rem; }
+  .stat-value.win { color: var(--win); } .stat-value.loss { color: var(--danger); } .stat-value.mvp { color: var(--gold); }
+  .stat-label { font-family: 'IBM Plex Mono'; font-size: 0.62rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+  .not-logged { text-align: center; padding: 100px 20px; }
+  .guest-banner { border: 1px solid var(--gold); background: rgba(232,185,59,0.1); padding: 12px 18px; margin-bottom: 24px; font-size: 0.85rem; }
+  .my-tournaments a { display: block; padding: 12px 0; border-bottom: 1px solid var(--line); text-decoration: none; color: var(--ink); font-weight: 600; }
+  @media(max-width:600px){ .stats-grid{grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="perfil-wrap">
+  <div class="not-logged" id="not-logged" style="display:none;">
+    <div class="eyebrow">Perfil</div>
+    <h2 style="margin:12px 0 20px;">Acesso restrito</h2>
+    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para ver o teu perfil.</p>
+    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+  </div>
+
+  <div id="perfil-content" style="display:none;">
+    <div class="guest-banner" id="guest-banner" style="display:none;">
+      Conta temporária — esta sessão desaparece ao fechar o browser. <a href="login.html" style="color:var(--accent);font-weight:700;">Cria uma conta</a> para guardar o teu progresso.
+    </div>
+
+    <div class="perfil-head">
+      <img class="perfil-avatar" id="ph-avatar" src="" alt="Avatar"/>
+      <div>
+        <div class="perfil-nick" id="ph-nick">—</div>
+        <div class="muted" id="ph-name"></div>
+        <div class="perfil-since" id="ph-since"></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Estatísticas</div>
+    <div class="stats-grid" style="margin-top:14px;">
+      <div class="stat-box"><div class="stat-value" id="stat-torneios">0</div><div class="stat-label">Torneios</div></div>
+      <div class="stat-box"><div class="stat-value win" id="stat-vitorias">0</div><div class="stat-label">Vitórias</div></div>
+      <div class="stat-box"><div class="stat-value loss" id="stat-derrotas">0</div><div class="stat-label">Derrotas</div></div>
+      <div class="stat-box"><div class="stat-value mvp" id="stat-mvp">0</div><div class="stat-label">MVP</div></div>
+    </div>
+
+    <a href="definicoes.html" class="btn btn-outline" style="margin-bottom:10px;">Editar definições</a>
+  </div>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script type="module">
+import { auth, db, doc } from './firebase.js';
+import { getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+onAuthStateChanged(auth, async function(user){
+  if(!user){ document.getElementById('not-logged').style.display='block'; return; }
+
+  if(user.isAnonymous){ document.getElementById('guest-banner').style.display='block'; }
+
+  let snap;
+  try{ snap = await getDoc(doc(db,'users',user.uid)); }
+  catch(e){ document.getElementById('not-logged').style.display='block'; return; }
+
+  if(!snap.exists()){ await signOut(auth); window.location.href='login.html'; return; }
+
+  const u = snap.data();
+  const nick = u.nickname || user.displayName || '—';
+  const avatar = u.avatarUrl || ('https://api.dicebear.com/8.x/pixel-art/svg?seed=' + encodeURIComponent(nick));
+  const since = u.createdAt ? 'membro desde ' + new Date(u.createdAt).toLocaleDateString('pt-PT',{year:'numeric',month:'long'}) : '';
+  const stats = u.stats || {torneios:0,vitorias:0,derrotas:0,mvp:0};
+
+  document.getElementById('ph-avatar').src = avatar;
+  document.getElementById('ph-nick').textContent = nick;
+  document.getElementById('ph-name').textContent = u.name || '';
+  document.getElementById('ph-since').textContent = since;
+  document.getElementById('stat-torneios').textContent = stats.torneios || 0;
+  document.getElementById('stat-vitorias').textContent = stats.vitorias || 0;
+  document.getElementById('stat-derrotas').textContent = stats.derrotas || 0;
+  document.getElementById('stat-mvp').textContent = stats.mvp || 0;
+
+  document.getElementById('perfil-content').style.display = 'block';
+});
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>
