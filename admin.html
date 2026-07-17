@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Painel de admin — Knockout League</title>
+<link rel="stylesheet" href="shared.css?v=2"/>
+<style>
+  .admin-tabs { display: flex; border-bottom: 2px solid var(--ink); margin-bottom: 28px; }
+  .admin-tab { padding: 12px 18px; background: none; border: none; cursor: pointer; font-weight: 700; font-size: 0.82rem; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .admin-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+  .admin-panel { display: none; }
+  .admin-panel.active { display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { text-align: left; font-family: 'IBM Plex Mono'; font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); padding: 10px 8px; border-bottom: 2px solid var(--ink); }
+  td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .not-logged { text-align: center; padding: 100px 20px; }
+  .search-box { padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); width: 100%; max-width: 320px; margin-bottom: 18px; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li><a href="faq.html">FAQ</a></li>
+    <li><a href="contacto.html">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="wrap page-head">
+  <div class="eyebrow">Dono do site</div>
+  <h1>Painel de admin</h1>
+</div>
+
+<div class="wrap" style="padding-bottom:90px;">
+  <div class="not-logged" id="not-allowed" style="display:none;">
+    <p class="muted">Não tens acesso a esta página.</p>
+    <a href="index.html"><button class="btn btn-outline" style="margin-top:16px;">Voltar ao início</button></a>
+  </div>
+
+  <div id="admin-content" style="display:none;">
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="utilizadores">Utilizadores</button>
+      <button class="admin-tab" data-tab="torneios">Torneios</button>
+      <button class="admin-tab" data-tab="contactos">Mensagens</button>
+    </div>
+
+    <div class="admin-panel active" id="admin-utilizadores">
+      <input type="text" class="search-box" id="user-search" placeholder="Procurar por nickname ou email"/>
+      <table>
+        <thead><tr><th>Nickname</th><th>Email</th><th>Tipo</th><th>Papel</th><th></th></tr></thead>
+        <tbody id="users-tbody"><tr><td colspan="5" class="muted">A carregar...</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="admin-panel" id="admin-torneios">
+      <table>
+        <thead><tr><th>Nome</th><th>Jogo</th><th>Formato</th><th>Visibilidade</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="tournaments-tbody"><tr><td colspan="6" class="muted">A carregar...</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="admin-panel" id="admin-contactos">
+      <div id="contacts-list"><p class="muted">A carregar...</p></div>
+    </div>
+  </div>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script>
+document.querySelectorAll('.admin-tab').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.admin-tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('admin-'+btn.dataset.tab).classList.add('active');
+  });
+});
+</script>
+
+<script type="module">
+import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, getDocs, query, orderBy } from './firebase.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+let allUsers = [];
+
+onAuthStateChanged(auth, async function(user){
+  if(!user || user.isAnonymous){ document.getElementById('not-allowed').style.display = 'block'; return; }
+  const snap = await getDoc(doc(db,'users',user.uid));
+  if(!snap.exists() || snap.data().role !== 'admin'){ document.getElementById('not-allowed').style.display = 'block'; return; }
+  document.getElementById('admin-content').style.display = 'block';
+  loadUsers();
+  loadTournaments();
+  loadContacts();
+});
+
+async function loadUsers(){
+  const snap = await getDocs(collection(db,'users'));
+  allUsers = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  renderUsers(allUsers);
+}
+function renderUsers(list){
+  const tbody = document.getElementById('users-tbody');
+  if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="5" class="muted">Sem utilizadores.</td></tr>'; return; }
+  tbody.innerHTML = list.map(u => `
+    <tr>
+      <td>${u.nickname || '—'}</td>
+      <td>${u.email || '—'}</td>
+      <td>${u.isGuest ? 'Convidado' : (u.provider === 'google' ? 'Google' : 'Email')}</td>
+      <td>${u.role || 'player'}</td>
+      <td>${u.role === 'admin'
+        ? '<button class="btn btn-sm btn-outline" data-demote="'+u.id+'">Remover admin</button>'
+        : '<button class="btn btn-sm btn-outline" data-promote="'+u.id+'">Tornar admin</button>'}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('[data-promote]').forEach(b=> b.addEventListener('click', ()=> setRole(b.dataset.promote,'admin')));
+  tbody.querySelectorAll('[data-demote]').forEach(b=> b.addEventListener('click', ()=> setRole(b.dataset.demote,'player')));
+}
+async function setRole(uid, role){
+  await updateDoc(doc(db,'users',uid), { role });
+  await loadUsers();
+}
+document.getElementById('user-search').addEventListener('input', function(){
+  const term = this.value.trim().toLowerCase();
+  renderUsers(allUsers.filter(u => (u.nickname||'').toLowerCase().includes(term) || (u.email||'').toLowerCase().includes(term)));
+});
+
+async function loadTournaments(){
+  const snap = await getDocs(collection(db,'tournaments'));
+  const tbody = document.getElementById('tournaments-tbody');
+  if(snap.empty){ tbody.innerHTML = '<tr><td colspan="6" class="muted">Sem torneios.</td></tr>'; return; }
+  tbody.innerHTML = snap.docs.map(d=>{
+    const t = d.data();
+    return `<tr>
+      <td><a href="torneio.html?id=${d.id}" style="color:var(--accent);font-weight:600;">${t.name}</a></td>
+      <td>${t.game || '—'}</td>
+      <td>${t.teamSize}v${t.teamSize}</td>
+      <td>${t.visibility === 'private' ? 'Privado' : 'Público'}</td>
+      <td>${t.status || '—'}</td>
+      <td><button class="btn btn-sm btn-danger" data-del="${d.id}">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('[data-del]').forEach(b=>{
+    b.addEventListener('click', async function(){
+      if(!confirm('Eliminar este torneio permanentemente?')) return;
+      await deleteDoc(doc(db,'tournaments', b.dataset.del));
+      loadTournaments();
+    });
+  });
+}
+
+async function loadContacts(){
+  const box = document.getElementById('contacts-list');
+  try{
+    const q = query(collection(db,'contactos'), orderBy('createdAt','desc'));
+    const snap = await getDocs(q);
+    if(snap.empty){ box.innerHTML = '<p class="muted">Sem mensagens.</p>'; return; }
+    box.innerHTML = snap.docs.map(d=>{
+      const c = d.data();
+      const date = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('pt-PT') : '';
+      return `<div class="card" style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <strong>${c.nome}</strong><span class="muted mono" style="font-size:0.72rem;">${date}</span>
+        </div>
+        <div class="muted" style="font-size:0.85rem;margin:4px 0 10px;">${c.email}</div>
+        <p>${c.mensagem}</p>
+      </div>`;
+    }).join('');
+  }catch(e){ box.innerHTML = '<p class="muted">Erro ao carregar mensagens.</p>'; }
+}
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FAQ — Knockout League</title>
+<link rel="stylesheet" href="shared.css?v=2"/>
+<style>
+  .faq-wrap { max-width: 780px; margin: 0 auto; padding-bottom: 100px; }
+  .faq-search { width: 100%; padding: 14px 16px; border: 1px solid var(--ink); background: var(--surface); color: var(--ink); font-family: 'Inter'; font-size: 0.95rem; margin-bottom: 32px; }
+  .faq-cat-title { margin: 40px 0 14px; }
+  .faq-item { border: 1px solid var(--line); margin-bottom: 8px; }
+  .faq-item.open { border-color: var(--ink); }
+  .faq-q { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; cursor: pointer; gap: 14px; user-select: none; }
+  .faq-q-text { font-weight: 700; font-size: 0.95rem; }
+  .faq-icon { flex-shrink: 0; width: 24px; height: 24px; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: transform .2s; }
+  .faq-item.open .faq-icon { transform: rotate(45deg); border-color: var(--accent); color: var(--accent); }
+  .faq-a { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+  .faq-item.open .faq-a { max-height: 400px; }
+  .faq-a-inner { padding: 0 18px 18px; color: var(--muted); font-size: 0.9rem; line-height: 1.7; border-top: 1px solid var(--line); padding-top: 14px; }
+  .faq-none { display: none; text-align: center; padding: 40px 0; color: var(--muted); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li><a href="faq.html" class="active">FAQ</a></li>
+    <li><a href="contacto.html">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="wrap page-head">
+  <div class="eyebrow">Suporte</div>
+  <h1>Perguntas frequentes</h1>
+</div>
+
+<div class="wrap faq-wrap">
+  <input type="text" class="faq-search" id="faq-search" placeholder="Pesquisar uma pergunta..."/>
+
+  <div id="faq-list">
+    <h2 class="faq-cat-title">Contas e acesso</h2>
+    <div class="faq-item" data-q="entrar conta convidado google registar login">
+      <div class="faq-q"><span class="faq-q-text">Preciso de criar conta para jogar um torneio?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Não é obrigatório. Podes entrar como convidado — a sessão é temporária e desaparece ao fechares o browser. Para guardares o teu histórico e estatísticas entre sessões, regista-te com email/palavra-passe ou com a tua conta Google.</div></div>
+    </div>
+    <div class="faq-item" data-q="conta convidado desaparece apagada">
+      <div class="faq-q"><span class="faq-q-text">O que acontece à minha conta de convidado?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Contas de convidado são temporárias e removidas automaticamente pouco tempo depois de fechares o browser. Se quiseres manter o teu perfil e as tuas estatísticas, cria uma conta normal ou entra com o Google.</div></div>
+    </div>
+
+    <h2 class="faq-cat-title">Criar e organizar torneios</h2>
+    <div class="faq-item" data-q="criar torneio organizador formato bracket">
+      <div class="faq-q"><span class="faq-q-text">Como crio um torneio?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Entra na tua conta, vai a "Criar torneio" e define o jogo, o formato (1v1 até 6v6), o tipo de bracket, os mapas e se a sala é pública ou privada. Depois de teres as equipas prontas, geras a bracket a partir da sala do torneio.</div></div>
+    </div>
+    <div class="faq-item" data-q="tipo bracket eliminação simples dupla todos contra todos diferença">
+      <div class="faq-q"><span class="faq-q-text">Qual a diferença entre os tipos de bracket?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner"><strong>Eliminação simples:</strong> quem perde uma vez fica fora. <strong>Eliminação dupla:</strong> só és eliminado à segunda derrota. <strong>Todos contra todos:</strong> todas as equipas jogam entre si, vence quem tiver mais vitórias.</div></div>
+    </div>
+    <div class="faq-item" data-q="equipas roleta capitão manual pedra papel tesoura atribuição">
+      <div class="faq-q"><span class="faq-q-text">Como são formadas as equipas?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner">O organizador pode atribuir jogadores às equipas por roleta (aleatório), à mão, ou por pedra-papel-tesoura. Também pode definir capitães — se houver mais de dois, o organizador escolhe se as escolhas são aleatórias, feitas por ele, ou pelos próprios capitães.</div></div>
+    </div>
+    <div class="faq-item" data-q="jogador fora plataforma manual adicionar externo">
+      <div class="faq-q"><span class="faq-q-text">Posso adicionar jogadores que não têm conta na plataforma?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Sim. Na sala do torneio, o organizador pode adicionar jogadores manualmente pelo nome, mesmo que não estejam registados no Knockout League.</div></div>
+    </div>
+    <div class="faq-item" data-q="moderador ajudar administrar sala organizador">
+      <div class="faq-q"><span class="faq-q-text">Posso ter ajuda a administrar o meu torneio?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Sim. Na aba "Moderadores" da tua sala, podes adicionar outros jogadores pelo nickname. Eles passam a ter as mesmas permissões que tu na sala — exceto gerir outros moderadores.</div></div>
+    </div>
+
+    <h2 class="faq-cat-title">A jogar</h2>
+    <div class="faq-item" data-q="banir mapas lobby moeda dado quem começa">
+      <div class="faq-q"><span class="faq-q-text">Como funciona o lobby de cada partida?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Antes de cada partida, as equipas banem mapas até sobrar o mapa a jogar. O organizador decide quem bane primeiro (manualmente, por moeda ou pedra-papel-tesoura), e a moeda ou dado decide quem começa a jogar. Quando tudo estiver definido, o organizador partilha o servidor ou forma de entrar no jogo.</div></div>
+    </div>
+    <div class="faq-item" data-q="servidor ip senha entrar jogo">
+      <div class="faq-q"><span class="faq-q-text">Como recebo o acesso ao servidor do jogo?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner">O organizador do torneio insere a informação (IP e senha, código de sala, etc.) diretamente no lobby da tua partida assim que estiver tudo pronto do lado das equipas.</div></div>
+    </div>
+    <div class="faq-item" data-q="privado público código sala convite">
+      <div class="faq-q"><span class="faq-q-text">Qual a diferença entre sala pública e privada?</span><span class="faq-icon">+</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Salas públicas aparecem na lista de torneios para qualquer pessoa. Salas privadas só são acessíveis com um código de convite, que o organizador partilha diretamente.</div></div>
+    </div>
+  </div>
+
+  <p class="faq-none" id="faq-none">Nenhuma pergunta encontrada.</p>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script>
+document.querySelectorAll('.faq-q').forEach(function(q){
+  q.addEventListener('click', function(){ q.closest('.faq-item').classList.toggle('open'); });
+});
+document.getElementById('faq-search').addEventListener('input', function(){
+  var term = this.value.trim().toLowerCase();
+  var any = false;
+  document.querySelectorAll('.faq-item').forEach(function(item){
+    var match = !term || item.dataset.q.includes(term) || item.querySelector('.faq-q-text').textContent.toLowerCase().includes(term);
+    item.style.display = match ? 'block' : 'none';
+    if(match) any = true;
+  });
+  document.querySelectorAll('.faq-cat-title').forEach(function(title){
+    var next = title.nextElementSibling;
+    var hasVisible = false;
+    while(next && !next.classList.contains('faq-cat-title')){
+      if(next.classList.contains('faq-item') && next.style.display !== 'none') hasVisible = true;
+      next = next.nextElementSibling;
+    }
+    title.style.display = hasVisible ? 'block' : 'none';
+  });
+  document.getElementById('faq-none').style.display = any ? 'none' : 'block';
+});
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

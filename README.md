@@ -1,29 +1,24 @@
 # Knockout League — estado do projeto
 
-## Feito nesta primeira versão
-- `firebase.js` — liga a um projeto Firebase novo (**preencher com a tua config**)
-- `shared.css` / `shared.js` — tema simples e moderno (sem animação de fundo), tipografia Anton + Inter + IBM Plex Mono
-- `login.html` — mesma base de autenticação do ManyGames (email/palavra-passe, registo, convidado), adaptada à marca
-- `nav-auth.js` — estado de sessão na nav, com link de "Painel de admin" só para `role: admin`
-- `index.html` — landing page com torneios públicos em destaque
-- `torneios.html` — lista de torneios públicos + entrar por código privado
-- `criar-torneio.html` — wizard completo: jogo, formato 1v1–6v6, tipo de bracket, visibilidade, modo de atribuição (roleta/manual), modo de escolha com vários capitães, mapas, banimento de mapas, moeda/dado
-- `torneio.html` — motor principal:
-  - pool de jogadores (da plataforma + adicionados manualmente)
-  - definir capitães, atribuir jogadores por roleta ou manualmente
-  - modo "capitães escolhem" com indicador de turno
-  - geração de bracket (eliminação simples e todos-contra-todos, com resolução automática de byes)
-  - vista de bracket clicável
-  - lobby por partida: banir mapas, lançar moeda/dado, o admin insere a info do servidor, declarar vencedor avança a bracket automaticamente
-- `firestore.rules` — regras de segurança de base (afinar antes de publicar)
-- `DATA-MODEL.md` — estrutura completa das coleções Firestore
+## Modelo de papéis
+- **Admin (dono do site, tu)** — `role: "admin"` no documento em `users/`. Acede a `admin.html` (link discreto no rodapé do `login.html`, "KNOCKOUTLEAGUE"). Gere utilizadores (promove/remove admins), vê e elimina qualquer torneio, lê as mensagens de contacto.
+- **Organizador** — qualquer utilizador registado que cria um torneio (`creatorUid`). Gere a sua sala por completo.
+- **Moderador** — adicionado pelo organizador (por nickname) na aba "Moderadores" da sala. Mesmas permissões do organizador nessa sala, exceto gerir moderadores.
+- **Jogador** — qualquer conta (registada, Google ou convidado) que entra num torneio.
 
-## Por fazer a seguir (não incluído nesta versão)
-1. **Eliminação dupla** — agora gera só o bracket de vencedores; falta o bracket de perdedores automático.
-2. **`perfil.html` / `definicoes.html` / `admin.html`** — podes reaproveitar quase 1:1 os do ManyGames, só trocar o texto e as stats para "torneios/vitórias".
-3. Regras do Firestore mais finas para `matches` (agora qualquer utilizador autenticado pode escrever; devia restringir-se aos jogadores desse match + admin).
-4. Notificação/destaque de "é a tua vez" para o capitão certo no modo de draft.
-5. Ecrã de resultados/standings para o modo todos-contra-todos.
+## Feito nesta versão
+- `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
+- `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)
+- `perfil.html`, `definicoes.html`
+- `admin.html` — painel do dono do site (utilizadores, torneios, mensagens de contacto)
+- `faq.html`, `contacto.html` (mensagens guardadas na coleção `contactos`)
+- `firestore.rules`, `DATA-MODEL.md`
+
+## Por fazer a seguir
+1. **Eliminação dupla** — falta o bracket de perdedores automático.
+2. Regras do Firestore mais finas para `matches`.
+3. Notificação de "é a tua vez" para o capitão certo no modo de draft.
+4. Standings para o modo todos-contra-todos.
 
 ## Antes de publicar
 1. Cria um projeto novo em https://console.firebase.google.com
