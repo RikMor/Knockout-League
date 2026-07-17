@@ -47,6 +47,7 @@
     <button class="tab-btn active" data-tab="equipas">Equipas</button>
     <button class="tab-btn" data-tab="mapas">Mapas</button>
     <button class="tab-btn" data-tab="bracket">Bracket</button>
+    <button class="tab-btn" data-tab="moderadores" id="tab-moderadores-btn" style="display:none;">Moderadores</button>
   </div>
 
   <!-- EQUIPAS -->
@@ -57,6 +58,7 @@
     <div id="admin-team-controls" style="display:none;margin-bottom:24px;display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-outline btn-sm" id="add-team-btn">+ Equipa</button>
       <button class="btn btn-outline btn-sm" id="roulette-btn">Girar roleta</button>
+      <button class="btn btn-outline btn-sm" id="rps-btn">Pedra, papel, tesoura</button>
       <button class="btn btn-outline btn-sm" id="add-manual-btn">+ Jogador manual</button>
       <button class="btn btn-gold btn-sm" id="gen-bracket-btn">Gerar bracket</button>
     </div>
@@ -83,6 +85,17 @@
   <div class="tab-panel" id="panel-bracket">
     <div id="bracket-box"><p class="muted">A bracket ainda não foi gerada.</p></div>
   </div>
+
+  <!-- MODERADORES -->
+  <div class="tab-panel" id="panel-moderadores">
+    <p class="muted" style="margin-bottom:18px;">Moderadores têm as mesmas permissões que tu nesta sala (equipas, mapas, bracket, resultados) — exceto gerir outros moderadores.</p>
+    <div style="display:flex;gap:8px;max-width:420px;margin-bottom:24px;">
+      <input type="text" id="mod-nick-input" placeholder="Nickname do jogador" style="flex:1;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+      <button class="btn btn-outline btn-sm" id="mod-add-btn">Adicionar</button>
+    </div>
+    <p class="form-error" id="mod-error" style="margin-bottom:16px;"></p>
+    <div id="mod-list"></div>
+  </div>
 </div>
 
 <!-- MODAL DE LOBBY DO MATCH -->
@@ -91,6 +104,11 @@
     <button class="modal-close" id="match-modal-close">×</button>
     <div class="eyebrow">Lobby da partida</div>
     <h3 id="mm-title" style="margin:8px 0 18px;"></h3>
+
+    <div id="mm-firstban-section" style="margin-bottom:20px;">
+      <label style="display:block;font-family:'IBM Plex Mono';font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Quem começa a banir mapas</label>
+      <div id="mm-firstban-area"></div>
+    </div>
 
     <div id="mm-maps-section" style="margin-bottom:20px;">
       <label style="display:block;font-family:'IBM Plex Mono';font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Mapas (clica para banir)</label>
@@ -107,6 +125,16 @@
       <input type="text" id="mm-server-input" placeholder="Ex: IP 123.45.6.7:27015, senha knockout" style="width:100%;padding:11px 13px;border:1px solid var(--line);"/>
       <button class="btn btn-sm btn-outline" id="mm-server-save" style="margin-top:8px;">Guardar</button>
       <p class="muted" id="mm-server-current" style="margin-top:8px;font-size:0.85rem;"></p>
+    </div>
+
+    <div id="mm-score-section" style="margin-bottom:20px;">
+      <label style="display:block;font-family:'IBM Plex Mono';font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Pontuação</label>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <input type="number" id="mm-score-a" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
+        <span class="muted">—</span>
+        <input type="number" id="mm-score-b" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
+        <button class="btn btn-outline btn-sm" id="mm-score-save">Guardar</button>
+      </div>
     </div>
 
     <div id="mm-winner-section">
@@ -134,7 +162,7 @@ document.getElementById('match-modal-close').addEventListener('click', function(
 </script>
 
 <script type="module">
-import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, onSnapshot, query, orderBy } from './firebase.js';
+import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, onSnapshot, query, where, orderBy } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -153,10 +181,14 @@ const playersCol = collection(db, 'tournaments', tId, 'players');
 const teamsCol = collection(db, 'tournaments', tId, 'teams');
 const matchesCol = collection(db, 'tournaments', tId, 'matches');
 
+function isCreator(){
+  return currentUser && tournament && tournament.creatorUid === currentUser.uid;
+}
 function isAdmin(){
   if(!currentUser) return false;
-  if(tournament && tournament.creatorUid === currentUser.uid) return true;
+  if(isCreator()) return true;
   if(currentUserData && currentUserData.role === 'admin') return true;
+  if(tournament && (tournament.moderatorUids||[]).includes(currentUser.uid)) return true;
   return false;
 }
 
@@ -191,6 +223,46 @@ function renderHeader(){
     </div>`;
 }
 
+// ── MODERADORES ──────────────────────────────────────────────────
+let moderatorProfiles = {}; // uid -> {nickname}
+async function renderModerators(){
+  const box = document.getElementById('mod-list');
+  const uids = tournament.moderatorUids || [];
+  if(uids.length === 0){ box.innerHTML = '<p class="muted">Ainda não há moderadores.</p>'; return; }
+  const rows = [];
+  for(const uid of uids){
+    if(!moderatorProfiles[uid]){
+      try{ const s = await getDoc(doc(db,'users',uid)); moderatorProfiles[uid] = s.exists() ? s.data() : {nickname:'(desconhecido)'}; }
+      catch(e){ moderatorProfiles[uid] = {nickname:'(desconhecido)'}; }
+    }
+    rows.push(`<div class="pool-row"><span>${moderatorProfiles[uid].nickname||uid}</span>${isCreator() ? '<button class="btn btn-sm btn-danger" data-rmmod="'+uid+'">Remover</button>' : ''}</div>`);
+  }
+  box.innerHTML = rows.join('');
+  box.querySelectorAll('[data-rmmod]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const newList = (tournament.moderatorUids||[]).filter(u=>u!==btn.dataset.rmmod);
+      await updateDoc(tRef, { moderatorUids: newList });
+    });
+  });
+}
+
+document.getElementById('mod-add-btn').addEventListener('click', async function(){
+  const err = document.getElementById('mod-error');
+  err.style.display = 'none';
+  const nick = document.getElementById('mod-nick-input').value.trim();
+  if(!nick){ err.textContent = 'Escreve um nickname.'; err.style.display='block'; return; }
+  try{
+    const q = query(collection(db,'users'), where('nicknameLower','==',nick.toLowerCase()));
+    const snap = await getDocs(q);
+    if(snap.empty){ err.textContent = 'Nenhum jogador com esse nickname.'; err.style.display='block'; return; }
+    const uid = snap.docs[0].id;
+    if(uid === tournament.creatorUid){ err.textContent = 'Já és o organizador.'; err.style.display='block'; return; }
+    if((tournament.moderatorUids||[]).includes(uid)){ err.textContent = 'Já é moderador.'; err.style.display='block'; return; }
+    await updateDoc(tRef, { moderatorUids: [...(tournament.moderatorUids||[]), uid] });
+    document.getElementById('mod-nick-input').value = '';
+  }catch(e){ err.textContent = 'Erro: '+e.message; err.style.display='block'; }
+});
+
 // ── POOL / EQUIPAS ──────────────────────────────────────────────
 function myPoolEntry(){
   if(!currentUser) return null;
@@ -206,6 +278,8 @@ function renderAll(){
   renderTeams();
   renderMaps();
   renderDraftBanner();
+  renderModerators();
+  document.getElementById('tab-moderadores-btn').style.display = isCreator() ? 'inline-block' : 'none';
 }
 
 function renderJoinBox(){
@@ -228,6 +302,8 @@ function renderJoinBox(){
 function renderAdminControls(){
   document.getElementById('admin-team-controls').style.display = isAdmin() ? 'flex' : 'none';
   document.getElementById('maps-admin').style.display = isAdmin() && !bracketGenerated() ? 'block' : 'none';
+  document.getElementById('roulette-btn').style.display = (isAdmin() && tournament.assignMode === 'roulette') ? 'inline-flex' : 'none';
+  document.getElementById('rps-btn').style.display = (isAdmin() && tournament.assignMode === 'rps') ? 'inline-flex' : 'none';
 }
 
 function bracketGenerated(){ return matches.length > 0; }
@@ -337,6 +413,18 @@ document.getElementById('roulette-btn').addEventListener('click', async function
   if(ok) await assignPlayerToTeam(player.id, team.id);
 });
 
+document.getElementById('rps-btn').addEventListener('click', async function(){
+  const pool = unassignedPlayers();
+  const openTeams = teams.filter(t => (t.players||[]).length < tournament.teamSize);
+  if(pool.length === 0 || openTeams.length === 0){ alert('Sem jogadores ou equipas disponíveis.'); return; }
+  const player = pool[Math.floor(Math.random()*pool.length)];
+  const team = openTeams[Math.floor(Math.random()*openTeams.length)];
+  const jogadas = ['Pedra', 'Papel', 'Tesoura'];
+  const jogada = jogadas[Math.floor(Math.random()*3)];
+  const ok = confirm(`Pedra, papel, tesoura decidiu (${jogada}): ${player.name} → ${team.name}?`);
+  if(ok) await assignPlayerToTeam(player.id, team.id);
+});
+
 document.getElementById('gen-bracket-btn').addEventListener('click', async function(){
   if(bracketGenerated()){ alert('A bracket já foi gerada para este torneio.'); return; }
   const readyTeams = teams.filter(t => (t.players||[]).length === tournament.teamSize);
@@ -408,6 +496,7 @@ async function generateBracket(teamIds){
       round: m.round, matchIndex: m.matchIndex,
       teamAId: m.teamAId || null, teamBId: m.teamBId || null,
       winnerId: null, mapsBanned: [], mapPicked: null, coinResult: null,
+      firstBanTeamId: null, firstBanMethod: null, scoreA: null, scoreB: null,
       serverInfo: null, status: 'por-jogar',
       nextMatchId: m.nextMatchId || null, nextSlot: m.nextSlot || null
     });
@@ -446,8 +535,8 @@ function renderBracket(){
       const aWin = m.winnerId && m.winnerId===m.teamAId;
       const bWin = m.winnerId && m.winnerId===m.teamBId;
       html += `<div class="match-card" data-match="${m.id}">
-        <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId)}</div>
-        <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId)}</div>
+        <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId)}${m.scoreA!=null ? '<span class="score">'+m.scoreA+'</span>' : ''}</div>
+        <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId)}${m.scoreB!=null ? '<span class="score">'+m.scoreB+'</span>' : ''}</div>
         <div class="match-meta">${m.status}</div>
       </div>`;
     });
@@ -482,6 +571,50 @@ function renderMatchModal(){
   if(!m) return;
   const canManage = isAdmin() || isInMatch(m);
   document.getElementById('mm-title').textContent = teamName(m.teamAId) + '  vs  ' + teamName(m.teamBId);
+
+  // quem bane primeiro
+  const fbArea = document.getElementById('mm-firstban-area');
+  if(m.firstBanTeamId){
+    fbArea.innerHTML = `<p class="coin-result">${teamName(m.firstBanTeamId)} bane primeiro <span class="muted">(${m.firstBanMethod||''})</span></p>` +
+      (canManage && m.status !== 'terminado' ? '<button class="btn btn-sm btn-outline" id="mm-firstban-reset">Redefinir</button>' : '');
+    if(canManage) document.getElementById('mm-firstban-reset')?.addEventListener('click', async ()=>{
+      await updateDoc(doc(matchesCol, m.id), { firstBanTeamId: null, firstBanMethod: null });
+    });
+  } else if(canManage && m.status !== 'terminado' && m.teamAId && m.teamBId){
+    fbArea.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-outline" data-fb="manualA">${teamName(m.teamAId)} começa</button>
+        <button class="btn btn-sm btn-outline" data-fb="manualB">${teamName(m.teamBId)} começa</button>
+        <button class="btn btn-sm btn-outline" data-fb="coin">Lançar moeda</button>
+        <button class="btn btn-sm btn-outline" data-fb="rps">Pedra, papel, tesoura</button>
+      </div>`;
+    fbArea.querySelectorAll('[data-fb]').forEach(btn=>{
+      btn.addEventListener('click', async function(){
+        const mode = btn.dataset.fb;
+        let winnerTeam, method;
+        if(mode === 'manualA'){ winnerTeam = m.teamAId; method = 'escolha do organizador'; }
+        else if(mode === 'manualB'){ winnerTeam = m.teamBId; method = 'escolha do organizador'; }
+        else if(mode === 'coin'){ winnerTeam = Math.random()<0.5 ? m.teamAId : m.teamBId; method = 'moeda ao ar'; }
+        else { winnerTeam = Math.random()<0.5 ? m.teamAId : m.teamBId; method = 'pedra, papel, tesoura'; }
+        await updateDoc(doc(matchesCol, m.id), { firstBanTeamId: winnerTeam, firstBanMethod: method });
+      });
+    });
+  } else {
+    fbArea.innerHTML = '<p class="muted">Ainda por decidir.</p>';
+  }
+
+  // pontuação
+  document.getElementById('mm-score-a').value = m.scoreA ?? '';
+  document.getElementById('mm-score-b').value = m.scoreB ?? '';
+  document.getElementById('mm-score-section').style.display = canManage ? 'block' : (m.scoreA != null ? 'block' : 'none');
+  document.getElementById('mm-score-a').disabled = !canManage;
+  document.getElementById('mm-score-b').disabled = !canManage;
+  document.getElementById('mm-score-save').style.display = canManage ? 'inline-flex' : 'none';
+  document.getElementById('mm-score-save').onclick = async function(){
+    const a = document.getElementById('mm-score-a').value;
+    const b = document.getElementById('mm-score-b').value;
+    await updateDoc(doc(matchesCol, m.id), { scoreA: a === '' ? null : Number(a), scoreB: b === '' ? null : Number(b) });
+  };
 
   // mapas
   const mapsEl = document.getElementById('mm-maps');

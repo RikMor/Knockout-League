@@ -77,6 +77,7 @@
     <label>Atribuição de jogadores às equipas</label>
     <div class="pill-group" id="pill-assign">
       <div class="pill" data-v="roulette">Roleta</div>
+      <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
       <div class="pill" data-v="manual">Manual</div>
     </div>
   </div>
@@ -239,7 +240,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
       name, game, teamSize, maxTeams, bracketType, visibility,
       inviteCode: visibility === 'private' ? genCode() : null,
       assignMode, draftMode, coinMethod, mapBanEnabled, maps,
-      creatorUid: currentUser.uid, creatorParticipates,
+      creatorUid: currentUser.uid, creatorParticipates, moderatorUids: [],
       status: 'inscricoes', draftTurn: 0,
       createdAt: serverTimestamp()
     });
