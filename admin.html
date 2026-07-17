@@ -38,8 +38,14 @@
 
 <div class="wrap" style="padding-bottom:90px;">
   <div class="not-logged" id="not-allowed" style="display:none;">
-    <p class="muted">Não tens acesso a esta página.</p>
-    <a href="index.html"><button class="btn btn-outline" style="margin-top:16px;">Voltar ao início</button></a>
+    <div style="max-width:380px;margin:0 auto;text-align:left;">
+      <div class="eyebrow" style="justify-content:center;">Acesso restrito</div>
+      <h3 style="text-align:center;margin:14px 0 26px;">Login de administrador</h3>
+      <div class="form-error" id="admin-login-error" style="display:none;"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="admin-email"/></div>
+      <div class="form-group"><label>Palavra-passe</label><input type="password" id="admin-pass"/></div>
+      <button class="btn btn-accent" id="admin-login-btn" style="width:100%;">Entrar</button>
+    </div>
   </div>
 
   <div id="admin-content" style="display:none;">
@@ -86,18 +92,49 @@ document.querySelectorAll('.admin-tab').forEach(function(btn){
 
 <script type="module">
 import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, getDocs, query, orderBy } from './firebase.js';
-import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 let allUsers = [];
+
+function showAdminLoginError(msg){
+  const el = document.getElementById('admin-login-error');
+  el.textContent = msg; el.style.display = 'block';
+}
 
 onAuthStateChanged(auth, async function(user){
   if(!user || user.isAnonymous){ document.getElementById('not-allowed').style.display = 'block'; return; }
   const snap = await getDoc(doc(db,'users',user.uid));
-  if(!snap.exists() || snap.data().role !== 'admin'){ document.getElementById('not-allowed').style.display = 'block'; return; }
+  if(!snap.exists() || snap.data().role !== 'admin'){
+    document.getElementById('not-allowed').style.display = 'block';
+    showAdminLoginError('Esta conta não tem permissões de administrador.');
+    return;
+  }
   document.getElementById('admin-content').style.display = 'block';
   loadUsers();
   loadTournaments();
   loadContacts();
+});
+
+document.getElementById('admin-login-btn').addEventListener('click', async function(){
+  document.getElementById('admin-login-error').style.display = 'none';
+  const email = document.getElementById('admin-email').value.trim();
+  const pass = document.getElementById('admin-pass').value;
+  if(!email || !pass){ showAdminLoginError('Preenche o email e a palavra-passe.'); return; }
+  const btn = document.getElementById('admin-login-btn');
+  btn.disabled = true; btn.textContent = 'A entrar...';
+  try{
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
+    const snap = await getDoc(doc(db,'users',cred.user.uid));
+    if(!snap.exists() || snap.data().role !== 'admin'){
+      await signOut(auth);
+      showAdminLoginError('Esta conta não tem permissões de administrador.');
+    }
+    // se for admin, o onAuthStateChanged acima trata de mostrar o painel
+  }catch(err){
+    const map = {'auth/invalid-credential':'Email ou palavra-passe incorretos.','auth/invalid-email':'Email inválido.','auth/too-many-requests':'Demasiadas tentativas. Tenta mais tarde.'};
+    showAdminLoginError(map[err.code] || ('Erro: ' + err.message));
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
 });
 
 async function loadUsers(){
