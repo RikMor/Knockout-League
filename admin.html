@@ -1,216 +1,404 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Painel de admin — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Knockout League — Backoffice</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet"/>
 <style>
-  .admin-tabs { display: flex; border-bottom: 2px solid var(--ink); margin-bottom: 28px; }
-  .admin-tab { padding: 12px 18px; background: none; border: none; cursor: pointer; font-weight: 700; font-size: 0.82rem; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; }
-  .admin-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
-  .admin-panel { display: none; }
-  .admin-panel.active { display: block; }
+  :root {
+    --bg: #0E0D10; --panel: #17161B; --card: #1C1B20;
+    --border: rgba(255,255,255,0.08); --text: #F3F1EA; --muted: #8E8B97;
+    --accent: #E85A36; --gold: #E8B93B; --green: #35A870; --blue: #4FC3F7; --danger: #E15C4C;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; }
+  h1, h2, .display { font-family: 'Anton', sans-serif; font-weight: 400; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* LOGIN */
+  #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .login-box { background: var(--panel); border: 1px solid var(--border); padding: 48px 40px; width: 360px; text-align: center; }
+  .login-box::before { content:''; display:block; height:3px; background:linear-gradient(90deg,var(--accent),var(--gold)); margin-bottom:32px; margin-left:-40px; width:calc(100% + 80px); }
+  .login-logo { font-family: 'Anton', sans-serif; font-size: 1.5rem; letter-spacing: 2px; color:#fff; margin-bottom:4px; }
+  .login-logo span { color: var(--accent); }
+  .login-sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 32px; }
+  .login-box input { width: 100%; padding: 12px 16px; background: var(--card); border: 1px solid var(--border); color: var(--text); font-size: 1rem; outline: none; margin-bottom: 14px; transition: border-color .2s; font-family: 'Inter'; }
+  .login-box input:focus { border-color: var(--accent); }
+  .login-btn { width: 100%; padding: 13px; background: var(--accent); color: #fff; border: none; font-size: 0.85rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: background .2s; }
+  .login-btn:hover { background: #c94a29; }
+  .login-error { color: var(--danger); font-size: 0.82rem; margin-top: 12px; display: none; }
+  .login-back { display: block; margin-top: 18px; font-size: 0.78rem; color: var(--muted); text-decoration: none; }
+
+  /* LAYOUT */
+  #app { display: none; }
+  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 220px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid var(--border); font-family: 'Anton', sans-serif; font-size: 1.05rem; letter-spacing: 2px; }
+  .sidebar-logo span { color: var(--accent); }
+  .sidebar-badge { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; letter-spacing: 2px; color: var(--muted); display: block; margin-top: 4px; text-transform: uppercase; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 13px 20px; cursor: pointer; color: var(--muted); font-size: 0.86rem; font-weight: 600; transition: all .2s; border-left: 3px solid transparent; }
+  .nav-item:hover { color: #fff; background: rgba(255,255,255,0.03); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(232,90,54,0.08); }
+  .nav-item .icon { font-size: 1.05rem; width: 20px; text-align: center; }
+  .nav-badge-count { margin-left: auto; background: var(--accent); color: #fff; font-size: 0.62rem; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
+  .sidebar-logout { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); cursor: pointer; color: var(--muted); font-size: 0.8rem; display: flex; align-items: center; gap: 10px; transition: color .2s; }
+  .sidebar-logout:hover { color: var(--accent); }
+
+  .main { margin-left: 220px; padding: 32px; min-height: 100vh; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 { font-size: 1.7rem; }
+  .page-header p { color: var(--muted); font-size: 0.86rem; margin-top: 6px; font-family: 'Inter'; text-transform: none; letter-spacing: normal; }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); padding: 20px 24px; position: relative; overflow: hidden; }
+  .stat-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .stat-card.red::after { background: var(--accent); } .stat-card.gold::after { background: var(--gold); }
+  .stat-card.green::after { background: var(--green); } .stat-card.blue::after { background: var(--blue); }
+  .stat-n { font-family: 'Anton'; font-size: 2rem; line-height: 1; }
+  .stat-card.red .stat-n { color: var(--accent); } .stat-card.gold .stat-n { color: var(--gold); }
+  .stat-card.green .stat-n { color: var(--green); } .stat-card.blue .stat-n { color: var(--blue); }
+  .stat-l { font-family: 'IBM Plex Mono'; font-size: 0.68rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 6px; }
+
+  .section-title { font-family: 'IBM Plex Mono'; font-size: 0.7rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 14px; margin-top: 30px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .recent-list { background: var(--card); border: 1px solid var(--border); }
+  .recent-item { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .recent-item:last-child { border-bottom:none; }
+  .recent-name { font-weight:600; font-size:0.9rem; }
+  .recent-sub { font-size:0.78rem; color:var(--muted); margin-top:2px; }
+
+  /* TABLE */
+  .table-wrap { background: var(--card); border: 1px solid var(--border); overflow-x: auto; }
+  .toolbar { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .toolbar input, .toolbar select { padding: 8px 14px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 0.85rem; outline: none; font-family: 'Inter'; }
+  .toolbar input { flex: 1; min-width: 200px; }
+  .toolbar input:focus, .toolbar select:focus { border-color: var(--accent); }
   table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  th { text-align: left; font-family: 'IBM Plex Mono'; font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); padding: 10px 8px; border-bottom: 2px solid var(--ink); }
-  td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-  .not-logged { text-align: center; padding: 100px 20px; }
-  .search-box { padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); width: 100%; max-width: 320px; margin-bottom: 18px; }
+  th { padding: 12px 16px; text-align: left; font-family: 'IBM Plex Mono'; font-size: 0.65rem; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--panel); white-space: nowrap; }
+  td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .td-muted { color: var(--muted); font-size: 0.8rem; }
+
+  .badge { display: inline-block; padding: 3px 10px; font-family: 'IBM Plex Mono'; font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border-radius: 2px; }
+  .badge-public { background: rgba(53,168,112,0.15); color: var(--green); }
+  .badge-private { background: rgba(232,185,59,0.15); color: var(--gold); }
+  .badge-admin { background: rgba(232,90,54,0.15); color: var(--accent); }
+  .badge-player { background: rgba(122,122,154,0.15); color: var(--muted); }
+
+  .btn-sm { padding: 7px 14px; font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; border: none; transition: all .2s; white-space: nowrap; }
+  .btn-promote { background: rgba(232,90,54,0.12); color: var(--accent); border: 1px solid rgba(232,90,54,0.3); }
+  .btn-promote:hover { background: rgba(232,90,54,0.22); }
+  .btn-del { background: rgba(225,92,76,0.1); color: var(--danger); border: 1px solid rgba(225,92,76,0.3); }
+  .btn-del:hover { background: rgba(225,92,76,0.2); }
+  .btn-view { background: rgba(79,195,247,0.1); color: var(--blue); border: 1px solid rgba(79,195,247,0.3); }
+  .btn-view:hover { background: rgba(79,195,247,0.2); }
+
+  .empty { padding: 60px; text-align: center; color: var(--muted); }
+
+  /* MODAL */
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:200; align-items:center; justify-content:center; padding:20px; }
+  .modal-bg.open { display:flex; }
+  .modal { background:var(--panel); border:1px solid var(--border); max-width:560px; width:100%; max-height:88vh; overflow-y:auto; padding:32px; position:relative; }
+  .modal::before { content:''; display:block; height:2px; background:linear-gradient(90deg,var(--accent),var(--gold)); margin:-32px -32px 24px; }
+  .modal-close { position:absolute; top:16px; right:20px; background:none; border:none; color:var(--muted); font-size:1.3rem; cursor:pointer; }
+  .modal-close:hover { color:#fff; }
+  .detail-item label { display:block; font-family:'IBM Plex Mono'; font-size:0.62rem; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:4px; }
+  .detail-item p { font-size:0.92rem; color:#fff; word-break:break-word; margin-bottom:16px; }
+
+  @media(max-width:800px){
+    .sidebar{width:60px;} .sidebar-logo,.nav-item span,.sidebar-badge,.sidebar-logout span{display:none;}
+    .main{margin-left:60px;padding:20px;} .stats-row{grid-template-columns:1fr 1fr;}
+  }
 </style>
 </head>
 <body>
-<nav>
-  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
-  <button class="nav-mobile-toggle">☰</button>
-  <ul class="nav-links">
-    <li><a href="index.html">Início</a></li>
-    <li><a href="torneios.html">Torneios</a></li>
-    <li><a href="criar-torneio.html">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
-  </ul>
-</nav>
 
-<div class="wrap page-head">
-  <div class="eyebrow">Dono do site</div>
-  <h1>Painel de admin</h1>
-</div>
-
-<div class="wrap" style="padding-bottom:90px;">
-  <div class="not-logged" id="not-allowed" style="display:none;">
-    <div style="max-width:380px;margin:0 auto;text-align:left;">
-      <div class="eyebrow" style="justify-content:center;">Acesso restrito</div>
-      <h3 style="text-align:center;margin:14px 0 26px;">Login de administrador</h3>
-      <div class="form-error" id="admin-login-error" style="display:none;"></div>
-      <div class="form-group"><label>Email</label><input type="email" id="admin-email"/></div>
-      <div class="form-group"><label>Palavra-passe</label><input type="password" id="admin-pass"/></div>
-      <button class="btn btn-accent" id="admin-login-btn" style="width:100%;">Entrar</button>
-    </div>
-  </div>
-
-  <div id="admin-content" style="display:none;">
-    <div class="admin-tabs">
-      <button class="admin-tab active" data-tab="utilizadores">Utilizadores</button>
-      <button class="admin-tab" data-tab="torneios">Torneios</button>
-      <button class="admin-tab" data-tab="contactos">Mensagens</button>
-    </div>
-
-    <div class="admin-panel active" id="admin-utilizadores">
-      <input type="text" class="search-box" id="user-search" placeholder="Procurar por nickname ou email"/>
-      <table>
-        <thead><tr><th>Nickname</th><th>Email</th><th>Tipo</th><th>Papel</th><th></th></tr></thead>
-        <tbody id="users-tbody"><tr><td colspan="5" class="muted">A carregar...</td></tr></tbody>
-      </table>
-    </div>
-
-    <div class="admin-panel" id="admin-torneios">
-      <table>
-        <thead><tr><th>Nome</th><th>Jogo</th><th>Formato</th><th>Visibilidade</th><th>Estado</th><th></th></tr></thead>
-        <tbody id="tournaments-tbody"><tr><td colspan="6" class="muted">A carregar...</td></tr></tbody>
-      </table>
-    </div>
-
-    <div class="admin-panel" id="admin-contactos">
-      <div id="contacts-list"><p class="muted">A carregar...</p></div>
-    </div>
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <a href="index.html" style="text-decoration:none;"><div class="login-logo">KNOCKOUT<span>LEAGUE</span></div></a>
+    <div class="login-sub">Backoffice · Acesso restrito</div>
+    <input type="email" id="login-email" placeholder="Email" autocomplete="email"/>
+    <input type="password" id="login-pass" placeholder="Palavra-passe" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-error" id="login-error">Credenciais inválidas.</div>
+    <a href="index.html" class="login-back">← Voltar ao site</a>
   </div>
 </div>
 
-<footer><span>© 2026 Knockout League</span></footer>
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sidebar-logo">KNOCKOUT<span>LEAGUE</span><span class="sidebar-badge">Backoffice</span></div>
+    <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span><span>Dashboard</span></div>
+    <div class="nav-item" data-page="torneios"><span class="icon">🏆</span><span>Torneios</span></div>
+    <div class="nav-item" data-page="utilizadores"><span class="icon">👤</span><span>Utilizadores</span></div>
+    <div class="nav-item" data-page="contactos"><span class="icon">✉️</span><span>Contactos</span><span class="nav-badge-count" id="contact-badge" style="display:none;"></span></div>
+    <div class="sidebar-logout" id="logout-btn"><span class="icon">⏻</span><span>Sair</span></div>
+  </div>
 
-<script src="shared.js"></script>
-<script>
-document.querySelectorAll('.admin-tab').forEach(function(btn){
-  btn.addEventListener('click', function(){
-    document.querySelectorAll('.admin-tab').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('admin-'+btn.dataset.tab).classList.add('active');
-  });
-});
-</script>
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header"><h1>Dashboard</h1><p>Visão geral do Knockout League.</p></div>
+      <div class="stats-row">
+        <div class="stat-card red"><div class="stat-n" id="d-torneios">—</div><div class="stat-l">Torneios totais</div></div>
+        <div class="stat-card green"><div class="stat-n" id="d-ativos">—</div><div class="stat-l">Em curso</div></div>
+        <div class="stat-card gold"><div class="stat-n" id="d-utilizadores">—</div><div class="stat-l">Utilizadores</div></div>
+        <div class="stat-card blue"><div class="stat-n" id="d-mensagens">—</div><div class="stat-l">Mensagens</div></div>
+      </div>
+      <div class="section-title">Torneios recentes</div>
+      <div class="recent-list" id="d-recent-tournaments"><div class="empty">A carregar...</div></div>
+      <div class="section-title">Mensagens recentes</div>
+      <div class="recent-list" id="d-recent-contacts"><div class="empty">A carregar...</div></div>
+    </div>
+
+    <!-- TORNEIOS -->
+    <div class="page" id="page-torneios">
+      <div class="page-header"><h1>Torneios</h1><p>Todas as salas criadas na plataforma.</p></div>
+      <div class="table-wrap">
+        <div class="toolbar">
+          <input type="text" id="t-search" placeholder="Procurar por nome ou jogo..."/>
+          <select id="t-filter-vis"><option value="">Todas visibilidades</option><option value="public">Público</option><option value="private">Privado</option></select>
+        </div>
+        <table>
+          <thead><tr><th>Nome</th><th>Jogo</th><th>Formato</th><th>Visibilidade</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="t-tbody"><tr><td colspan="6" class="td-muted">A carregar...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- UTILIZADORES -->
+    <div class="page" id="page-utilizadores">
+      <div class="page-header"><h1>Utilizadores</h1><p>Contas registadas na plataforma.</p></div>
+      <div class="table-wrap">
+        <div class="toolbar"><input type="text" id="u-search" placeholder="Procurar por nickname ou email..."/></div>
+        <table>
+          <thead><tr><th>Nickname</th><th>Email</th><th>Tipo</th><th>Papel</th><th></th></tr></thead>
+          <tbody id="u-tbody"><tr><td colspan="5" class="td-muted">A carregar...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CONTACTOS -->
+    <div class="page" id="page-contactos">
+      <div class="page-header"><h1>Contactos</h1><p>Mensagens enviadas pelo formulário do site.</p></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>Email</th><th>Data</th><th></th></tr></thead>
+          <tbody id="c-tbody"><tr><td colspan="4" class="td-muted">A carregar...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE MENSAGEM -->
+<div class="modal-bg" id="c-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('c-modal').classList.remove('open')">×</button>
+    <div class="detail-item"><label>Nome</label><p id="cm-nome"></p></div>
+    <div class="detail-item"><label>Email</label><p id="cm-email"></p></div>
+    <div class="detail-item"><label>Data</label><p id="cm-data"></p></div>
+    <div class="detail-item"><label>Mensagem</label><p id="cm-msg"></p></div>
+    <button class="btn-sm btn-del" id="cm-del">Eliminar mensagem</button>
+  </div>
+</div>
 
 <script type="module">
 import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, getDocs, query, orderBy } from './firebase.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
-let allUsers = [];
+let allUsers = [], allTournaments = [], allContacts = [];
 
-function showAdminLoginError(msg){
-  const el = document.getElementById('admin-login-error');
-  el.textContent = msg; el.style.display = 'block';
-}
-
-onAuthStateChanged(auth, async function(user){
-  if(!user || user.isAnonymous){ document.getElementById('not-allowed').style.display = 'block'; return; }
-  const snap = await getDoc(doc(db,'users',user.uid));
-  if(!snap.exists() || snap.data().role !== 'admin'){
-    document.getElementById('not-allowed').style.display = 'block';
-    showAdminLoginError('Esta conta não tem permissões de administrador.');
-    return;
-  }
-  document.getElementById('admin-content').style.display = 'block';
-  loadUsers();
-  loadTournaments();
-  loadContacts();
-});
-
-document.getElementById('admin-login-btn').addEventListener('click', async function(){
-  document.getElementById('admin-login-error').style.display = 'none';
-  const email = document.getElementById('admin-email').value.trim();
-  const pass = document.getElementById('admin-pass').value;
-  if(!email || !pass){ showAdminLoginError('Preenche o email e a palavra-passe.'); return; }
-  const btn = document.getElementById('admin-login-btn');
-  btn.disabled = true; btn.textContent = 'A entrar...';
+window.doLogin = async function(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if(!email || !pass){ errEl.textContent = 'Preenche o email e a palavra-passe.'; errEl.style.display = 'block'; return; }
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
     const snap = await getDoc(doc(db,'users',cred.user.uid));
     if(!snap.exists() || snap.data().role !== 'admin'){
       await signOut(auth);
-      showAdminLoginError('Esta conta não tem permissões de administrador.');
+      errEl.textContent = 'Esta conta não tem permissões de administrador.';
+      errEl.style.display = 'block';
     }
-    // se for admin, o onAuthStateChanged acima trata de mostrar o painel
   }catch(err){
     const map = {'auth/invalid-credential':'Email ou palavra-passe incorretos.','auth/invalid-email':'Email inválido.','auth/too-many-requests':'Demasiadas tentativas. Tenta mais tarde.'};
-    showAdminLoginError(map[err.code] || ('Erro: ' + err.message));
+    errEl.textContent = map[err.code] || ('Erro: ' + err.message);
+    errEl.style.display = 'block';
   }
-  btn.disabled = false; btn.textContent = 'Entrar';
+};
+
+document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+onAuthStateChanged(auth, async function(user){
+  if(!user || user.isAnonymous){ document.getElementById('login-screen').style.display = 'flex'; document.getElementById('app').style.display = 'none'; return; }
+  const snap = await getDoc(doc(db,'users',user.uid));
+  if(!snap.exists() || snap.data().role !== 'admin'){ document.getElementById('login-screen').style.display = 'flex'; document.getElementById('app').style.display = 'none'; return; }
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadAll();
 });
 
-async function loadUsers(){
-  const snap = await getDocs(collection(db,'users'));
-  allUsers = snap.docs.map(d=>({id:d.id, ...d.data()}));
+async function loadAll(){
+  const [uSnap, tSnap, cSnap] = await Promise.all([
+    getDocs(collection(db,'users')),
+    getDocs(collection(db,'tournaments')),
+    getDocs(query(collection(db,'contactos'), orderBy('createdAt','desc'))).catch(()=>({docs:[]}))
+  ]);
+  allUsers = uSnap.docs.map(d=>({id:d.id, ...d.data()}));
+  allTournaments = tSnap.docs.map(d=>({id:d.id, ...d.data()}));
+  allContacts = cSnap.docs ? cSnap.docs.map(d=>({id:d.id, ...d.data()})) : [];
+  renderDashboard();
   renderUsers(allUsers);
+  renderTournaments(allTournaments);
+  renderContacts();
 }
+
+// NAV
+document.querySelectorAll('.nav-item[data-page]').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('page-'+item.dataset.page).classList.add('active');
+  });
+});
+
+// DASHBOARD
+function renderDashboard(){
+  document.getElementById('d-torneios').textContent = allTournaments.length;
+  document.getElementById('d-ativos').textContent = allTournaments.filter(t=>t.status==='em-curso').length;
+  document.getElementById('d-utilizadores').textContent = allUsers.length;
+  document.getElementById('d-mensagens').textContent = allContacts.length;
+
+  const badge = document.getElementById('contact-badge');
+  if(allContacts.length > 0){ badge.textContent = allContacts.length; badge.style.display = 'inline-block'; }
+
+  const rt = document.getElementById('d-recent-tournaments');
+  const recentT = [...allTournaments].slice(0,5);
+  rt.innerHTML = recentT.length ? recentT.map(t=>`
+    <div class="recent-item">
+      <div><div class="recent-name">${t.name}</div><div class="recent-sub">${t.game||''} · ${t.teamSize}v${t.teamSize}</div></div>
+      <span class="badge ${t.visibility==='private'?'badge-private':'badge-public'}">${t.visibility==='private'?'Privado':'Público'}</span>
+    </div>`).join('') : '<div class="empty">Sem torneios ainda.</div>';
+
+  const rc = document.getElementById('d-recent-contacts');
+  const recentC = [...allContacts].slice(0,5);
+  rc.innerHTML = recentC.length ? recentC.map(c=>`
+    <div class="recent-item"><div><div class="recent-name">${c.nome}</div><div class="recent-sub">${c.email}</div></div></div>`).join('') : '<div class="empty">Sem mensagens ainda.</div>';
+}
+
+// UTILIZADORES
 function renderUsers(list){
-  const tbody = document.getElementById('users-tbody');
-  if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="5" class="muted">Sem utilizadores.</td></tr>'; return; }
+  const tbody = document.getElementById('u-tbody');
+  if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="5" class="td-muted">Sem utilizadores.</td></tr>'; return; }
   tbody.innerHTML = list.map(u => `
     <tr>
       <td>${u.nickname || '—'}</td>
-      <td>${u.email || '—'}</td>
-      <td>${u.isGuest ? 'Convidado' : (u.provider === 'google' ? 'Google' : 'Email')}</td>
-      <td>${u.role || 'player'}</td>
+      <td class="td-muted">${u.email || '—'}</td>
+      <td class="td-muted">${u.isGuest ? 'Convidado' : (u.provider === 'google' ? 'Google' : 'Email')}</td>
+      <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-player'}">${u.role || 'player'}</span></td>
       <td>${u.role === 'admin'
-        ? '<button class="btn btn-sm btn-outline" data-demote="'+u.id+'">Remover admin</button>'
-        : '<button class="btn btn-sm btn-outline" data-promote="'+u.id+'">Tornar admin</button>'}</td>
+        ? '<button class="btn-sm btn-del" data-demote="'+u.id+'">Remover admin</button>'
+        : '<button class="btn-sm btn-promote" data-promote="'+u.id+'">Tornar admin</button>'}</td>
     </tr>`).join('');
   tbody.querySelectorAll('[data-promote]').forEach(b=> b.addEventListener('click', ()=> setRole(b.dataset.promote,'admin')));
   tbody.querySelectorAll('[data-demote]').forEach(b=> b.addEventListener('click', ()=> setRole(b.dataset.demote,'player')));
 }
 async function setRole(uid, role){
   await updateDoc(doc(db,'users',uid), { role });
-  await loadUsers();
+  allUsers = allUsers.map(u => u.id===uid ? {...u, role} : u);
+  renderUsers(allUsers); renderDashboard();
 }
-document.getElementById('user-search').addEventListener('input', function(){
+document.getElementById('u-search').addEventListener('input', function(){
   const term = this.value.trim().toLowerCase();
   renderUsers(allUsers.filter(u => (u.nickname||'').toLowerCase().includes(term) || (u.email||'').toLowerCase().includes(term)));
 });
 
-async function loadTournaments(){
-  const snap = await getDocs(collection(db,'tournaments'));
-  const tbody = document.getElementById('tournaments-tbody');
-  if(snap.empty){ tbody.innerHTML = '<tr><td colspan="6" class="muted">Sem torneios.</td></tr>'; return; }
-  tbody.innerHTML = snap.docs.map(d=>{
-    const t = d.data();
-    return `<tr>
-      <td><a href="torneio.html?id=${d.id}" style="color:var(--accent);font-weight:600;">${t.name}</a></td>
-      <td>${t.game || '—'}</td>
-      <td>${t.teamSize}v${t.teamSize}</td>
-      <td>${t.visibility === 'private' ? 'Privado' : 'Público'}</td>
-      <td>${t.status || '—'}</td>
-      <td><button class="btn btn-sm btn-danger" data-del="${d.id}">Eliminar</button></td>
-    </tr>`;
-  }).join('');
+// TORNEIOS
+function renderTournaments(list){
+  const tbody = document.getElementById('t-tbody');
+  if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="6" class="td-muted">Sem torneios.</td></tr>'; return; }
+  tbody.innerHTML = list.map(t=>`
+    <tr>
+      <td><a href="torneio.html?id=${t.id}" style="color:var(--accent);font-weight:600;text-decoration:none;">${t.name}</a></td>
+      <td class="td-muted">${t.game || '—'}</td>
+      <td class="td-muted">${t.teamSize}v${t.teamSize}</td>
+      <td><span class="badge ${t.visibility==='private'?'badge-private':'badge-public'}">${t.visibility==='private'?'Privado':'Público'}</span></td>
+      <td class="td-muted">${t.status || '—'}</td>
+      <td style="display:flex;gap:6px;">
+        <a href="torneio.html?id=${t.id}"><button class="btn-sm btn-view">Ver</button></a>
+        <button class="btn-sm btn-del" data-del="${t.id}">Eliminar</button>
+      </td>
+    </tr>`).join('');
   tbody.querySelectorAll('[data-del]').forEach(b=>{
     b.addEventListener('click', async function(){
       if(!confirm('Eliminar este torneio permanentemente?')) return;
       await deleteDoc(doc(db,'tournaments', b.dataset.del));
-      loadTournaments();
+      allTournaments = allTournaments.filter(t=>t.id!==b.dataset.del);
+      renderTournaments(allTournaments); renderDashboard();
     });
   });
 }
+function filterTournaments(){
+  const term = document.getElementById('t-search').value.trim().toLowerCase();
+  const vis = document.getElementById('t-filter-vis').value;
+  renderTournaments(allTournaments.filter(t =>
+    ((t.name||'').toLowerCase().includes(term) || (t.game||'').toLowerCase().includes(term)) &&
+    (!vis || t.visibility === vis)
+  ));
+}
+document.getElementById('t-search').addEventListener('input', filterTournaments);
+document.getElementById('t-filter-vis').addEventListener('change', filterTournaments);
 
-async function loadContacts(){
-  const box = document.getElementById('contacts-list');
-  try{
-    const q = query(collection(db,'contactos'), orderBy('createdAt','desc'));
-    const snap = await getDocs(q);
-    if(snap.empty){ box.innerHTML = '<p class="muted">Sem mensagens.</p>'; return; }
-    box.innerHTML = snap.docs.map(d=>{
-      const c = d.data();
-      const date = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('pt-PT') : '';
-      return `<div class="card" style="margin-bottom:14px;">
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <strong>${c.nome}</strong><span class="muted mono" style="font-size:0.72rem;">${date}</span>
-        </div>
-        <div class="muted" style="font-size:0.85rem;margin:4px 0 10px;">${c.email}</div>
-        <p>${c.mensagem}</p>
-      </div>`;
-    }).join('');
-  }catch(e){ box.innerHTML = '<p class="muted">Erro ao carregar mensagens.</p>'; }
+// CONTACTOS
+function renderContacts(){
+  const tbody = document.getElementById('c-tbody');
+  if(allContacts.length === 0){ tbody.innerHTML = '<tr><td colspan="4" class="td-muted">Sem mensagens.</td></tr>'; return; }
+  tbody.innerHTML = allContacts.map(c=>{
+    const date = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('pt-PT') : '';
+    return `<tr style="cursor:pointer;" data-open="${c.id}">
+      <td>${c.nome}</td><td class="td-muted">${c.email}</td><td class="td-muted">${date}</td>
+      <td><button class="btn-sm btn-del" data-delmsg="${c.id}">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('[data-open]').forEach(row=>{
+    row.addEventListener('click', function(e){
+      if(e.target.closest('[data-delmsg]')) return;
+      openContact(row.dataset.open);
+    });
+  });
+  tbody.querySelectorAll('[data-delmsg]').forEach(b=>{
+    b.addEventListener('click', async function(e){
+      e.stopPropagation();
+      if(!confirm('Eliminar esta mensagem?')) return;
+      await deleteDoc(doc(db,'contactos', b.dataset.delmsg));
+      allContacts = allContacts.filter(c=>c.id!==b.dataset.delmsg);
+      renderContacts(); renderDashboard();
+    });
+  });
+}
+function openContact(id){
+  const c = allContacts.find(x=>x.id===id);
+  if(!c) return;
+  document.getElementById('cm-nome').textContent = c.nome;
+  document.getElementById('cm-email').textContent = c.email;
+  document.getElementById('cm-data').textContent = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('pt-PT') : '';
+  document.getElementById('cm-msg').textContent = c.mensagem;
+  document.getElementById('cm-del').onclick = async function(){
+    if(!confirm('Eliminar esta mensagem?')) return;
+    await deleteDoc(doc(db,'contactos', id));
+    allContacts = allContacts.filter(x=>x.id!==id);
+    document.getElementById('c-modal').classList.remove('open');
+    renderContacts(); renderDashboard();
+  };
+  document.getElementById('c-modal').classList.add('open');
 }
 </script>
-<script type="module" src="nav-auth.js"></script>
 </body>
 </html>
