@@ -828,10 +828,11 @@ function teamName(id){ const t = teams.find(x=>x.id===id); return t ? t.name : (
 function matchCardHtml(m){
   const aWin = m.winnerId && m.winnerId===m.teamAId;
   const bWin = m.winnerId && m.winnerId===m.teamBId;
-  return `<div class="match-card" data-match="${m.id}">
+  const playable = m.teamAId && m.teamBId && m.status !== 'terminado';
+  return `<div class="match-card" data-match="${m.id}" style="cursor:pointer;">
     <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId)}${m.scoreA!=null ? '<span class="score">'+m.scoreA+'</span>' : ''}</div>
     <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId)}${m.scoreB!=null ? '<span class="score">'+m.scoreB+'</span>' : ''}</div>
-    <div class="match-meta">${m.status}</div>
+    <div class="match-meta">${playable ? '🔓 Abrir lobby →' : m.status}</div>
   </div>`;
 }
 
@@ -847,8 +848,8 @@ function renderBracket(){
 
   if(twoSide){
     const lastRound = roundNums[roundNums.length-1];
-    let leftHtml = '<div class="bracket">';
-    let rightHtml = '<div class="bracket" style="flex-direction:row-reverse;">';
+    const leftCols = [];
+    const rightCols = [];
     let centerHtml = '';
     roundNums.forEach(rn => {
       const ms = byRound[rn].slice().sort((a,b)=>a.matchIndex-b.matchIndex);
@@ -856,10 +857,13 @@ function renderBracket(){
       const half = Math.ceil(ms.length/2);
       const left = ms.slice(0, half);
       const right = ms.slice(half);
-      leftHtml += `<div class="bracket-round"><div class="round-label">Ronda ${rn+1}</div>` + left.map(matchCardHtml).join('') + `</div>`;
-      rightHtml += `<div class="bracket-round"><div class="round-label">Ronda ${rn+1}</div>` + right.map(matchCardHtml).join('') + `</div>`;
+      leftCols.push(`<div class="bracket-round"><div class="round-label">Ronda ${rn+1}</div>` + left.map(matchCardHtml).join('') + `</div>`);
+      rightCols.push(`<div class="bracket-round"><div class="round-label">Ronda ${rn+1}</div>` + right.map(matchCardHtml).join('') + `</div>`);
     });
-    leftHtml += '</div>'; rightHtml += '</div>';
+    // a coluna direita é construída em ordem normal (sem CSS row-reverse, que cortava
+    // conteúdo fora do ecrã) — invertemos a ORDEM dos elementos no próprio HTML
+    const leftHtml = '<div class="bracket">' + leftCols.join('') + '</div>';
+    const rightHtml = '<div class="bracket">' + rightCols.slice().reverse().join('') + '</div>';
     box.innerHTML = `<div style="display:flex;align-items:center;gap:24px;overflow-x:auto;padding:20px 4px 40px;">${leftHtml}<div style="flex-shrink:0;text-align:center;"><div class="round-label">Final</div>${centerHtml}</div>${rightHtml}</div>`;
   } else {
     let html = '<div class="bracket">';
