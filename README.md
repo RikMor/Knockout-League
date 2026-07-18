@@ -16,6 +16,15 @@
 - **Remover jogadores/equipas**: o organizador (ou moderador) pode remover um jogador do pool, remover um membro de uma equipa (volta ao pool), ou eliminar a equipa toda (membros voltam ao pool) — sempre antes da bracket ser gerada.
 - **"Os meus torneios"** (`os-meus-torneios.html`, novo link no menu do utilizador): mostra os torneios em que a pessoa está inscrita como jogadora, e os que organiza ou modera.
 
+## Atualização — configurações da sala, bots e terminar torneio
+- **Correção crítica**: o erro "Missing or insufficient permissions" em "Os meus torneios" era falta de uma regra de `collectionGroup` no Firestore — corrigido em `firestore.rules` (precisa de ser republicada na consola).
+- **RPS também em "Como decidir quem começa"** — já não é só moeda/dado.
+- **Bracket com um ou dois lados** — nova opção ao criar o torneio (e editável depois em Configurações): "dois lados" mostra a bracket espelhada, a convergir ao centro, como nos brackets oficiais.
+- **Bots** — o organizador pode adicionar jogadores fictícios ("+ Bot") tal como já podia adicionar jogadores externos.
+- **Adicionar jogador a uma equipa já na bracket** — se alguém não se inscreveu a tempo, o organizador pode adicionar um jogador diretamente a uma equipa mesmo depois do torneio já ter começado.
+- **Aba "Configurações"** (organizador + moderadores) — editar nome, jogo, visibilidade, método de decidir quem começa, layout da bracket e banimento de mapas depois de a sala já existir; e uma "zona perigosa" só do organizador para **terminar e eliminar** o torneio por completo (equipas, jogadores e partidas incluídos).
+- **"A tua partida"** — quando o torneio está em curso, aparece um destaque no topo da aba Bracket com a partida ativa do jogador e um atalho direto para o lobby dela.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)

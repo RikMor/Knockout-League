@@ -121,7 +121,17 @@
     <div class="pill-group" id="pill-coin">
       <div class="pill" data-v="coin">Moeda ao ar</div>
       <div class="pill" data-v="dice">Dado</div>
+      <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
     </div>
+  </div>
+
+  <div class="form-group">
+    <label>Como mostrar a bracket</label>
+    <div class="pill-group" id="pill-layout">
+      <div class="pill" data-v="one-side">Um lado (lista simples)</div>
+      <div class="pill" data-v="two-side">Dois lados (espelhada, converge ao centro)</div>
+    </div>
+    <p class="form-hint">"Dois lados" só se aplica a eliminação simples/dupla.</p>
   </div>
 
   <button type="button" class="btn btn-accent" id="create-btn" style="width:100%;margin-top:10px;">Criar torneio</button>
@@ -149,6 +159,7 @@ bindPills('pill-visibility','public');
 bindPills('pill-assign','roulette');
 bindPills('pill-draft','organizer');
 bindPills('pill-coin','coin');
+bindPills('pill-layout','one-side');
 function selected(id){ var s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
 
 // Rótulo "equipas" vs "jogadores" consoante o formato
@@ -251,6 +262,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const assignMode = selected('pill-assign');
   const draftMode = selected('pill-draft');
   const coinMethod = selected('pill-coin');
+  const bracketLayout = bracketType === 'round-robin' ? 'one-side' : selected('pill-layout');
   const mapBanEnabled = document.getElementById('t-banmaps').checked;
   const creatorParticipates = document.getElementById('t-participo').checked;
 
@@ -264,7 +276,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
 
   try{
     const docRef = await addDoc(collection(db,'tournaments'), {
-      name, game, teamSize, maxTeams, bracketType, bracketDrawMode, visibility,
+      name, game, teamSize, maxTeams, bracketType, bracketDrawMode, bracketLayout, visibility,
       inviteCode: visibility === 'private' ? genCode() : null,
       assignMode, draftMode, coinMethod, mapBanEnabled, maps,
       creatorUid: currentUser.uid, creatorParticipates, moderatorUids: [],

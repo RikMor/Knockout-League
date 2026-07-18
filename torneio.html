@@ -50,6 +50,7 @@
     <button class="tab-btn" data-tab="mapas">Mapas</button>
     <button class="tab-btn" data-tab="bracket">Bracket</button>
     <button class="tab-btn" data-tab="moderadores" id="tab-moderadores-btn" style="display:none;">Moderadores</button>
+    <button class="tab-btn" data-tab="config" id="tab-config-btn" style="display:none;">Configurações</button>
   </div>
 
   <!-- EQUIPAS -->
@@ -63,6 +64,7 @@
       <button class="btn btn-outline btn-sm" id="roulette-btn">Girar roleta</button>
       <button class="btn btn-outline btn-sm" id="rps-btn">Pedra, papel, tesoura</button>
       <button class="btn btn-outline btn-sm" id="add-manual-btn">+ Jogador manual</button>
+      <button class="btn btn-outline btn-sm" id="add-bot-btn">+ Bot</button>
       <button class="btn btn-gold btn-sm" id="gen-bracket-btn">Começar torneio</button>
     </div>
 
@@ -86,6 +88,7 @@
 
   <!-- BRACKET -->
   <div class="tab-panel" id="panel-bracket">
+    <div id="my-match-box" style="margin-bottom:24px;"></div>
     <div id="bracket-box"><p class="muted">A bracket ainda não foi gerada.</p></div>
   </div>
 
@@ -98,6 +101,53 @@
     </div>
     <p class="form-error" id="mod-error" style="margin-bottom:16px;"></p>
     <div id="mod-list"></div>
+  </div>
+
+  <!-- CONFIGURAÇÕES -->
+  <div class="tab-panel" id="panel-config">
+    <p class="muted" style="margin-bottom:22px;">Ajusta a sala se algo precisar de correção — útil se surgir algum problema a meio do torneio.</p>
+
+    <div class="form-group"><label>Nome do torneio</label><input type="text" id="cfg-name" style="width:100%;max-width:420px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+    <div class="form-group"><label>Jogo</label><input type="text" id="cfg-game" style="width:100%;max-width:420px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+
+    <div class="form-group">
+      <label>Visibilidade</label>
+      <div class="pill-group" id="cfg-pill-visibility">
+        <div class="pill" data-v="public">Pública</div>
+        <div class="pill" data-v="private">Privada</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Como decidir quem começa (partidas futuras)</label>
+      <div class="pill-group" id="cfg-pill-coin">
+        <div class="pill" data-v="coin">Moeda ao ar</div>
+        <div class="pill" data-v="dice">Dado</div>
+        <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Como mostrar a bracket</label>
+      <div class="pill-group" id="cfg-pill-layout">
+        <div class="pill" data-v="one-side">Um lado</div>
+        <div class="pill" data-v="two-side">Dois lados (espelhada)</div>
+      </div>
+    </div>
+
+    <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+      <input type="checkbox" id="cfg-banmaps" style="width:auto;margin-top:4px;"/>
+      <label for="cfg-banmaps" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Banimento de mapas ativo no lobby.</label>
+    </div>
+
+    <button class="btn btn-accent" id="cfg-save-btn" style="margin-bottom:40px;">Guardar alterações</button>
+    <p class="form-error" id="cfg-msg" style="display:none;"></p>
+
+    <div style="border-top:1px solid var(--line);padding-top:24px;">
+      <h3 style="margin-bottom:10px;color:var(--danger);">Zona perigosa</h3>
+      <p class="muted" style="margin-bottom:14px;font-size:0.85rem;">Termina o torneio permanentemente — apaga a sala, as equipas, os jogadores e as partidas. Não pode ser desfeito.</p>
+      <button class="btn btn-danger" id="cfg-end-btn">Terminar e eliminar este torneio</button>
+    </div>
   </div>
 </div>
 
@@ -226,6 +276,71 @@ function renderHeader(){
     </div>`;
 }
 
+// ── CONFIGURAÇÕES DA SALA ──────────────────────────────────────────
+function bindCfgPills(id, def){
+  const el = document.getElementById(id);
+  if(el.dataset.bound) return;
+  el.dataset.bound = '1';
+  el.querySelectorAll('.pill').forEach(p=>{
+    p.addEventListener('click', ()=>{ el.querySelectorAll('.pill').forEach(x=>x.classList.remove('selected')); p.classList.add('selected'); });
+  });
+}
+bindCfgPills('cfg-pill-visibility');
+bindCfgPills('cfg-pill-coin');
+bindCfgPills('cfg-pill-layout');
+function cfgSelected(id){ const s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
+function cfgSetSelected(id, v){
+  document.querySelectorAll('#'+id+' .pill').forEach(p=> p.classList.toggle('selected', p.dataset.v === v));
+}
+
+function renderConfig(){
+  if(!isAdmin()) return;
+  document.getElementById('cfg-name').value = tournament.name || '';
+  document.getElementById('cfg-game').value = tournament.game || '';
+  cfgSetSelected('cfg-pill-visibility', tournament.visibility || 'public');
+  cfgSetSelected('cfg-pill-coin', tournament.coinMethod || 'coin');
+  cfgSetSelected('cfg-pill-layout', tournament.bracketLayout || 'one-side');
+  document.getElementById('cfg-banmaps').checked = !!tournament.mapBanEnabled;
+  document.getElementById('cfg-end-btn').style.display = isCreator() ? 'inline-flex' : 'none';
+}
+
+document.getElementById('cfg-save-btn').addEventListener('click', async function(){
+  const msg = document.getElementById('cfg-msg');
+  msg.style.display = 'none';
+  const name = document.getElementById('cfg-name').value.trim();
+  const game = document.getElementById('cfg-game').value.trim();
+  if(!name || !game){ msg.textContent = 'Preenche o nome e o jogo.'; msg.style.display = 'block'; return; }
+  await updateDoc(tRef, {
+    name, game,
+    visibility: cfgSelected('cfg-pill-visibility'),
+    coinMethod: cfgSelected('cfg-pill-coin'),
+    bracketLayout: cfgSelected('cfg-pill-layout'),
+    mapBanEnabled: document.getElementById('cfg-banmaps').checked
+  });
+  msg.style.color = 'var(--win)'; msg.style.borderColor = 'var(--win)';
+  msg.textContent = 'Alterações guardadas.'; msg.style.display = 'block';
+  setTimeout(()=>{ msg.style.display='none'; }, 3000);
+});
+
+document.getElementById('cfg-end-btn').addEventListener('click', async function(){
+  if(!isCreator()) return;
+  if(!confirm('Terminar e eliminar este torneio permanentemente? Esta ação não pode ser desfeita.')) return;
+  if(!confirm('De certeza mesmo? Todas as equipas, jogadores e partidas desta sala vão ser apagados.')) return;
+  const btn = this;
+  btn.disabled = true; btn.textContent = 'A eliminar...';
+  try{
+    const [pSnap, tSnap, mSnap] = await Promise.all([getDocs(playersCol), getDocs(teamsCol), getDocs(matchesCol)]);
+    for(const d of pSnap.docs) await deleteDoc(d.ref);
+    for(const d of tSnap.docs) await deleteDoc(d.ref);
+    for(const d of mSnap.docs) await deleteDoc(d.ref);
+    await deleteDoc(tRef);
+    window.location.href = 'torneios.html';
+  }catch(e){
+    alert('Erro ao eliminar: ' + e.message);
+    btn.disabled = false; btn.textContent = 'Terminar e eliminar este torneio';
+  }
+});
+
 // ── MODERADORES ──────────────────────────────────────────────────
 let moderatorProfiles = {}; // uid -> {nickname}
 async function renderModerators(){
@@ -284,6 +399,8 @@ function renderAll(){
   renderDraftBanner();
   renderModerators();
   document.getElementById('tab-moderadores-btn').style.display = isCreator() ? 'inline-block' : 'none';
+  document.getElementById('tab-config-btn').style.display = isAdmin() ? 'inline-block' : 'none';
+  renderConfig();
 }
 
 function renderJoinBox(){
@@ -305,7 +422,8 @@ function renderJoinBox(){
 }
 
 function playerLabel(p){
-  return p.name + (p.tag ? '<span class="muted">#'+p.tag+'</span>' : '');
+  const botTag = p.source === 'bot' ? ' <span class="muted" style="font-size:0.7rem;">🤖 bot</span>' : '';
+  return p.name + (p.tag ? '<span class="muted">#'+p.tag+'</span>' : '') + botTag;
 }
 
 function renderSelfTeamBox(){
@@ -431,10 +549,22 @@ function renderTeams(){
     }
     let joinBtn = (canJoinSelf && !full) ? `<button class="btn btn-sm btn-outline" data-jointeam="${t.id}" style="margin-top:8px;">Juntar-me a esta equipa</button>` : '';
     let delTeamBtn = (isAdmin() && !bracketGenerated()) ? `<button class="btn btn-sm btn-danger" data-delteam="${t.id}" style="margin-top:8px;margin-left:6px;">Eliminar equipa</button>` : '';
+    let lateAddBtn = (isAdmin() && bracketGenerated()) ? `<button class="btn btn-sm btn-outline" data-lateadd="${t.id}" style="margin-top:8px;">+ Adicionar jogador (atraso na inscrição)</button>` : '';
     card.innerHTML = `<h4>${t.name}</h4>${seedHtml}<p class="muted" style="font-size:0.78rem;margin-bottom:10px;">${tplayers.length}/${tournament.teamSize} jogadores</p>` +
       tplayers.map(p => `<div class="player-row"><span>${playerLabel(p)}${p.isCaptain ? '<span class="cap-tag">CAPITÃO</span>' : ''}</span>${isAdmin() && !bracketGenerated() ? '<button class="btn btn-sm btn-danger" data-kickmember="'+p.id+'">Remover</button>' : ''}</div>`).join('') +
-      joinBtn + delTeamBtn;
+      joinBtn + delTeamBtn + lateAddBtn;
     box.appendChild(card);
+  });
+
+  box.querySelectorAll('[data-lateadd]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      const teamId = btn.dataset.lateadd;
+      const name = prompt('Nome do jogador a adicionar a esta equipa (entrada tardia):');
+      if(!name) return;
+      const pRef = await addDoc(playersCol, { uid: null, name, source: 'manual', isCaptain: false, teamId });
+      const team = teams.find(t=>t.id===teamId);
+      await updateDoc(doc(teamsCol, teamId), { players: [...(team.players||[]), pRef.id] });
+    });
   });
 
   box.querySelectorAll('[data-jointeam]').forEach(btn=>{
@@ -487,6 +617,12 @@ document.getElementById('add-manual-btn').addEventListener('click', async functi
   const name = prompt('Nome do jogador (fora da plataforma):');
   if(!name) return;
   await addDoc(playersCol, { uid: null, name, source: 'manual', isCaptain: false, teamId: null });
+});
+
+document.getElementById('add-bot-btn').addEventListener('click', async function(){
+  const name = prompt('Nome do bot:', 'Bot ' + (players.filter(p=>p.source==='bot').length + 1));
+  if(!name) return;
+  await addDoc(playersCol, { uid: null, name, source: 'bot', isCaptain: false, teamId: null });
 });
 
 document.getElementById('roulette-btn').addEventListener('click', async function(){
@@ -689,30 +825,53 @@ async function declareWinnerInternal(matchId, winnerId, planRef){
 // ── BRACKET RENDER ──────────────────────────────────────────────
 function teamName(id){ const t = teams.find(x=>x.id===id); return t ? t.name : (id ? '—' : 'A definir'); }
 
+function matchCardHtml(m){
+  const aWin = m.winnerId && m.winnerId===m.teamAId;
+  const bWin = m.winnerId && m.winnerId===m.teamBId;
+  return `<div class="match-card" data-match="${m.id}">
+    <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId)}${m.scoreA!=null ? '<span class="score">'+m.scoreA+'</span>' : ''}</div>
+    <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId)}${m.scoreB!=null ? '<span class="score">'+m.scoreB+'</span>' : ''}</div>
+    <div class="match-meta">${m.status}</div>
+  </div>`;
+}
+
 function renderBracket(){
+  renderMyMatch();
   const box = document.getElementById('bracket-box');
   if(matches.length === 0){ box.innerHTML = '<p class="muted">A bracket ainda não foi gerada.</p>'; return; }
   const byRound = {};
   matches.forEach(m => { (byRound[m.round] = byRound[m.round] || []).push(m); });
   const roundNums = Object.keys(byRound).map(Number).sort((a,b)=>a-b);
-  const labels = ['Ronda 1','Ronda 2','Quartos','Meias','Final'];
-  let html = '<div class="bracket">';
-  roundNums.forEach(rn => {
-    const label = tournament.bracketType==='round-robin' ? 'Todos contra todos' : (labels[roundNums.length-1-roundNums.indexOf(rn)] || ('Ronda '+(rn+1)));
-    html += `<div class="bracket-round"><div class="round-label">${tournament.bracketType==='round-robin' ? 'Jogos' : 'Ronda '+(rn+1)}</div>`;
-    byRound[rn].sort((a,b)=>a.matchIndex-b.matchIndex).forEach(m=>{
-      const aWin = m.winnerId && m.winnerId===m.teamAId;
-      const bWin = m.winnerId && m.winnerId===m.teamBId;
-      html += `<div class="match-card" data-match="${m.id}">
-        <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId)}${m.scoreA!=null ? '<span class="score">'+m.scoreA+'</span>' : ''}</div>
-        <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId)}${m.scoreB!=null ? '<span class="score">'+m.scoreB+'</span>' : ''}</div>
-        <div class="match-meta">${m.status}</div>
-      </div>`;
+
+  const twoSide = tournament.bracketLayout === 'two-side' && tournament.bracketType !== 'round-robin' && roundNums.length > 1;
+
+  if(twoSide){
+    const lastRound = roundNums[roundNums.length-1];
+    let leftHtml = '<div class="bracket">';
+    let rightHtml = '<div class="bracket" style="flex-direction:row-reverse;">';
+    let centerHtml = '';
+    roundNums.forEach(rn => {
+      const ms = byRound[rn].slice().sort((a,b)=>a.matchIndex-b.matchIndex);
+      if(rn === lastRound && ms.length === 1){ centerHtml = matchCardHtml(ms[0]); return; }
+      const half = Math.ceil(ms.length/2);
+      const left = ms.slice(0, half);
+      const right = ms.slice(half);
+      leftHtml += `<div class="bracket-round"><div class="round-label">Ronda ${rn+1}</div>` + left.map(matchCardHtml).join('') + `</div>`;
+      rightHtml += `<div class="bracket-round"><div class="round-label">Ronda ${rn+1}</div>` + right.map(matchCardHtml).join('') + `</div>`;
+    });
+    leftHtml += '</div>'; rightHtml += '</div>';
+    box.innerHTML = `<div style="display:flex;align-items:center;gap:24px;overflow-x:auto;padding:20px 4px 40px;">${leftHtml}<div style="flex-shrink:0;text-align:center;"><div class="round-label">Final</div>${centerHtml}</div>${rightHtml}</div>`;
+  } else {
+    let html = '<div class="bracket">';
+    roundNums.forEach(rn => {
+      html += `<div class="bracket-round"><div class="round-label">${tournament.bracketType==='round-robin' ? 'Jogos' : 'Ronda '+(rn+1)}</div>`;
+      byRound[rn].sort((a,b)=>a.matchIndex-b.matchIndex).forEach(m=>{ html += matchCardHtml(m); });
+      html += '</div>';
     });
     html += '</div>';
-  });
-  html += '</div>';
-  box.innerHTML = html;
+    box.innerHTML = html;
+  }
+
   box.querySelectorAll('[data-match]').forEach(el=>{
     el.addEventListener('click', ()=> openMatchModal(el.dataset.match));
   });
@@ -727,6 +886,21 @@ function isInMatch(m){
   const uidsA = (teamA?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
   const uidsB = (teamB?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
   return uidsA.includes(currentUser.uid) || uidsB.includes(currentUser.uid);
+}
+
+function renderMyMatch(){
+  const box = document.getElementById('my-match-box');
+  if(!box) return;
+  box.innerHTML = '';
+  if(!currentUser || !tournament || tournament.status !== 'em-curso') return;
+  const active = matches.find(m => m.status !== 'terminado' && isInMatch(m));
+  if(!active) return;
+  box.innerHTML = `
+    <div class="ticket" data-tag="A tua partida" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div><strong>${teamName(active.teamAId)}</strong> vs <strong>${teamName(active.teamBId)}</strong> <span class="muted" style="font-size:0.82rem;">— ${active.status}</span></div>
+      <button class="btn btn-accent btn-sm" id="my-match-open">Abrir lobby</button>
+    </div>`;
+  document.getElementById('my-match-open').addEventListener('click', ()=> openMatchModal(active.id));
 }
 
 function openMatchModal(matchId){
@@ -802,22 +976,29 @@ function renderMatchModal(){
     });
   }
 
-  // moeda / dado
+  // moeda / dado / pedra-papel-tesoura
   const coinArea = document.getElementById('mm-coin-area');
+  const coinLabels = { dice: 'Lançar dado', rps: 'Jogar pedra, papel, tesoura', coin: 'Lançar moeda' };
   if(m.coinResult){
-    coinArea.innerHTML = `<div class="${tournament.coinMethod==='dice'?'die':'coin'}">${tournament.coinMethod==='dice' ? m.coinResult.value : (m.coinResult.teamAId===m.teamAId?'A':'B')}</div><p class="coin-result">${teamName(m.coinResult.teamAId)} começa</p>`;
+    const icon = tournament.coinMethod==='dice' ? `<div class="die">${m.coinResult.value}</div>` :
+                 tournament.coinMethod==='rps' ? `<div class="coin">${m.coinResult.jogada||'🎲'}</div>` :
+                 `<div class="coin">${m.coinResult.teamAId===m.teamAId?'A':'B'}</div>`;
+    coinArea.innerHTML = `${icon}<p class="coin-result">${teamName(m.coinResult.teamAId)} começa</p>`;
   } else if(canManage && m.status !== 'terminado'){
-    coinArea.innerHTML = `<button class="btn btn-outline btn-sm" id="mm-coin-btn">${tournament.coinMethod==='dice' ? 'Lançar dado' : 'Lançar moeda'}</button>`;
+    coinArea.innerHTML = `<button class="btn btn-outline btn-sm" id="mm-coin-btn">${coinLabels[tournament.coinMethod] || 'Decidir'}</button>`;
     document.getElementById('mm-coin-btn').addEventListener('click', async function(){
-      let winnerTeam, value;
+      let winnerTeam, value = null, jogada = null;
       if(tournament.coinMethod === 'dice'){
         value = 1 + Math.floor(Math.random()*6);
         winnerTeam = value % 2 === 0 ? m.teamAId : m.teamBId;
+      } else if(tournament.coinMethod === 'rps'){
+        const jogadas = ['Pedra','Papel','Tesoura'];
+        jogada = jogadas[Math.floor(Math.random()*3)];
+        winnerTeam = Math.random() < 0.5 ? m.teamAId : m.teamBId;
       } else {
         winnerTeam = Math.random() < 0.5 ? m.teamAId : m.teamBId;
-        value = null;
       }
-      await updateDoc(doc(matchesCol, m.id), { coinResult: { teamAId: winnerTeam, value } });
+      await updateDoc(doc(matchesCol, m.id), { coinResult: { teamAId: winnerTeam, value, jogada } });
     });
   } else {
     coinArea.innerHTML = '<p class="muted">Ainda por decidir.</p>';
