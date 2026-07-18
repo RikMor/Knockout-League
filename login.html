@@ -186,6 +186,12 @@ function translateError(code){
 async function isNicknameTaken(nick){
   try{var snap=await getDocs(collection(db,'users'));var l=nick.toLowerCase();return snap.docs.some(function(d){return(d.data().nickname||'').toLowerCase()===l;});}catch(e){return false;}
 }
+function genTag(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let t='';
+  for(let i=0;i<4;i++) t += chars[Math.floor(Math.random()*chars.length)];
+  return t;
+}
 
 window._fbLogin=function(email,pass){
   setBtn('login-submit',true,'A entrar...');
@@ -204,7 +210,7 @@ window._fbRegister=async function(d){
     setBtn('register-submit',true,'A criar conta...');
     var cred=await createUserWithEmailAndPassword(auth,d.email,d.password);
     await updateProfile(cred.user,{displayName:d.nickname});
-    await setDoc(doc(db,'users',cred.user.uid),{name:d.name,nickname:d.nickname,nicknameLower:d.nickname.toLowerCase(),email:d.email,avatarUrl:'',role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},ageConfirmed:true,createdAt:new Date().toISOString()});
+    await setDoc(doc(db,'users',cred.user.uid),{name:d.name,nickname:d.nickname,nicknameLower:d.nickname.toLowerCase(),tag:genTag(),email:d.email,avatarUrl:'',role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},ageConfirmed:true,createdAt:new Date().toISOString()});
     window.location.href='perfil.html';
   }catch(err){showError(translateError(err.code)||('Erro: '+err.message));setBtn('register-submit',false,'Criar conta');}
 };
@@ -215,7 +221,7 @@ window._fbGuest=async function(nick){
     await setPersistence(auth,browserSessionPersistence);
     var cred=await signInAnonymously(auth);
     var uid=cred.user.uid;
-    await setDoc(doc(db,'users',uid),{name:'Utilizador Convidado',nickname:nick,nicknameLower:nick.toLowerCase(),email:'',avatarUrl:'',isGuest:true,role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},createdAt:new Date().toISOString()});
+    await setDoc(doc(db,'users',uid),{name:'Utilizador Convidado',nickname:nick,nicknameLower:nick.toLowerCase(),tag:genTag(),email:'',avatarUrl:'',isGuest:true,role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},createdAt:new Date().toISOString()});
     window.location.href='perfil.html';
   }catch(err){showError(translateError(err.code)||('Erro: '+err.message));setBtn('guest-btn',false,'Entrar como convidado');}
 };
@@ -236,7 +242,7 @@ document.getElementById('google-btn').addEventListener('click', async function()
       let nick = cred.user.displayName || ('Jogador'+uid.slice(0,4));
       if(await isNicknameTaken(nick)) nick = nick + Math.floor(Math.random()*1000);
       await setDoc(doc(db,'users',uid),{
-        name: cred.user.displayName || '', nickname: nick, nicknameLower: nick.toLowerCase(),
+        name: cred.user.displayName || '', nickname: nick, nicknameLower: nick.toLowerCase(), tag: genTag(),
         email: cred.user.email || '', avatarUrl: cred.user.photoURL || '',
         provider: 'google', role: 'player',
         stats:{torneios:0,vitorias:0,derrotas:0,mvp:0}, createdAt: new Date().toISOString()

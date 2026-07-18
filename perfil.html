@@ -90,12 +90,13 @@ onAuthStateChanged(auth, async function(user){
 
   const u = snap.data();
   const nick = u.nickname || user.displayName || '—';
+  const tag = u.tag ? ' <span class="muted mono" style="font-size:1.1rem;">#'+u.tag+'</span>' : '';
+  document.getElementById('ph-nick').innerHTML = nick + tag;
   const avatar = u.avatarUrl || ('https://api.dicebear.com/8.x/pixel-art/svg?seed=' + encodeURIComponent(nick));
   const since = u.createdAt ? 'membro desde ' + new Date(u.createdAt).toLocaleDateString('pt-PT',{year:'numeric',month:'long'}) : '';
   const stats = u.stats || {torneios:0,vitorias:0,derrotas:0,mvp:0};
 
   document.getElementById('ph-avatar').src = avatar;
-  document.getElementById('ph-nick').textContent = nick;
   document.getElementById('ph-name').textContent = u.name || '';
   document.getElementById('ph-since').textContent = since;
   document.getElementById('stat-torneios').textContent = stats.torneios || 0;

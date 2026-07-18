@@ -62,6 +62,15 @@
     <p class="form-hint" id="bracket-explain"></p>
   </div>
 
+  <div class="form-group" id="group-draw-mode">
+    <label>Modo de sorteio da bracket</label>
+    <div class="pill-group" id="pill-draw-mode">
+      <div class="pill" data-v="random">Aleatório</div>
+      <div class="pill" data-v="seed">Por seed (posições)</div>
+    </div>
+    <p class="form-hint" id="draw-mode-explain"></p>
+  </div>
+
   <div class="form-group">
     <label>Visibilidade</label>
     <div class="pill-group" id="pill-visibility">
@@ -135,6 +144,7 @@ function bindPills(id, def){
 }
 bindPills('pill-teamsize','5');
 bindPills('pill-bracket','single');
+bindPills('pill-draw-mode','random');
 bindPills('pill-visibility','public');
 bindPills('pill-assign','roulette');
 bindPills('pill-draft','organizer');
@@ -148,10 +158,10 @@ function updateMaxTeamsLabel(){
   var hint = document.getElementById('maxteams-hint');
   if(size === 1){
     label.textContent = 'Número de jogadores';
-    hint.textContent = 'Em 1v1 cada jogador é a sua própria equipa.';
+    hint.textContent = 'Em 1v1 cada jogador é a sua própria equipa — quantos jogadores vão entrar na bracket.';
   } else {
     label.textContent = 'Número de equipas';
-    hint.textContent = 'Quantas equipas de ' + size + ' vão disputar o torneio (cada uma com ' + size + ' jogadores).';
+    hint.textContent = 'Quantas equipas vão aparecer na bracket, cada uma com ' + size + ' jogadores (o "' + size + 'v' + size + '" acima define o tamanho de cada equipa).';
   }
 }
 document.querySelectorAll('#pill-teamsize .pill').forEach(function(p){
@@ -167,11 +177,25 @@ var bracketExplanations = {
 };
 function updateBracketExplain(){
   document.getElementById('bracket-explain').textContent = bracketExplanations[selected('pill-bracket')] || '';
+  document.getElementById('group-draw-mode').style.display = selected('pill-bracket') === 'round-robin' ? 'none' : 'block';
 }
 document.querySelectorAll('#pill-bracket .pill').forEach(function(p){
   p.addEventListener('click', updateBracketExplain);
 });
 updateBracketExplain();
+
+// Explicação do modo de sorteio
+var drawModeExplanations = {
+  'random': 'As equipas entram em posições sorteadas ao acaso na bracket.',
+  'seed': 'Tu ordenas as equipas por posição (seed) antes de gerar a bracket — a 1ª só encontra a 2ª na final, tal como em torneios oficiais.'
+};
+function updateDrawModeExplain(){
+  document.getElementById('draw-mode-explain').textContent = drawModeExplanations[selected('pill-draw-mode')] || '';
+}
+document.querySelectorAll('#pill-draw-mode .pill').forEach(function(p){
+  p.addEventListener('click', updateDrawModeExplain);
+});
+updateDrawModeExplain();
 
 var maps = [];
 function renderMaps(){
@@ -222,6 +246,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const teamSize = parseInt(selected('pill-teamsize'), 10);
   const maxTeams = parseInt(document.getElementById('t-maxteams').value, 10);
   const bracketType = selected('pill-bracket');
+  const bracketDrawMode = bracketType === 'round-robin' ? 'random' : selected('pill-draw-mode');
   const visibility = selected('pill-visibility');
   const assignMode = selected('pill-assign');
   const draftMode = selected('pill-draft');
@@ -239,7 +264,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
 
   try{
     const docRef = await addDoc(collection(db,'tournaments'), {
-      name, game, teamSize, maxTeams, bracketType, visibility,
+      name, game, teamSize, maxTeams, bracketType, bracketDrawMode, visibility,
       inviteCode: visibility === 'private' ? genCode() : null,
       assignMode, draftMode, coinMethod, mapBanEnabled, maps,
       creatorUid: currentUser.uid, creatorParticipates, moderatorUids: [],

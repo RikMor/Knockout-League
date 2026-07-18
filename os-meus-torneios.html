@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Os meus torneios — Knockout League</title>
+<link rel="stylesheet" href="shared.css?v=2"/>
+<style>
+  .tabs { display: flex; border-bottom: 2px solid var(--ink); margin-bottom: 28px; }
+  .tab-btn { padding: 12px 20px; background: none; border: none; cursor: pointer; font-weight: 700; font-size: 0.85rem; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tab-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .t-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .not-logged { text-align: center; padding: 100px 20px; }
+  @media(max-width:760px){ .t-list{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li><a href="faq.html">FAQ</a></li>
+    <li><a href="contacto.html">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="wrap page-head">
+  <div class="eyebrow">A tua conta</div>
+  <h1>Os meus torneios</h1>
+</div>
+
+<div class="wrap" style="padding-bottom:90px;">
+  <div class="not-logged" id="not-logged" style="display:none;">
+    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para ver os teus torneios.</p>
+    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+  </div>
+
+  <div id="content" style="display:none;">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="jogar">A jogar</button>
+      <button class="tab-btn" data-tab="organizar">A organizar / moderar</button>
+    </div>
+
+    <div class="tab-panel active" id="panel-jogar">
+      <div class="t-list" id="list-jogar"><p class="muted">A carregar...</p></div>
+    </div>
+    <div class="tab-panel" id="panel-organizar">
+      <div class="t-list" id="list-organizar"><p class="muted">A carregar...</p></div>
+    </div>
+  </div>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script>
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+</script>
+
+<script type="module">
+import { auth, db, doc, getDoc, collection, collectionGroup, getDocs, query, where } from './firebase.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+function cardHtml(t, id){
+  const badgeClass = t.visibility==='private' ? 'badge-private' : 'badge-open';
+  const badgeText = t.visibility==='private' ? 'Privado' : 'Público';
+  return `<a href="torneio.html?id=${id}" class="t-card">
+    <span class="badge ${badgeClass}">${badgeText}</span>
+    <h3>${t.name}</h3>
+    <span class="muted">${t.game||''} · ${t.teamSize}v${t.teamSize} · ${t.status||''}</span>
+  </a>`;
+}
+
+onAuthStateChanged(auth, async function(user){
+  if(!user){ document.getElementById('not-logged').style.display = 'block'; return; }
+  document.getElementById('content').style.display = 'block';
+
+  // A jogar: procura em todas as subcoleções "players" onde uid == user.uid
+  try{
+    const q = query(collectionGroup(db, 'players'), where('uid','==', user.uid));
+    const snap = await getDocs(q);
+    const tournamentIds = [...new Set(snap.docs.map(d => d.ref.parent.parent.id))];
+    const el = document.getElementById('list-jogar');
+    if(tournamentIds.length === 0){ el.innerHTML = '<p class="muted">Ainda não entraste em nenhum torneio. <a href="torneios.html" style="color:var(--accent);">Explora os torneios abertos.</a></p>'; }
+    else{
+      const cards = await Promise.all(tournamentIds.map(async id=>{
+        const tSnap = await getDoc(doc(db,'tournaments', id));
+        return tSnap.exists() ? cardHtml(tSnap.data(), id) : '';
+      }));
+      el.innerHTML = cards.join('') || '<p class="muted">Ainda não entraste em nenhum torneio.</p>';
+    }
+  }catch(e){ document.getElementById('list-jogar').innerHTML = '<p class="muted">Erro ao carregar. ('+e.message+')</p>'; }
+
+  // A organizar/moderar
+  try{
+    const [creatorSnap, modSnap] = await Promise.all([
+      getDocs(query(collection(db,'tournaments'), where('creatorUid','==', user.uid))),
+      getDocs(query(collection(db,'tournaments'), where('moderatorUids','array-contains', user.uid)))
+    ]);
+    const map = new Map();
+    creatorSnap.docs.forEach(d=> map.set(d.id, d.data()));
+    modSnap.docs.forEach(d=> map.set(d.id, d.data()));
+    const el = document.getElementById('list-organizar');
+    if(map.size === 0){ el.innerHTML = '<p class="muted">Ainda não organizas nem moderas nenhum torneio. <a href="criar-torneio.html" style="color:var(--accent);">Cria um.</a></p>'; }
+    else{ el.innerHTML = [...map.entries()].map(([id,t]) => cardHtml(t, id)).join(''); }
+  }catch(e){ document.getElementById('list-organizar').innerHTML = '<p class="muted">Erro ao carregar. ('+e.message+')</p>'; }
+});
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

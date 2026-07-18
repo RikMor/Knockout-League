@@ -173,7 +173,10 @@
     <div class="page" id="page-utilizadores">
       <div class="page-header"><h1>Utilizadores</h1><p>Contas registadas na plataforma.</p></div>
       <div class="table-wrap">
-        <div class="toolbar"><input type="text" id="u-search" placeholder="Procurar por nickname ou email..."/></div>
+        <div class="toolbar">
+          <input type="text" id="u-search" placeholder="Procurar por nickname ou email..."/>
+          <select id="u-filter-type"><option value="">Todos os tipos</option><option value="registered">Registados</option><option value="google">Google</option><option value="guest">Convidados</option></select>
+        </div>
         <table>
           <thead><tr><th>Nickname</th><th>Email</th><th>Tipo</th><th>Papel</th><th></th></tr></thead>
           <tbody id="u-tbody"><tr><td colspan="5" class="td-muted">A carregar...</td></tr></tbody>
@@ -299,26 +302,52 @@ function renderUsers(list){
   if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="5" class="td-muted">Sem utilizadores.</td></tr>'; return; }
   tbody.innerHTML = list.map(u => `
     <tr>
-      <td>${u.nickname || '—'}</td>
+      <td>${u.nickname || '—'}${u.tag ? '<span class="td-muted">#'+u.tag+'</span>' : ''}</td>
       <td class="td-muted">${u.email || '—'}</td>
       <td class="td-muted">${u.isGuest ? 'Convidado' : (u.provider === 'google' ? 'Google' : 'Email')}</td>
       <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-player'}">${u.role || 'player'}</span></td>
-      <td>${u.role === 'admin'
-        ? '<button class="btn-sm btn-del" data-demote="'+u.id+'">Remover admin</button>'
-        : '<button class="btn-sm btn-promote" data-promote="'+u.id+'">Tornar admin</button>'}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn-sm btn-view" data-view="${u.id}">Ver perfil</button>
+        <button class="btn-sm btn-del" data-deluser="${u.id}">Eliminar</button>
+      </td>
     </tr>`).join('');
-  tbody.querySelectorAll('[data-promote]').forEach(b=> b.addEventListener('click', ()=> setRole(b.dataset.promote,'admin')));
-  tbody.querySelectorAll('[data-demote]').forEach(b=> b.addEventListener('click', ()=> setRole(b.dataset.demote,'player')));
+  tbody.querySelectorAll('[data-view]').forEach(b=> b.addEventListener('click', ()=> openUserProfile(b.dataset.view)));
+  tbody.querySelectorAll('[data-deluser]').forEach(b=>{
+    b.addEventListener('click', async function(){
+      if(!confirm('Eliminar este utilizador da base de dados? Esta ação não apaga o login (Authentication), só o perfil.')) return;
+      await deleteDoc(doc(db,'users', b.dataset.deluser));
+      allUsers = allUsers.filter(u=>u.id!==b.dataset.deluser);
+      filterUsers();
+      renderDashboard();
+    });
+  });
 }
-async function setRole(uid, role){
-  await updateDoc(doc(db,'users',uid), { role });
-  allUsers = allUsers.map(u => u.id===uid ? {...u, role} : u);
-  renderUsers(allUsers); renderDashboard();
+function openUserProfile(uid){
+  const u = allUsers.find(x=>x.id===uid);
+  if(!u) return;
+  const s = u.stats || {};
+  document.getElementById('cm-nome').textContent = (u.nickname||'—') + (u.tag ? ' #'+u.tag : '');
+  document.getElementById('cm-email').textContent = u.email || '—';
+  document.getElementById('cm-data').textContent = u.createdAt ? new Date(u.createdAt).toLocaleString('pt-PT') : '—';
+  document.getElementById('cm-msg').textContent = `Torneios: ${s.torneios||0} · Vitórias: ${s.vitorias||0} · Derrotas: ${s.derrotas||0} · MVP: ${s.mvp||0} · Papel: ${u.role||'player'}`;
+  document.getElementById('cm-del').style.display = 'none';
+  document.getElementById('c-modal').classList.add('open');
 }
-document.getElementById('u-search').addEventListener('input', function(){
-  const term = this.value.trim().toLowerCase();
-  renderUsers(allUsers.filter(u => (u.nickname||'').toLowerCase().includes(term) || (u.email||'').toLowerCase().includes(term)));
+document.getElementById('c-modal').addEventListener('click', function(e){
+  if(e.target.id === 'c-modal'){ /* click outside closes */ }
 });
+function filterUsers(){
+  const term = document.getElementById('u-search').value.trim().toLowerCase();
+  const type = document.getElementById('u-filter-type').value;
+  renderUsers(allUsers.filter(u => {
+    const matchesTerm = (u.nickname||'').toLowerCase().includes(term) || (u.email||'').toLowerCase().includes(term);
+    const uType = u.isGuest ? 'guest' : (u.provider === 'google' ? 'google' : 'registered');
+    const matchesType = !type || uType === type;
+    return matchesTerm && matchesType;
+  }));
+}
+document.getElementById('u-search').addEventListener('input', filterUsers);
+document.getElementById('u-filter-type').addEventListener('change', filterUsers);
 
 // TORNEIOS
 function renderTournaments(list){
@@ -386,6 +415,7 @@ function renderContacts(){
 function openContact(id){
   const c = allContacts.find(x=>x.id===id);
   if(!c) return;
+  document.getElementById('cm-del').style.display = 'inline-block';
   document.getElementById('cm-nome').textContent = c.nome;
   document.getElementById('cm-email').textContent = c.email;
   document.getElementById('cm-data').textContent = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('pt-PT') : '';

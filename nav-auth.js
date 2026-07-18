@@ -3,6 +3,26 @@ import { auth, db, doc } from './firebase.js';
 import { getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
+// ── Limpeza automática de contas convidado ao fechar a aba/browser ──
+let anonToken = null;
+onAuthStateChanged(auth, async function(user){
+  if(user && user.isAnonymous){
+    try{ anonToken = await user.getIdToken(); }catch(e){ anonToken = null; }
+  } else {
+    anonToken = null;
+  }
+});
+window.addEventListener('pagehide', function(){
+  const user = auth.currentUser;
+  if(user && user.isAnonymous && anonToken){
+    try{
+      const projectId = auth.app.options.projectId;
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${user.uid}`;
+      fetch(url, { method: 'DELETE', headers: { Authorization: 'Bearer ' + anonToken }, keepalive: true });
+    }catch(e){ /* falha silenciosa */ }
+  }
+});
+
 onAuthStateChanged(auth, async function (user) {
   const area = document.getElementById('nav-user-area');
   if (!area) return;
@@ -15,6 +35,7 @@ onAuthStateChanged(auth, async function (user) {
   let nick = user.isAnonymous ? 'Convidado' : (user.displayName || 'Jogador');
   let avatarUrl = 'https://api.dicebear.com/8.x/pixel-art/svg?seed=' + encodeURIComponent(nick);
   let isAdmin = false;
+  let tag = '';
 
   if (!user.isAnonymous) {
     try {
@@ -24,6 +45,7 @@ onAuthStateChanged(auth, async function (user) {
         nick = data.nickname || nick;
         avatarUrl = data.avatarUrl || avatarUrl;
         isAdmin = data.role === 'admin';
+        tag = data.tag || '';
       }
     } catch (e) { /* falha silenciosa */ }
   }
@@ -32,10 +54,11 @@ onAuthStateChanged(auth, async function (user) {
     '<div class="nav-user-dd" id="nav-user-dd">' +
       '<button class="nav-user-btn" type="button" id="nav-user-toggle">' +
         '<img class="nav-user-avatar" src="' + avatarUrl + '" alt=""/>' +
-        '<span>' + nick + '</span>' +
+        '<span>' + nick + (tag ? '<span style="opacity:.6;">#' + tag + '</span>' : '') + '</span>' +
       '</button>' +
       '<div class="nav-user-menu">' +
         '<a href="perfil.html">O meu perfil</a>' +
+        '<a href="os-meus-torneios.html">Os meus torneios</a>' +
         '<a href="definicoes.html">Definições</a>' +
         (isAdmin ? '<a href="admin.html">Painel de admin</a>' : '') +
         '<button id="nav-logout-btn">Terminar sessão</button>' +

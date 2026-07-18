@@ -55,6 +55,7 @@
   <!-- EQUIPAS -->
   <div class="tab-panel active" id="panel-equipas">
     <div id="join-box" class="card" style="margin-bottom:24px;display:none;"></div>
+    <div id="self-team-box" style="margin-bottom:24px;display:none;"></div>
     <div id="draft-banner"></div>
 
     <div id="admin-team-controls" style="display:none;margin-bottom:24px;display:flex;gap:10px;flex-wrap:wrap;">
@@ -62,7 +63,7 @@
       <button class="btn btn-outline btn-sm" id="roulette-btn">Girar roleta</button>
       <button class="btn btn-outline btn-sm" id="rps-btn">Pedra, papel, tesoura</button>
       <button class="btn btn-outline btn-sm" id="add-manual-btn">+ Jogador manual</button>
-      <button class="btn btn-gold btn-sm" id="gen-bracket-btn">Gerar bracket</button>
+      <button class="btn btn-gold btn-sm" id="gen-bracket-btn">Começar torneio</button>
     </div>
 
     <h3 style="margin-bottom:10px;">Pool de jogadores</h3>
@@ -275,6 +276,7 @@ function renderAll(){
   if(!tournament) return;
   renderHeader();
   renderJoinBox();
+  renderSelfTeamBox();
   renderAdminControls();
   renderPool();
   renderTeams();
@@ -297,7 +299,29 @@ function renderJoinBox(){
   box.innerHTML = '<button class="btn btn-accent" id="join-tournament-btn">Entrar neste torneio</button>';
   document.getElementById('join-tournament-btn').addEventListener('click', async function(){
     const nick = currentUser.isAnonymous ? 'Convidado' : (currentUserData?.nickname || currentUser.displayName || 'Jogador');
-    await addDoc(playersCol, { uid: currentUser.uid, name: nick, source: 'platform', isCaptain: false, teamId: null });
+    const tag = currentUser.isAnonymous ? '' : (currentUserData?.tag || '');
+    await addDoc(playersCol, { uid: currentUser.uid, name: nick, tag, source: 'platform', isCaptain: false, teamId: null });
+  });
+}
+
+function playerLabel(p){
+  return p.name + (p.tag ? '<span class="muted">#'+p.tag+'</span>' : '');
+}
+
+function renderSelfTeamBox(){
+  const box = document.getElementById('self-team-box');
+  if(tournament.status !== 'inscricoes'){ box.style.display='none'; return; }
+  const mine = myPoolEntry();
+  if(!mine || mine.teamId){ box.style.display='none'; return; }
+  if(teams.length >= tournament.maxTeams){ box.style.display='none'; return; }
+  box.style.display='block';
+  box.innerHTML = '<button class="btn btn-outline btn-sm" id="self-create-team-btn">Criar a minha equipa</button> <span class="muted" style="font-size:0.82rem;">Forma uma equipa já pronta (tipo clã) e convida outros jogadores do pool a juntarem-se.</span>';
+  document.getElementById('self-create-team-btn').addEventListener('click', async function(){
+    const name = prompt('Nome da tua equipa:');
+    if(!name) return;
+    const teamRef = await addDoc(teamsCol, { name, captainPlayerId: null, players: [], seed: teams.length + 1 });
+    await updateDoc(doc(playersCol, mine.id), { teamId: teamRef.id, isCaptain: true });
+    await updateDoc(teamRef, { captainPlayerId: mine.id, players: [mine.id] });
   });
 }
 
@@ -325,9 +349,10 @@ function renderPool(){
       const teamOpts = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
       controls = `
         <button class="btn btn-sm btn-outline" data-cap="${p.id}">Tornar capitão</button>
-        <select data-assign="${p.id}"><option value="">Atribuir a...</option>${teamOpts}</select>`;
+        <select data-assign="${p.id}"><option value="">Atribuir a...</option>${teamOpts}</select>
+        <button class="btn btn-sm btn-danger" data-kickpool="${p.id}">Remover</button>`;
     }
-    row.innerHTML = `<span>${p.name} ${p.source==='manual' ? '<span class="muted">(externo)</span>' : ''}</span><span style="display:flex;gap:8px;align-items:center;">${controls}</span>`;
+    row.innerHTML = `<span>${playerLabel(p)} ${p.source==='manual' ? '<span class="muted">(externo)</span>' : ''}</span><span style="display:flex;gap:8px;align-items:center;">${controls}</span>`;
     box.appendChild(row);
   });
   if(isAdmin()){
@@ -336,6 +361,12 @@ function renderPool(){
     });
     box.querySelectorAll('[data-assign]').forEach(sel=>{
       sel.addEventListener('change', function(){ if(this.value) assignPlayerToTeam(sel.dataset.assign, this.value); });
+    });
+    box.querySelectorAll('[data-kickpool]').forEach(btn=>{
+      btn.addEventListener('click', async function(){
+        if(!confirm('Remover este jogador do torneio?')) return;
+        await deleteDoc(doc(playersCol, btn.dataset.kickpool));
+      });
     });
   }
 }
@@ -383,20 +414,73 @@ function renderTeams(){
   const box = document.getElementById('teams-box');
   if(teams.length === 0){ box.innerHTML = '<p class="muted">Ainda não há equipas.</p>'; return; }
   box.innerHTML = '';
+  const mine = myPoolEntry();
+  const canJoinSelf = tournament.status === 'inscricoes' && mine && !mine.teamId;
+  const showSeed = tournament.bracketDrawMode === 'seed' && !bracketGenerated();
+
   teams.forEach(function(t){
     const card = document.createElement('div');
     card.className = 'team-card';
     const tplayers = (t.players||[]).map(pid => players.find(p=>p.id===pid)).filter(Boolean);
-    card.innerHTML = `<h4>${t.name}</h4><p class="muted" style="font-size:0.78rem;margin-bottom:10px;">${tplayers.length}/${tournament.teamSize} jogadores</p>` +
-      tplayers.map(p => `<div class="player-row">${p.name}${p.isCaptain ? '<span class="cap-tag">CAPITÃO</span>' : ''}</div>`).join('');
+    const full = tplayers.length >= tournament.teamSize;
+    let seedHtml = '';
+    if(showSeed){
+      seedHtml = isAdmin()
+        ? `<div style="margin-bottom:8px;"><label class="muted" style="font-size:0.72rem;">Seed: </label><input type="number" min="1" value="${t.seed||''}" data-seed="${t.id}" style="width:56px;padding:4px 6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>`
+        : `<p class="muted" style="font-size:0.75rem;margin-bottom:8px;">Seed: ${t.seed||'—'}</p>`;
+    }
+    let joinBtn = (canJoinSelf && !full) ? `<button class="btn btn-sm btn-outline" data-jointeam="${t.id}" style="margin-top:8px;">Juntar-me a esta equipa</button>` : '';
+    let delTeamBtn = (isAdmin() && !bracketGenerated()) ? `<button class="btn btn-sm btn-danger" data-delteam="${t.id}" style="margin-top:8px;margin-left:6px;">Eliminar equipa</button>` : '';
+    card.innerHTML = `<h4>${t.name}</h4>${seedHtml}<p class="muted" style="font-size:0.78rem;margin-bottom:10px;">${tplayers.length}/${tournament.teamSize} jogadores</p>` +
+      tplayers.map(p => `<div class="player-row"><span>${playerLabel(p)}${p.isCaptain ? '<span class="cap-tag">CAPITÃO</span>' : ''}</span>${isAdmin() && !bracketGenerated() ? '<button class="btn btn-sm btn-danger" data-kickmember="'+p.id+'">Remover</button>' : ''}</div>`).join('') +
+      joinBtn + delTeamBtn;
     box.appendChild(card);
   });
+
+  box.querySelectorAll('[data-jointeam]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      await assignPlayerToTeam(mine.id, btn.dataset.jointeam);
+    });
+  });
+  if(isAdmin()){
+    box.querySelectorAll('[data-seed]').forEach(input=>{
+      input.addEventListener('change', async function(){
+        await updateDoc(doc(teamsCol, input.dataset.seed), { seed: parseInt(input.value,10) || null });
+      });
+    });
+    box.querySelectorAll('[data-kickmember]').forEach(btn=>{
+      btn.addEventListener('click', async function(){
+        if(!confirm('Remover este jogador da equipa? Volta para o pool.')) return;
+        const p = players.find(x=>x.id===btn.dataset.kickmember);
+        if(!p) return;
+        const team = teams.find(t=>t.id===p.teamId);
+        await updateDoc(doc(playersCol, p.id), { teamId: null, isCaptain: false });
+        if(team){
+          const newPlayers = (team.players||[]).filter(id=>id!==p.id);
+          const upd = { players: newPlayers };
+          if(team.captainPlayerId === p.id) upd.captainPlayerId = null;
+          await updateDoc(doc(teamsCol, team.id), upd);
+        }
+      });
+    });
+    box.querySelectorAll('[data-delteam]').forEach(btn=>{
+      btn.addEventListener('click', async function(){
+        if(!confirm('Eliminar esta equipa? Os jogadores voltam para o pool.')) return;
+        const team = teams.find(t=>t.id===btn.dataset.delteam);
+        if(!team) return;
+        for(const pid of (team.players||[])){
+          await updateDoc(doc(playersCol, pid), { teamId: null, isCaptain: false });
+        }
+        await deleteDoc(doc(teamsCol, team.id));
+      });
+    });
+  }
 }
 
 document.getElementById('add-team-btn').addEventListener('click', async function(){
   const name = prompt('Nome da equipa:');
   if(!name) return;
-  await addDoc(teamsCol, { name, captainPlayerId: null, players: [], seed: teams.length });
+  await addDoc(teamsCol, { name, captainPlayerId: null, players: [], seed: teams.length + 1 });
 });
 
 document.getElementById('add-manual-btn').addEventListener('click', async function(){
@@ -427,12 +511,83 @@ document.getElementById('rps-btn').addEventListener('click', async function(){
   if(ok) await assignPlayerToTeam(player.id, team.id);
 });
 
+async function autoAssignRemainingPool(){
+  if(tournament.assignMode === 'manual') return { skipped: true };
+  let pool = unassignedPlayers().slice().sort(()=>Math.random()-0.5);
+  if(pool.length === 0) return { skipped: false };
+
+  // equipas de trabalho locais (clones) para não depender do listener em tempo real
+  let workingTeams = teams.map(t => ({ id: t.id, name: t.name, players: [...(t.players||[])], captainPlayerId: t.captainPlayerId, isNew: false }));
+
+  while(pool.length > 0){
+    let target = workingTeams.find(t => t.players.length < tournament.teamSize);
+    if(!target){
+      if(workingTeams.length >= tournament.maxTeams) break; // sem mais espaço
+      target = { id: null, name: 'Equipa ' + (workingTeams.length + 1), players: [], captainPlayerId: null, isNew: true, seed: workingTeams.length + 1 };
+      workingTeams.push(target);
+    }
+    const p = pool.shift();
+    target.players.push(p.id);
+  }
+
+  // cria as equipas novas na Firestore e atualiza os IDs
+  for(const t of workingTeams){
+    if(t.isNew && t.players.length > 0){
+      const ref = await addDoc(teamsCol, { name: t.name, captainPlayerId: null, players: [], seed: t.seed });
+      t.id = ref.id;
+    }
+  }
+
+  // grava jogadores atribuídos + capitão automático se a equipa não tiver
+  for(const t of workingTeams){
+    if(!t.id || t.players.length === 0) continue;
+    const original = teams.find(x=>x.id===t.id);
+    const alreadyHad = original ? (original.players||[]) : [];
+    const newlyAdded = t.players.filter(pid => !alreadyHad.includes(pid));
+    if(newlyAdded.length === 0) continue;
+    for(const pid of newlyAdded){
+      await updateDoc(doc(playersCol, pid), { teamId: t.id });
+    }
+    let captainPlayerId = t.captainPlayerId;
+    if(!captainPlayerId && t.players.length > 0){
+      captainPlayerId = t.players[0];
+      await updateDoc(doc(playersCol, captainPlayerId), { isCaptain: true });
+    }
+    await updateDoc(doc(teamsCol, t.id), { players: t.players, captainPlayerId });
+  }
+
+  return { skipped: false, leftover: pool.length };
+}
+
+function seedPositions(size){
+  let positions = [1,2];
+  while(positions.length < size){
+    const total = positions.length * 2 + 1;
+    const next = [];
+    positions.forEach(p => { next.push(p); next.push(total - p); });
+    positions = next;
+  }
+  return positions;
+}
+
 document.getElementById('gen-bracket-btn').addEventListener('click', async function(){
-  if(bracketGenerated()){ alert('A bracket já foi gerada para este torneio.'); return; }
-  const readyTeams = teams.filter(t => (t.players||[]).length === tournament.teamSize);
-  if(readyTeams.length < 2){ alert('Precisas de pelo menos 2 equipas completas.'); return; }
-  if(!confirm('Gerar a bracket agora com '+readyTeams.length+' equipas? Não será possível voltar atrás.')) return;
-  await generateBracket(readyTeams.map(t=>t.id));
+  if(bracketGenerated()){ alert('Este torneio já começou.'); return; }
+
+  const result = await autoAssignRemainingPool();
+  if(result.skipped && unassignedPlayers().length > 0){
+    alert('A atribuição é manual — atribui todos os jogadores do pool a uma equipa antes de começar.');
+    return;
+  }
+
+  // relê o estado mais recente das equipas depois da auto-atribuição
+  const teamsSnap = await getDocs(teamsCol);
+  const freshTeams = teamsSnap.docs.map(d=>({id:d.id, ...d.data()}));
+  const readyTeams = freshTeams.filter(t => (t.players||[]).length === tournament.teamSize);
+
+  if(readyTeams.length < 2){ alert('Precisas de pelo menos 2 equipas completas para começar.'); return; }
+  if(!confirm('Começar o torneio agora com '+readyTeams.length+' equipas? Não será possível voltar atrás.')) return;
+
+  await generateBracket(readyTeams);
   await updateDoc(tRef, { status: 'em-curso' });
   document.querySelector('.tab-btn[data-tab="bracket"]').click();
 });
@@ -460,7 +615,8 @@ document.getElementById('map-add-btn').addEventListener('click', async function(
 });
 
 // ── BRACKET GERAÇÃO ─────────────────────────────────────────────
-async function generateBracket(teamIds){
+async function generateBracket(readyTeams){
+  const teamIds = readyTeams.map(t => t.id);
   let plan = [];
   if(tournament.bracketType === 'round-robin'){
     let idx = 0;
@@ -473,7 +629,18 @@ async function generateBracket(teamIds){
   } else {
     // single elimination (também usado como base para double elimination — bracket de vencedores)
     let size = 1; while(size < teamIds.length) size *= 2;
-    let slots = teamIds.slice(); while(slots.length < size) slots.push(null);
+    let slots;
+    if(tournament.bracketDrawMode === 'seed'){
+      // ordena as equipas pela seed (as sem seed vão para o fim) e usa o padrão de seeding oficial
+      const bySeed = [...readyTeams].sort((a,b) => (a.seed || 999) - (b.seed || 999));
+      const positions = seedPositions(size); // ex: [1,16,9,8,5,12,13,4,...]
+      slots = positions.map(seedNum => (bySeed[seedNum-1] ? bySeed[seedNum-1].id : null));
+    } else {
+      // sorteio aleatório
+      const shuffled = [...teamIds].sort(()=>Math.random()-0.5);
+      slots = shuffled.slice();
+      while(slots.length < size) slots.push(null);
+    }
     let rounds = [];
     let m0 = [];
     for(let i=0;i<size/2;i++) m0.push({ id:'r0m'+i, round:0, matchIndex:i, teamAId:slots[i*2], teamBId:slots[i*2+1] });
