@@ -877,7 +877,7 @@ function renderBracket(){
   }
 
   box.querySelectorAll('[data-match]').forEach(el=>{
-    el.addEventListener('click', ()=> openMatchModal(el.dataset.match));
+    el.addEventListener('click', ()=> window.location.href = 'sala-partida.html?t='+tId+'&m='+el.dataset.match);
   });
 }
 
@@ -904,7 +904,7 @@ function renderMyMatch(){
       <div><strong>${teamName(active.teamAId)}</strong> vs <strong>${teamName(active.teamBId)}</strong> <span class="muted" style="font-size:0.82rem;">— ${active.status}</span></div>
       <button class="btn btn-accent btn-sm" id="my-match-open">Abrir lobby</button>
     </div>`;
-  document.getElementById('my-match-open').addEventListener('click', ()=> openMatchModal(active.id));
+  document.getElementById('my-match-open').addEventListener('click', ()=> window.location.href = 'sala-partida.html?t='+tId+'&m='+active.id);
 }
 
 function openMatchModal(matchId){

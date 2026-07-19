@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sala da partida — Knockout League</title>
+<link rel="stylesheet" href="shared.css?v=2"/>
+<style>
+  .room-top { border-bottom: 2px solid var(--ink); padding: 22px 5vw; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .room-team-name { font-family: 'Anton'; font-size: 1.5rem; }
+  .room-team-name.right { text-align: right; }
+  .room-status-box { text-align: center; flex-shrink: 0; }
+  .room-status-pill { font-family: 'IBM Plex Mono'; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; border: 1px solid var(--ink); padding: 5px 14px; display: inline-block; margin-bottom: 6px; }
+  .room-status-pill.live { border-color: var(--accent); color: var(--accent); }
+  .room-status-pill.done { border-color: var(--win); color: var(--win); }
+  .room-format { font-family: 'IBM Plex Mono'; font-size: 0.68rem; color: var(--muted); letter-spacing: 1px; }
+
+  .room-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .room-col { padding: 24px 5vw; border-right: 1px solid var(--line); }
+  .room-col:last-child { border-right: none; }
+  .room-col.right { text-align: right; }
+  .room-player { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .room-col.right .room-player { flex-direction: row-reverse; }
+  .room-player:last-child { border-bottom: none; }
+  .room-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line); flex-shrink: 0; }
+  .room-player.is-captain .room-avatar { border-color: var(--gold); }
+  .room-player-name { font-weight: 700; font-size: 0.92rem; display: flex; align-items: center; gap: 6px; }
+  .room-col.right .room-player-name { flex-direction: row-reverse; }
+
+  .room-section { padding: 32px 5vw; border-top: 1px solid var(--line); }
+  .room-section h3 { font-family: 'IBM Plex Mono'; font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  .not-found { text-align: center; padding: 100px 20px; }
+  @media(max-width:800px){ .room-teams{grid-template-columns:1fr;} .room-col{border-right:none;border-bottom:1px solid var(--line);} .room-col.right{text-align:left;} .room-col.right .room-player, .room-col.right .room-player-name{flex-direction:row;} }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li><a href="faq.html">FAQ</a></li>
+    <li><a href="contacto.html">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div id="not-found" class="not-found" style="display:none;"><p class="muted">Esta sala não existe ou o torneio foi eliminado.</p></div>
+
+<div id="room" style="display:none;">
+  <div class="room-top">
+    <div class="room-team-name" id="rt-name-a">—</div>
+    <div class="room-status-box">
+      <div class="room-status-pill" id="rt-status">—</div>
+      <div class="room-format" id="rt-format"></div>
+    </div>
+    <div class="room-team-name right" id="rt-name-b">—</div>
+  </div>
+
+  <div class="room-teams">
+    <div class="room-col" id="rt-players-a"></div>
+    <div class="room-col right" id="rt-players-b"></div>
+  </div>
+
+  <div class="room-section" id="rt-firstban-section">
+    <h3>Quem começa a banir mapas</h3>
+    <div id="rt-firstban-area"></div>
+  </div>
+
+  <div class="room-section">
+    <h3>Mapas (clica para banir)</h3>
+    <div class="pill-group" id="rt-maps"></div>
+  </div>
+
+  <div class="room-section">
+    <h3>Quem começa a jogar</h3>
+    <div id="rt-coin-area" style="text-align:center;"></div>
+  </div>
+
+  <div class="room-section">
+    <h3>Servidor / forma de entrar no jogo</h3>
+    <input type="text" id="rt-server-input" placeholder="Ex: IP 123.45.6.7:27015, senha knockout" style="width:100%;max-width:480px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+    <button class="btn btn-sm btn-outline" id="rt-server-save" style="margin-top:8px;">Guardar</button>
+    <p class="muted" id="rt-server-current" style="margin-top:10px;font-size:0.85rem;"></p>
+  </div>
+
+  <div class="room-section" id="rt-score-section">
+    <h3>Pontuação</h3>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <input type="number" id="rt-score-a" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
+      <span class="muted">—</span>
+      <input type="number" id="rt-score-b" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
+      <button class="btn btn-outline btn-sm" id="rt-score-save">Guardar</button>
+    </div>
+  </div>
+
+  <div class="room-section" id="rt-winner-section">
+    <h3>Declarar vencedor</h3>
+    <div style="display:flex;gap:10px;" id="rt-winner-btns"></div>
+  </div>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script type="module">
+import { auth, db, doc, getDoc, updateDoc, collection, onSnapshot } from './firebase.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+const params = new URLSearchParams(window.location.search);
+const tId = params.get('t');
+const mId = params.get('m');
+if(!tId || !mId){ document.getElementById('not-found').style.display = 'block'; }
+
+let currentUser = null, currentUserData = null;
+let tournament = null, teams = [], players = [], match = null;
+
+const tRef = doc(db, 'tournaments', tId);
+const teamsCol = collection(db, 'tournaments', tId, 'teams');
+const playersCol = collection(db, 'tournaments', tId, 'players');
+const matchRef = doc(db, 'tournaments', tId, 'matches', mId);
+
+function isAdmin(){
+  if(!currentUser || !tournament) return false;
+  if(tournament.creatorUid === currentUser.uid) return true;
+  if(currentUserData && currentUserData.role === 'admin') return true;
+  if((tournament.moderatorUids||[]).includes(currentUser.uid)) return true;
+  return false;
+}
+function teamById(id){ return teams.find(t=>t.id===id); }
+function teamName(id){ const t = teamById(id); return t ? t.name : (id ? '—' : 'A definir'); }
+function isInMatch(){
+  if(!currentUser || !match) return false;
+  const a = (teamById(match.teamAId)?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
+  const b = (teamById(match.teamBId)?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
+  return a.includes(currentUser.uid) || b.includes(currentUser.uid);
+}
+function canManage(){ return isAdmin() || isInMatch(); }
+
+onAuthStateChanged(auth, async function(user){
+  currentUser = user;
+  if(user && !user.isAnonymous){
+    try{ const s = await getDoc(doc(db,'users',user.uid)); if(s.exists()) currentUserData = s.data(); }catch(e){}
+  }
+  renderAll();
+});
+
+onSnapshot(tRef, snap=>{ if(!snap.exists()){ document.getElementById('not-found').style.display='block'; return; } tournament = {id:snap.id, ...snap.data()}; document.getElementById('room').style.display='block'; renderAll(); });
+onSnapshot(teamsCol, snap=>{ teams = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
+onSnapshot(playersCol, snap=>{ players = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
+onSnapshot(matchRef, snap=>{
+  if(!snap.exists()){ document.getElementById('not-found').style.display='block'; document.getElementById('room').style.display='none'; return; }
+  match = {id:snap.id, ...snap.data()}; renderAll();
+});
+
+function playerLabel(p){
+  const botTag = p.source === 'bot' ? ' 🤖' : '';
+  return p.name + (p.tag ? '<span class="muted" style="font-weight:400;">#'+p.tag+'</span>' : '') + botTag;
+}
+function renderTeamCol(elId, teamId){
+  const el = document.getElementById(elId);
+  const team = teamById(teamId);
+  if(!team){ el.innerHTML = '<p class="muted">Equipa por definir.</p>'; return; }
+  const tplayers = (team.players||[]).map(pid=>players.find(p=>p.id===pid)).filter(Boolean);
+  el.innerHTML = tplayers.map(p=>{
+    const avatarSeed = encodeURIComponent(p.name + (p.tag||''));
+    return `<div class="room-player ${p.isCaptain?'is-captain':''}">
+      <img class="room-avatar" src="https://api.dicebear.com/8.x/pixel-art/svg?seed=${avatarSeed}"/>
+      <div class="room-player-name">${p.isCaptain?'👑':''} ${playerLabel(p)}</div>
+    </div>`;
+  }).join('') || '<p class="muted">Sem jogadores.</p>';
+}
+
+function renderAll(){
+  if(!tournament || !match) return;
+
+  document.getElementById('rt-name-a').textContent = teamName(match.teamAId);
+  document.getElementById('rt-name-b').textContent = teamName(match.teamBId);
+  document.getElementById('rt-format').textContent = tournament.teamSize + 'v' + tournament.teamSize + ' · ' + (tournament.game||'');
+  const statusPill = document.getElementById('rt-status');
+  statusPill.textContent = match.status === 'terminado' ? 'Terminado' : (match.status === 'lobby' ? 'Lobby' : (match.teamAId && match.teamBId ? 'Por jogar' : 'À espera'));
+  statusPill.className = 'room-status-pill' + (match.status==='terminado' ? ' done' : (match.teamAId && match.teamBId ? ' live' : ''));
+
+  renderTeamCol('rt-players-a', match.teamAId);
+  renderTeamCol('rt-players-b', match.teamBId);
+
+  const manage = canManage();
+
+  const fbArea = document.getElementById('rt-firstban-area');
+  if(match.firstBanTeamId){
+    fbArea.innerHTML = `<p class="coin-result">${teamName(match.firstBanTeamId)} bane primeiro <span class="muted">(${match.firstBanMethod||''})</span></p>` +
+      (manage && match.status !== 'terminado' ? '<button class="btn btn-sm btn-outline" id="rt-firstban-reset">Redefinir</button>' : '');
+    if(manage) document.getElementById('rt-firstban-reset')?.addEventListener('click', async ()=>{
+      await updateDoc(matchRef, { firstBanTeamId: null, firstBanMethod: null });
+    });
+  } else if(manage && match.status !== 'terminado' && match.teamAId && match.teamBId){
+    fbArea.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-outline" data-fb="manualA">${teamName(match.teamAId)} começa</button>
+      <button class="btn btn-sm btn-outline" data-fb="manualB">${teamName(match.teamBId)} começa</button>
+      <button class="btn btn-sm btn-outline" data-fb="coin">Lançar moeda</button>
+      <button class="btn btn-sm btn-outline" data-fb="rps">Pedra, papel, tesoura</button>
+    </div>`;
+    fbArea.querySelectorAll('[data-fb]').forEach(btn=>{
+      btn.addEventListener('click', async function(){
+        const mode = btn.dataset.fb;
+        let winnerTeam, method;
+        if(mode === 'manualA'){ winnerTeam = match.teamAId; method = 'escolha do organizador'; }
+        else if(mode === 'manualB'){ winnerTeam = match.teamBId; method = 'escolha do organizador'; }
+        else if(mode === 'coin'){ winnerTeam = Math.random()<0.5 ? match.teamAId : match.teamBId; method = 'moeda ao ar'; }
+        else { winnerTeam = Math.random()<0.5 ? match.teamAId : match.teamBId; method = 'pedra, papel, tesoura'; }
+        await updateDoc(matchRef, { firstBanTeamId: winnerTeam, firstBanMethod: method });
+      });
+    });
+  } else {
+    fbArea.innerHTML = '<p class="muted">Ainda por decidir.</p>';
+  }
+
+  const mapsEl = document.getElementById('rt-maps');
+  mapsEl.innerHTML = (tournament.maps||[]).map(map=>{
+    const banned = (match.mapsBanned||[]).includes(map);
+    return `<div class="pill ${banned?'banned':''}" data-map="${map}">${map}</div>`;
+  }).join('');
+  if(tournament.mapBanEnabled && manage && match.status !== 'terminado'){
+    mapsEl.querySelectorAll('[data-map]').forEach(p=>{
+      p.addEventListener('click', async function(){
+        const map = p.dataset.map;
+        let banned = match.mapsBanned || [];
+        banned = banned.includes(map) ? banned.filter(x=>x!==map) : [...banned, map];
+        await updateDoc(matchRef, { mapsBanned: banned });
+      });
+    });
+  }
+
+  const coinArea = document.getElementById('rt-coin-area');
+  const coinLabels = { dice: 'Lançar dado', rps: 'Jogar pedra, papel, tesoura', coin: 'Lançar moeda' };
+  if(match.coinResult){
+    const icon = tournament.coinMethod==='dice' ? `<div class="die">${match.coinResult.value}</div>` :
+                 tournament.coinMethod==='rps' ? `<div class="coin">${match.coinResult.jogada||'🎲'}</div>` :
+                 `<div class="coin">${match.coinResult.teamAId===match.teamAId?'A':'B'}</div>`;
+    coinArea.innerHTML = `${icon}<p class="coin-result">${teamName(match.coinResult.teamAId)} começa</p>`;
+  } else if(manage && match.status !== 'terminado' && match.teamAId && match.teamBId){
+    coinArea.innerHTML = `<button class="btn btn-outline btn-sm" id="rt-coin-btn">${coinLabels[tournament.coinMethod] || 'Decidir'}</button>`;
+    document.getElementById('rt-coin-btn').addEventListener('click', async function(){
+      let winnerTeam, value = null, jogada = null;
+      if(tournament.coinMethod === 'dice'){
+        value = 1 + Math.floor(Math.random()*6);
+        winnerTeam = value % 2 === 0 ? match.teamAId : match.teamBId;
+      } else if(tournament.coinMethod === 'rps'){
+        const jogadas = ['Pedra','Papel','Tesoura'];
+        jogada = jogadas[Math.floor(Math.random()*3)];
+        winnerTeam = Math.random() < 0.5 ? match.teamAId : match.teamBId;
+      } else {
+        winnerTeam = Math.random() < 0.5 ? match.teamAId : match.teamBId;
+      }
+      await updateDoc(matchRef, { coinResult: { teamAId: winnerTeam, value, jogada } });
+    });
+  } else {
+    coinArea.innerHTML = '<p class="muted">Ainda por decidir.</p>';
+  }
+
+  document.getElementById('rt-server-current').textContent = match.serverInfo ? ('Atual: ' + match.serverInfo.value) : 'Ainda não definido.';
+  document.getElementById('rt-server-input').style.display = isAdmin() ? 'block' : 'none';
+  document.getElementById('rt-server-save').style.display = isAdmin() ? 'inline-flex' : 'none';
+  document.getElementById('rt-server-save').onclick = async function(){
+    const v = document.getElementById('rt-server-input').value.trim();
+    if(!v) return;
+    await updateDoc(matchRef, { serverInfo: { value: v }, status: 'lobby' });
+    document.getElementById('rt-server-input').value = '';
+  };
+
+  document.getElementById('rt-score-a').value = match.scoreA ?? '';
+  document.getElementById('rt-score-b').value = match.scoreB ?? '';
+  document.getElementById('rt-score-section').style.display = isAdmin() ? 'block' : (match.scoreA != null ? 'block' : 'none');
+  document.getElementById('rt-score-a').disabled = !isAdmin();
+  document.getElementById('rt-score-b').disabled = !isAdmin();
+  document.getElementById('rt-score-save').style.display = isAdmin() ? 'inline-flex' : 'none';
+  document.getElementById('rt-score-save').onclick = async function(){
+    const a = document.getElementById('rt-score-a').value;
+    const b = document.getElementById('rt-score-b').value;
+    await updateDoc(matchRef, { scoreA: a === '' ? null : Number(a), scoreB: b === '' ? null : Number(b) });
+  };
+
+  const winBtns = document.getElementById('rt-winner-btns');
+  document.getElementById('rt-winner-section').style.display = isAdmin() && match.status !== 'terminado' && match.teamAId && match.teamBId ? 'block' : 'none';
+  winBtns.innerHTML = '';
+  if(isAdmin() && match.teamAId && match.teamBId){
+    [match.teamAId, match.teamBId].forEach(tid=>{
+      const b = document.createElement('button');
+      b.className = 'btn btn-accent btn-sm';
+      b.textContent = teamName(tid) + ' venceu';
+      b.addEventListener('click', async ()=>{
+        await updateDoc(matchRef, { winnerId: tid, status: 'terminado' });
+        if(match.nextMatchId){
+          const field = match.nextSlot === 'A' ? 'teamAId' : 'teamBId';
+          await updateDoc(doc(db,'tournaments',tId,'matches',match.nextMatchId), { [field]: tid });
+        }
+      });
+      winBtns.appendChild(b);
+    });
+  }
+}
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

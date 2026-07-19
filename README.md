@@ -25,6 +25,10 @@
 - **Aba "Configurações"** (organizador + moderadores) — editar nome, jogo, visibilidade, método de decidir quem começa, layout da bracket e banimento de mapas depois de a sala já existir; e uma "zona perigosa" só do organizador para **terminar e eliminar** o torneio por completo (equipas, jogadores e partidas incluídos).
 - **"A tua partida"** — quando o torneio está em curso, aparece um destaque no topo da aba Bracket com a partida ativa do jogador e um atalho direto para o lobby dela.
 
+## Atualização — sala de partida dedicada
+- **`sala-partida.html`** (nova página, `?t=<id-torneio>&m=<id-partida>`) — sala própria de cada confronto, com as duas equipas lado a lado (avatar, nickname#tag, coroa no capitão) e o estado ao centro, inspirada em plataformas como a FACEIT. Reúne tudo o que já existia no modal antigo: quem bane primeiro, banir mapas, quem começa a jogar (moeda/dado/RPS), servidor, pontuação e declarar vencedor.
+- Os cartões da bracket e o destaque "A tua partida" já levam diretamente a esta sala em vez de abrirem um popup — assim que o organizador clica em "Começar torneio", as salas de todas as partidas já existem e são navegáveis de imediato.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)
