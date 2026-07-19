@@ -52,6 +52,11 @@
   - As opções do organizador ("Configurar sala") só aparecem mesmo para quem gere o torneio — deixaram de aparecer (só desativadas) aos jogadores normais.
   - **Pedra, papel, tesoura a sério**: quando o método escolhido é RPS, os dois capitães jogam um contra o outro (cada um escolhe pedra/papel/tesoura sem ver a escolha do outro até ambos terem escolhido); em empate, repetem automaticamente.
 
+## Atualização — colocar equipas tardias na bracket, séries BO automáticas, tag privada
+- **Equipas adicionadas depois do torneio já ter começado** — se o organizador criar uma equipa nova (ou uma já formada não tiver entrado a tempo), aparece uma caixa "Equipas por colocar na bracket" na aba Bracket, com um botão para escolher em que vaga livre a colocar (só mostra partidas ainda por decidir, com um lugar por preencher).
+- **Séries BO totalmente automáticas** — se o torneio tem "pontos para vencer" definidos, o jogo termina sozinho assim que uma equipa lá chega (sem precisar de clicar em "Finalizar partida") e avança logo para o jogo seguinte da série, ou para a próxima ronda da bracket se a série já estiver decidida.
+- **Tag privada** — o `#XXXX` de cada jogador só aparece para ele próprio (no seu perfil e no canto da nav); deixou de aparecer nas equipas, no pool, na sala da partida e no admin.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)

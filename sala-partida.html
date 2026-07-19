@@ -221,7 +221,7 @@ onSnapshot(matchRef, snap=>{
 
 function playerLabel(p){
   const botTag = p.source === 'bot' ? ' 🤖' : '';
-  return p.name + (p.tag ? '<span class="muted" style="font-weight:400;">#'+p.tag+'</span>' : '') + botTag;
+  return p.name + botTag;
 }
 function renderTeamCol(elId, teamId){
   const el = document.getElementById(elId);
@@ -283,23 +283,31 @@ async function addPoint(team){
   let update = {};
   if(!pending){
     update['currentGame.pending'] = { team, proposedBy: myUid };
+    await updateDoc(matchRef, update);
   } else if(pending.team === team && pending.proposedBy !== myUid){
     const field = team === 'A' ? 'currentGame.scoreA' : 'currentGame.scoreB';
     const current = team === 'A' ? (g.scoreA||0) : (g.scoreB||0);
-    update[field] = current + 1;
+    const newScore = current + 1;
+    update[field] = newScore;
     update['currentGame.pending'] = null;
+    await updateDoc(matchRef, update);
+    // se o torneio tem pontos definidos para vencer, finaliza automaticamente ao atingi-los
+    if(tournament.pointsToWin && newScore >= tournament.pointsToWin){
+      const updatedGame = { ...g, scoreA: team==='A'?newScore:(g.scoreA||0), scoreB: team==='B'?newScore:(g.scoreB||0), pending: null };
+      await finalizeGame(updatedGame);
+    }
   } else if(pending.team === team && pending.proposedBy === myUid){
     return;
   } else {
     update['currentGame.pending'] = { team, proposedBy: myUid };
+    await updateDoc(matchRef, update);
   }
-  await updateDoc(matchRef, update);
 }
 
-async function finalizeGame(){
-  const g = match.currentGame;
+async function finalizeGame(gameOverride){
+  const g = gameOverride || match.currentGame;
   const scoreA = g.scoreA || 0, scoreB = g.scoreB || 0;
-  if(scoreA === scoreB){ alert('A pontuação está empatada — corrige antes de finalizar.'); return; }
+  if(scoreA === scoreB){ if(!gameOverride) alert('A pontuação está empatada — corrige antes de finalizar.'); return; }
   const gameWinner = scoreA > scoreB ? 'A' : 'B';
   const newGamesWonA = (match.gamesWonA||0) + (gameWinner==='A'?1:0);
   const newGamesWonB = (match.gamesWonB||0) + (gameWinner==='B'?1:0);
@@ -446,7 +454,7 @@ function renderAll(){
   const canFinalize = (myCaptainTeam() || isAdmin()) && !finished && g.firstBanTeamId && mapPhaseDone;
   winSection.style.display = canFinalize ? 'block' : 'none';
   if(canFinalize){
-    document.getElementById('rt-finalize-hint').textContent = tournament.pointsToWin ? `Quando uma equipa chegar aos ${tournament.pointsToWin} pontos, finaliza este jogo.` : 'Finaliza quando o jogo chegar ao fim.';
+    document.getElementById('rt-finalize-hint').textContent = tournament.pointsToWin ? `O jogo termina automaticamente assim que uma equipa chegar aos ${tournament.pointsToWin} pontos. Usa isto só se precisares de forçar o fim antes disso.` : 'Finaliza quando o jogo chegar ao fim.';
     document.getElementById('rt-finalize-btn').onclick = finalizeGame;
   }
 

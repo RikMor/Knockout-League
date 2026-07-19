@@ -89,6 +89,7 @@
   <!-- BRACKET -->
   <div class="tab-panel" id="panel-bracket">
     <div id="my-match-box" style="margin-bottom:24px;"></div>
+    <div id="orphan-teams-box" style="margin-bottom:24px;"></div>
     <div id="bracket-box"><p class="muted">A bracket ainda não foi gerada.</p></div>
   </div>
 
@@ -440,7 +441,7 @@ function renderJoinBox(){
 
 function playerLabel(p){
   const botTag = p.source === 'bot' ? ' <span class="muted" style="font-size:0.7rem;">🤖 bot</span>' : '';
-  return p.name + (p.tag ? '<span class="muted">#'+p.tag+'</span>' : '') + botTag;
+  return p.name + botTag;
 }
 
 function renderSelfTeamBox(){
@@ -859,6 +860,7 @@ function matchCardHtml(m){
 
 function renderBracket(){
   renderMyMatch();
+  renderOrphanTeams();
   const box = document.getElementById('bracket-box');
   if(matches.length === 0){ box.innerHTML = '<p class="muted">A bracket ainda não foi gerada.</p>'; return; }
   const byRound = {};
@@ -926,6 +928,48 @@ function renderMyMatch(){
       <button class="btn btn-accent btn-sm" id="my-match-open">Abrir lobby</button>
     </div>`;
   document.getElementById('my-match-open').addEventListener('click', ()=> window.location.href = 'sala-partida.html?t='+tId+'&m='+active.id);
+}
+
+function orphanTeams(){
+  if(!bracketGenerated()) return [];
+  const used = new Set();
+  matches.forEach(m => { if(m.teamAId) used.add(m.teamAId); if(m.teamBId) used.add(m.teamBId); });
+  return teams.filter(t => !used.has(t.id) && (t.players||[]).length === tournament.teamSize);
+}
+
+function emptySlots(){
+  const slots = [];
+  matches.forEach(m => {
+    if(m.status === 'terminado') return;
+    if(!m.teamAId) slots.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round });
+    if(!m.teamBId) slots.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round });
+  });
+  return slots;
+}
+
+function renderOrphanTeams(){
+  const box = document.getElementById('orphan-teams-box');
+  box.innerHTML = '';
+  if(!isAdmin()) return;
+  const orphans = orphanTeams();
+  if(orphans.length === 0) return;
+  box.innerHTML = '<div class="ticket" data-tag="Equipas por colocar na bracket">' +
+    orphans.map(t => `<div class="pool-row"><span>${t.name} <span class="muted">(${(t.players||[]).length}/${tournament.teamSize})</span></span><button class="btn btn-sm btn-outline" data-place="${t.id}">Colocar na bracket</button></div>`).join('') +
+    '</div>';
+  box.querySelectorAll('[data-place]').forEach(btn=>{
+    btn.addEventListener('click', () => placeOrphanTeam(btn.dataset.place));
+  });
+}
+
+async function placeOrphanTeam(teamId){
+  const slots = emptySlots();
+  if(slots.length === 0){ alert('Não há nenhuma vaga livre na bracket neste momento (só é possível ocupar partidas ainda por decidir, com um lugar em aberto).'); return; }
+  const list = slots.map((s,i) => (i+1) + '. Ronda ' + (s.round+1) + ' — vs ' + teamName(s.opponent)).join('\n');
+  const pick = prompt('Onde colocar esta equipa?\n' + list + '\n\nEscreve o número:');
+  const idx = parseInt(pick, 10) - 1;
+  if(isNaN(idx) || !slots[idx]) return;
+  const slot = slots[idx];
+  await updateDoc(doc(matchesCol, slot.matchId), { [slot.field]: teamId });
 }
 
 function openMatchModal(matchId){

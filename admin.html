@@ -302,7 +302,7 @@ function renderUsers(list){
   if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="5" class="td-muted">Sem utilizadores.</td></tr>'; return; }
   tbody.innerHTML = list.map(u => `
     <tr>
-      <td>${u.nickname || '—'}${u.tag ? '<span class="td-muted">#'+u.tag+'</span>' : ''}</td>
+      <td>${u.nickname || '—'}</td>
       <td class="td-muted">${u.email || '—'}</td>
       <td class="td-muted">${u.isGuest ? 'Convidado' : (u.provider === 'google' ? 'Google' : 'Email')}</td>
       <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-player'}">${u.role || 'player'}</span></td>
@@ -326,7 +326,7 @@ function openUserProfile(uid){
   const u = allUsers.find(x=>x.id===uid);
   if(!u) return;
   const s = u.stats || {};
-  document.getElementById('cm-nome').textContent = (u.nickname||'—') + (u.tag ? ' #'+u.tag : '');
+  document.getElementById('cm-nome').textContent = (u.nickname||'—');
   document.getElementById('cm-email').textContent = u.email || '—';
   document.getElementById('cm-data').textContent = u.createdAt ? new Date(u.createdAt).toLocaleString('pt-PT') : '—';
   document.getElementById('cm-msg').textContent = `Torneios: ${s.torneios||0} · Vitórias: ${s.vitorias||0} · Derrotas: ${s.derrotas||0} · MVP: ${s.mvp||0} · Papel: ${u.role||'player'}`;
