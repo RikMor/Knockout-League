@@ -89,51 +89,50 @@
     <div class="room-col" id="rt-players-a"></div>
 
     <div class="room-center">
-      <div id="rt-firstban-section">
-        <h4>Quem começa (bane primeiro)</h4>
-        <div id="rt-firstban-area"></div>
+      <div id="rt-decide-phase">
+        <div id="rt-firstban-section">
+          <h4>Quem começa (bane primeiro)</h4>
+          <div id="rt-firstban-area"></div>
+        </div>
+
+        <div id="rt-maps-section" style="display:none;margin-top:26px;">
+          <h4>Banir mapas <span id="rt-ban-turn"></span></h4>
+          <div id="rt-maps"></div>
+        </div>
       </div>
 
-      <div id="rt-maps-section" style="display:none;margin-top:26px;">
-        <h4>Banir mapas <span id="rt-ban-turn"></span></h4>
-        <div id="rt-maps"></div>
-        <p class="muted" id="rt-map-picked" style="margin-top:12px;font-size:0.85rem;text-align:center;"></p>
+      <div id="rt-play-phase" style="display:none;">
+        <p class="muted" id="rt-map-picked" style="text-align:center;font-size:0.85rem;margin-bottom:20px;"></p>
+
+        <h4>Pontuação ao vivo</h4>
+        <p class="muted" style="text-align:center;font-size:0.76rem;margin-bottom:14px;margin-top:-8px;">os dois capitães confirmam cada ponto</p>
+        <div style="display:flex;gap:18px;align-items:center;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
+          <div style="text-align:center;">
+            <div style="font-family:'Anton';font-size:2rem;" id="rt-cur-score-a">0</div>
+            <button class="btn btn-accent btn-sm" id="rt-point-a">+1 — <span id="rt-team-a-btn-name"></span></button>
+          </div>
+          <div class="muted" style="font-family:'Anton';font-size:1.2rem;">—</div>
+          <div style="text-align:center;">
+            <div style="font-family:'Anton';font-size:2rem;" id="rt-cur-score-b">0</div>
+            <button class="btn btn-accent btn-sm" id="rt-point-b">+1 — <span id="rt-team-b-btn-name"></span></button>
+          </div>
+        </div>
+        <p class="muted" id="rt-pending-msg" style="text-align:center;min-height:1.2em;font-size:0.82rem;margin-bottom:20px;"></p>
+
+        <h4>Servidor / forma de entrar no jogo</h4>
+        <input type="text" id="rt-server-input" placeholder="Ex: IP 123.45.6.7:27015, senha knockout" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:0.85rem;"/>
+        <button class="btn btn-sm btn-outline" id="rt-server-save" style="margin-top:8px;">Guardar</button>
+        <p class="muted" id="rt-server-current" style="margin-top:10px;font-size:0.82rem;"></p>
+
+        <div id="rt-winner-section" style="display:none;margin-top:24px;border-top:1px solid var(--line);padding-top:20px;">
+          <h4>Finalizar este jogo</h4>
+          <p class="muted" id="rt-finalize-hint" style="margin-bottom:14px;font-size:0.8rem;text-align:center;"></p>
+          <div style="text-align:center;"><button class="btn btn-gold btn-sm" id="rt-finalize-btn">Finalizar partida</button></div>
+        </div>
       </div>
     </div>
 
     <div class="room-col right" id="rt-players-b"></div>
-  </div>
-
-  <div class="room-section" id="rt-score-server-section" style="display:none;">
-    <div class="score-server-grid">
-      <div>
-        <h3>Pontuação ao vivo <span class="muted" style="text-transform:none;font-family:'Inter';font-weight:400;font-size:0.78rem;">— os dois capitães confirmam cada ponto</span></h3>
-        <div style="display:flex;gap:30px;align-items:center;justify-content:center;margin-bottom:14px;flex-wrap:wrap;">
-          <div style="text-align:center;">
-            <div style="font-family:'Anton';font-size:2.4rem;" id="rt-cur-score-a">0</div>
-            <button class="btn btn-accent btn-sm" id="rt-point-a">+1 — <span id="rt-team-a-btn-name"></span></button>
-          </div>
-          <div class="muted" style="font-family:'Anton';font-size:1.4rem;">—</div>
-          <div style="text-align:center;">
-            <div style="font-family:'Anton';font-size:2.4rem;" id="rt-cur-score-b">0</div>
-            <button class="btn btn-accent btn-sm" id="rt-point-b">+1 — <span id="rt-team-b-btn-name"></span></button>
-          </div>
-        </div>
-        <p class="muted" id="rt-pending-msg" style="text-align:center;min-height:1.2em;font-size:0.85rem;"></p>
-      </div>
-      <div>
-        <h3>Servidor / forma de entrar no jogo</h3>
-        <input type="text" id="rt-server-input" placeholder="Ex: IP 123.45.6.7:27015, senha knockout" style="width:100%;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
-        <button class="btn btn-sm btn-outline" id="rt-server-save" style="margin-top:8px;">Guardar</button>
-        <p class="muted" id="rt-server-current" style="margin-top:10px;font-size:0.85rem;"></p>
-      </div>
-    </div>
-  </div>
-
-  <div class="room-section" id="rt-winner-section" style="display:none;">
-    <h3>Finalizar este jogo</h3>
-    <p class="muted" id="rt-finalize-hint" style="margin-bottom:14px;"></p>
-    <button class="btn btn-gold" id="rt-finalize-btn">Finalizar partida</button>
   </div>
 
   <div class="room-section" id="rt-admin-section" style="display:none;background:rgba(232,90,54,0.04);">
@@ -402,7 +401,6 @@ function renderAll(){
         ${canClickThis ? '<button class="map-ban-link" data-map="'+map+'">Banir</button>' : (banned ? '<span class="map-ban-link" disabled>Banido</span>' : '')}
       </div>`;
     }).join('');
-    document.getElementById('rt-map-picked').textContent = available.length === 1 ? ('Mapa escolhido: ' + available[0]) : '';
     mapsEl.querySelectorAll('[data-map]').forEach(btn=>{
       btn.addEventListener('click', async function(){
         await updateDoc(matchRef, { 'currentGame.mapsBanned': [...(g.mapsBanned||[]), btn.dataset.map] });
@@ -411,10 +409,13 @@ function renderAll(){
   }
 
   const mapPhaseDone = !tournament.mapBanEnabled || (g.firstBanTeamId && available.length <= 1);
+  const pickedMap = tournament.mapBanEnabled ? (available.length === 1 ? available[0] : null) : null;
 
-  const scoreServerSection = document.getElementById('rt-score-server-section');
-  scoreServerSection.style.display = (g.firstBanTeamId && mapPhaseDone) ? 'block' : 'none';
+  document.getElementById('rt-decide-phase').style.display = (g.firstBanTeamId && mapPhaseDone) ? 'none' : 'block';
+  document.getElementById('rt-play-phase').style.display = (g.firstBanTeamId && mapPhaseDone) ? 'block' : 'none';
+
   if(g.firstBanTeamId && mapPhaseDone){
+    document.getElementById('rt-map-picked').textContent = pickedMap ? ('Mapa: ' + pickedMap) : '';
     document.getElementById('rt-cur-score-a').textContent = g.scoreA || 0;
     document.getElementById('rt-cur-score-b').textContent = g.scoreB || 0;
     document.getElementById('rt-team-a-btn-name').textContent = teamName(match.teamAId);
