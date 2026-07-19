@@ -91,6 +91,10 @@
   <div class="tab-panel" id="panel-bracket">
     <div id="my-match-box" style="margin-bottom:24px;"></div>
     <div id="orphan-teams-box" style="margin-bottom:24px;"></div>
+    <div id="regen-bracket-box" style="margin-bottom:24px;display:none;">
+      <button class="btn btn-gold btn-sm" id="regen-bracket-btn">Regenerar bracket com todas as equipas atuais</button>
+      <p class="muted" style="font-size:0.8rem;margin-top:8px;">Nenhuma partida foi decidida ainda, por isso podes refazer a bracket do zero incluindo as equipas que faltavam.</p>
+    </div>
     <div id="bracket-box"><p class="muted">A bracket ainda não foi gerada.</p></div>
   </div>
 
@@ -868,6 +872,7 @@ function matchCardHtml(m){
 function renderBracket(){
   renderMyMatch();
   renderOrphanTeams();
+  renderRegenBox();
   const box = document.getElementById('bracket-box');
   if(matches.length === 0){ box.innerHTML = '<p class="muted">A bracket ainda não foi gerada.</p>'; return; }
   const byRound = {};
@@ -937,6 +942,33 @@ function renderMyMatch(){
   document.getElementById('my-match-open').addEventListener('click', ()=> window.location.href = 'sala-partida.html?t='+tId+'&m='+active.id);
 }
 
+function anyMatchStarted(){
+  return matches.some(m => m.status === 'terminado' || (m.currentGame && (m.currentGame.firstBanTeamId || (m.gamesWonA||0) > 0 || (m.gamesWonB||0) > 0)));
+}
+
+function renderRegenBox(){
+  const box = document.getElementById('regen-bracket-box');
+  box.style.display = (isAdmin() && bracketGenerated() && !anyMatchStarted()) ? 'block' : 'none';
+}
+
+document.getElementById('regen-bracket-btn').addEventListener('click', async function(){
+  if(anyMatchStarted()){ alert('Já há partidas em curso — não é seguro regenerar a bracket.'); return; }
+  const result = await autoAssignRemainingPool();
+  if(result.skipped && unassignedPlayers().length > 0){
+    alert('A atribuição é manual — atribui todos os jogadores do pool a uma equipa antes de regenerar.');
+    return;
+  }
+  const teamsSnap = await getDocs(teamsCol);
+  const freshTeams = teamsSnap.docs.map(d=>({id:d.id, ...d.data()}));
+  const readyTeams = freshTeams.filter(t => (t.players||[]).length === tournament.teamSize);
+  if(readyTeams.length < 2){ alert('Precisas de pelo menos 2 equipas completas.'); return; }
+  if(!confirm('Vais apagar a bracket atual e criar uma nova com as ' + readyTeams.length + ' equipas de momento prontas. Continuar?')) return;
+
+  const oldMatches = await getDocs(matchesCol);
+  for(const d of oldMatches.docs) await deleteDoc(d.ref);
+  await generateBracket(readyTeams);
+});
+
 function orphanTeams(){
   if(!bracketGenerated()) return [];
   const used = new Set();
@@ -948,9 +980,17 @@ function emptySlots(){
   const slots = [];
   matches.forEach(m => {
     if(m.status === 'terminado') return;
-    if(!m.teamAId) slots.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round });
-    if(!m.teamBId) slots.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round });
+    if(!m.teamAId) slots.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round, occupied: false });
+    if(!m.teamBId) slots.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round, occupied: false });
   });
+  if(slots.length === 0){
+    // sem vagas livres — permite substituir uma equipa já colocada num jogo ainda não decidido
+    matches.forEach(m => {
+      if(m.status === 'terminado') return;
+      if(m.teamAId) slots.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round, occupied: true, current: m.teamAId });
+      if(m.teamBId) slots.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round, occupied: true, current: m.teamBId });
+    });
+  }
   return slots;
 }
 
@@ -970,12 +1010,18 @@ function renderOrphanTeams(){
 
 async function placeOrphanTeam(teamId){
   const slots = emptySlots();
-  if(slots.length === 0){ alert('Não há nenhuma vaga livre na bracket neste momento (só é possível ocupar partidas ainda por decidir, com um lugar em aberto).'); return; }
-  const list = slots.map((s,i) => (i+1) + '. Ronda ' + (s.round+1) + ' — vs ' + teamName(s.opponent)).join('\n');
-  const pick = prompt('Onde colocar esta equipa?\n' + list + '\n\nEscreve o número:');
+  if(slots.length === 0){ alert('Não há nenhuma vaga livre nem nenhuma partida ainda por decidir onde a possas colocar.'); return; }
+  const list = slots.map((s,i) => {
+    const base = (i+1) + '. Ronda ' + (s.round+1) + ' — vs ' + teamName(s.opponent);
+    return s.occupied ? (base + ' (substitui ' + teamName(s.current) + ')') : base;
+  }).join('\n');
+  const anyOccupied = slots.some(s => s.occupied);
+  const header = anyOccupied ? 'Não há vagas livres — escolhe qual equipa substituir:' : 'Onde colocar esta equipa?';
+  const pick = prompt(header + '\n' + list + '\n\nEscreve o número:');
   const idx = parseInt(pick, 10) - 1;
   if(isNaN(idx) || !slots[idx]) return;
   const slot = slots[idx];
+  if(slot.occupied && !confirm('Isto vai substituir ' + teamName(slot.current) + ' por esta equipa nesse jogo. A equipa substituída volta a ficar por colocar. Continuar?')) return;
   await updateDoc(doc(matchesCol, slot.matchId), { [slot.field]: teamId });
 }
 

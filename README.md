@@ -63,6 +63,10 @@
 - **"+ Adicionar jogador (atraso na inscrição)" simplificado** — desapareceu o atalho direto para dentro da equipa; agora todo o jogador tardio entra primeiro no pool e o organizador usa o campo "Atribuir a..." para o colocar na equipa certa.
 - **"+ Jogador registado"** — novo botão para convidar alguém que já tem conta na plataforma mas não se inscreveu a tempo: o organizador pede-lhe o nickname e a tag (`nickname#XXXX`, que só o próprio jogador vê no perfil dele) e a app procura e adiciona-o ao pool.
 
+## Atualização — regenerar bracket e substituir equipas colocadas
+- **Regenerar bracket** — se ainda não houver nenhuma partida decidida, aparece na aba Bracket um botão para apagar a bracket atual e gerar uma nova já com todas as equipas prontas nesse momento (resolve o caso de teres começado o torneio cedo demais e faltarem equipas).
+- **Substituir equipa já colocada** — se não houver vagas livres (bracket já preenchida por completo) mas ainda houver partidas por decidir, "Colocar na bracket" passa a permitir escolher uma equipa já colocada num desses jogos e substituí-la — a equipa substituída volta automaticamente à lista de "por colocar".
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)
