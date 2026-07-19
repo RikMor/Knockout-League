@@ -57,6 +57,12 @@
 - **Séries BO totalmente automáticas** — se o torneio tem "pontos para vencer" definidos, o jogo termina sozinho assim que uma equipa lá chega (sem precisar de clicar em "Finalizar partida") e avança logo para o jogo seguinte da série, ou para a próxima ronda da bracket se a série já estiver decidida.
 - **Tag privada** — o `#XXXX` de cada jogador só aparece para ele próprio (no seu perfil e no canto da nav); deixou de aparecer nas equipas, no pool, na sala da partida e no admin.
 
+## Atualização — fim do jogo automático, gestão de equipas a qualquer momento, convite por tag
+- **Sala da partida**: removido o botão "Finalizar este jogo" do lado dos jogadores (o jogo já termina sozinho). No mesmo lugar, quando o confronto acaba, aparece "Ir para a próxima sala" (se houver) ou "Voltar à bracket" (se for a final). O organizador mantém, na sua área de configurações, um botão "Forçar fim do jogo" para os casos em que não haja pontos-alvo definidos ou seja preciso destrancar algo manualmente.
+- **Gestão de jogadores/equipas liberta da fase de inscrições** — atribuir um jogador do pool a uma equipa, tirar um jogador de uma equipa para o pool, adicionar jogador manual/bot, e adicionar um jogador já registado (por nickname + tag) já funcionam a qualquer momento, mesmo com o torneio a decorrer ou com as inscrições fechadas. "Eliminar equipa" continua só disponível antes da bracket ser gerada, para não desfazer partidas já em curso.
+- **"+ Adicionar jogador (atraso na inscrição)" simplificado** — desapareceu o atalho direto para dentro da equipa; agora todo o jogador tardio entra primeiro no pool e o organizador usa o campo "Atribuir a..." para o colocar na equipa certa.
+- **"+ Jogador registado"** — novo botão para convidar alguém que já tem conta na plataforma mas não se inscreveu a tempo: o organizador pede-lhe o nickname e a tag (`nickname#XXXX`, que só o próprio jogador vê no perfil dele) e a app procura e adiciona-o ao pool.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)

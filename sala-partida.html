@@ -124,10 +124,10 @@
         <button class="btn btn-sm btn-outline" id="rt-server-save" style="margin-top:8px;">Guardar</button>
         <p class="muted" id="rt-server-current" style="margin-top:10px;font-size:0.82rem;"></p>
 
-        <div id="rt-winner-section" style="display:none;margin-top:24px;border-top:1px solid var(--line);padding-top:20px;">
-          <h4>Finalizar este jogo</h4>
-          <p class="muted" id="rt-finalize-hint" style="margin-bottom:14px;font-size:0.8rem;text-align:center;"></p>
-          <div style="text-align:center;"><button class="btn btn-gold btn-sm" id="rt-finalize-btn">Finalizar partida</button></div>
+        <div id="rt-winner-section" style="display:none;margin-top:24px;border-top:1px solid var(--line);padding-top:20px;text-align:center;">
+          <h4 id="rt-done-title">Confronto terminado</h4>
+          <p style="margin-bottom:14px;font-weight:700;" id="rt-done-summary"></p>
+          <a id="rt-next-link" href="#"><button class="btn btn-accent btn-sm" id="rt-next-btn"></button></a>
         </div>
       </div>
     </div>
@@ -149,6 +149,7 @@
       <span class="muted">—</span>
       <input type="number" id="rt-score-b" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
       <button class="btn btn-outline btn-sm" id="rt-score-save">Guardar</button>
+      <button class="btn btn-gold btn-sm" id="rt-admin-force-finish">Forçar fim do jogo</button>
     </div>
   </div>
 </div>
@@ -451,11 +452,19 @@ function renderAll(){
   }
 
   const winSection = document.getElementById('rt-winner-section');
-  const canFinalize = (myCaptainTeam() || isAdmin()) && !finished && g.firstBanTeamId && mapPhaseDone;
-  winSection.style.display = canFinalize ? 'block' : 'none';
-  if(canFinalize){
-    document.getElementById('rt-finalize-hint').textContent = tournament.pointsToWin ? `O jogo termina automaticamente assim que uma equipa chegar aos ${tournament.pointsToWin} pontos. Usa isto só se precisares de forçar o fim antes disso.` : 'Finaliza quando o jogo chegar ao fim.';
-    document.getElementById('rt-finalize-btn').onclick = finalizeGame;
+  winSection.style.display = finished ? 'block' : 'none';
+  if(finished){
+    const wonName = teamName(match.winnerId);
+    document.getElementById('rt-done-summary').textContent = wonName + ' venceu este confronto (' + (match.gamesWonA||0) + ' — ' + (match.gamesWonB||0) + ')';
+    const nextBtn = document.getElementById('rt-next-btn');
+    const nextLink = document.getElementById('rt-next-link');
+    if(match.nextMatchId){
+      nextBtn.textContent = 'Ir para a próxima sala';
+      nextLink.href = 'sala-partida.html?t=' + tId + '&m=' + match.nextMatchId;
+    } else {
+      nextBtn.textContent = 'Voltar à bracket';
+      nextLink.href = 'torneio.html?id=' + tId;
+    }
   }
 
   const adminSection = document.getElementById('rt-admin-section');
@@ -478,6 +487,10 @@ function renderAll(){
       const a = document.getElementById('rt-score-a').value;
       const b = document.getElementById('rt-score-b').value;
       await updateDoc(matchRef, { 'currentGame.scoreA': a===''?0:Number(a), 'currentGame.scoreB': b===''?0:Number(b) });
+    };
+    document.getElementById('rt-admin-force-finish').onclick = function(){
+      if(!confirm('Forçar o fim deste jogo com a pontuação atual?')) return;
+      finalizeGame();
     };
   }
 }

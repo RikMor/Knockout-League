@@ -65,6 +65,7 @@
       <button class="btn btn-outline btn-sm" id="rps-btn">Pedra, papel, tesoura</button>
       <button class="btn btn-outline btn-sm" id="add-manual-btn">+ Jogador manual</button>
       <button class="btn btn-outline btn-sm" id="add-bot-btn">+ Bot</button>
+      <button class="btn btn-outline btn-sm" id="add-registered-btn">+ Jogador registado</button>
       <button class="btn btn-gold btn-sm" id="gen-bracket-btn">Começar torneio</button>
     </div>
 
@@ -481,7 +482,7 @@ function renderPool(){
     const row = document.createElement('div');
     row.className = 'pool-row';
     let controls = '';
-    if(isAdmin() && !bracketGenerated()){
+    if(isAdmin()){
       const teamOpts = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
       controls = `
         <button class="btn btn-sm btn-outline" data-cap="${p.id}">Tornar capitão</button>
@@ -567,22 +568,10 @@ function renderTeams(){
     }
     let joinBtn = (canJoinSelf && !full) ? `<button class="btn btn-sm btn-outline" data-jointeam="${t.id}" style="margin-top:8px;">Juntar-me a esta equipa</button>` : '';
     let delTeamBtn = (isAdmin() && !bracketGenerated()) ? `<button class="btn btn-sm btn-danger" data-delteam="${t.id}" style="margin-top:8px;margin-left:6px;">Eliminar equipa</button>` : '';
-    let lateAddBtn = (isAdmin() && bracketGenerated()) ? `<button class="btn btn-sm btn-outline" data-lateadd="${t.id}" style="margin-top:8px;">+ Adicionar jogador (atraso na inscrição)</button>` : '';
     card.innerHTML = `<h4>${t.name}</h4>${seedHtml}<p class="muted" style="font-size:0.78rem;margin-bottom:10px;">${tplayers.length}/${tournament.teamSize} jogadores</p>` +
-      tplayers.map(p => `<div class="player-row"><span>${playerLabel(p)}${p.isCaptain ? '<span class="cap-tag">CAPITÃO</span>' : ''}</span>${isAdmin() && !bracketGenerated() ? '<button class="btn btn-sm btn-danger" data-kickmember="'+p.id+'">Remover</button>' : ''}</div>`).join('') +
-      joinBtn + delTeamBtn + lateAddBtn;
+      tplayers.map(p => `<div class="player-row"><span>${playerLabel(p)}${p.isCaptain ? '<span class="cap-tag">CAPITÃO</span>' : ''}</span>${isAdmin() ? '<button class="btn btn-sm btn-danger" data-kickmember="'+p.id+'">Remover</button>' : ''}</div>`).join('') +
+      joinBtn + delTeamBtn;
     box.appendChild(card);
-  });
-
-  box.querySelectorAll('[data-lateadd]').forEach(btn=>{
-    btn.addEventListener('click', async function(){
-      const teamId = btn.dataset.lateadd;
-      const name = prompt('Nome do jogador a adicionar a esta equipa (entrada tardia):');
-      if(!name) return;
-      const pRef = await addDoc(playersCol, { uid: null, name, source: 'manual', isCaptain: false, teamId });
-      const team = teams.find(t=>t.id===teamId);
-      await updateDoc(doc(teamsCol, teamId), { players: [...(team.players||[]), pRef.id] });
-    });
   });
 
   box.querySelectorAll('[data-jointeam]').forEach(btn=>{
@@ -641,6 +630,24 @@ document.getElementById('add-bot-btn').addEventListener('click', async function(
   const name = prompt('Nome do bot:', 'Bot ' + (players.filter(p=>p.source==='bot').length + 1));
   if(!name) return;
   await addDoc(playersCol, { uid: null, name, source: 'bot', isCaptain: false, teamId: null });
+});
+
+document.getElementById('add-registered-btn').addEventListener('click', async function(){
+  const input = prompt('Nickname e tag do jogador (ex: ShadowBlade#A1B2) — pede-lhe para confirmar a tag no perfil dele:');
+  if(!input) return;
+  const parts = input.trim().split('#');
+  if(parts.length !== 2 || !parts[0] || !parts[1]){ alert('Formato inválido. Usa nickname#tag, ex: ShadowBlade#A1B2'); return; }
+  const nick = parts[0].trim();
+  const tag = parts[1].trim().toUpperCase();
+  try{
+    const q = query(collection(db,'users'), where('nicknameLower','==',nick.toLowerCase()));
+    const snap = await getDocs(q);
+    const found = snap.docs.find(d => (d.data().tag||'').toUpperCase() === tag);
+    if(!found){ alert('Não encontrei nenhum jogador com esse nickname e tag.'); return; }
+    const uid = found.id;
+    if(players.some(p => p.uid === uid)){ alert('Esse jogador já está neste torneio.'); return; }
+    await addDoc(playersCol, { uid, name: found.data().nickname, source: 'platform', isCaptain: false, teamId: null });
+  }catch(e){ alert('Erro: ' + e.message); }
 });
 
 document.getElementById('roulette-btn').addEventListener('click', async function(){
