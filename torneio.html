@@ -247,10 +247,11 @@ function isAdmin(){
 
 onAuthStateChanged(auth, async function(user){
   currentUser = user;
-  if(user && !user.isAnonymous){
+  if(user){
     try{ const s = await getDoc(doc(db,'users',user.uid)); if(s.exists()) currentUserData = s.data(); }catch(e){}
   }
   renderAll();
+  maybeAutoRedirect();
 });
 
 onSnapshot(tRef, function(snap){
@@ -258,10 +259,26 @@ onSnapshot(tRef, function(snap){
   tournament = { id: snap.id, ...snap.data() };
   renderHeader();
   renderAll();
+  maybeAutoRedirect();
 });
 onSnapshot(playersCol, function(snap){ players = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
 onSnapshot(teamsCol, function(snap){ teams = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
-onSnapshot(matchesCol, function(snap){ matches = snap.docs.map(d=>({id:d.id,...d.data()})); renderBracket(); });
+let autoRedirected = false;
+onSnapshot(matchesCol, function(snap){
+  matches = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderBracket();
+  maybeAutoRedirect();
+});
+
+function maybeAutoRedirect(){
+  if(autoRedirected || !currentUser || !tournament) return;
+  if(tournament.status !== 'em-curso') return;
+  const mine = matches.find(m => m.status !== 'terminado' && isInMatch(m));
+  if(mine){
+    autoRedirected = true;
+    window.location.href = 'sala-partida.html?t=' + tId + '&m=' + mine.id;
+  }
+}
 
 function renderHeader(){
   const badgeClass = tournament.visibility==='private' ? 'badge-private' : 'badge-open';
@@ -415,8 +432,8 @@ function renderJoinBox(){
   box.style.display='block';
   box.innerHTML = '<button class="btn btn-accent" id="join-tournament-btn">Entrar neste torneio</button>';
   document.getElementById('join-tournament-btn').addEventListener('click', async function(){
-    const nick = currentUser.isAnonymous ? 'Convidado' : (currentUserData?.nickname || currentUser.displayName || 'Jogador');
-    const tag = currentUser.isAnonymous ? '' : (currentUserData?.tag || '');
+    const nick = currentUserData?.nickname || currentUser.displayName || 'Jogador';
+    const tag = currentUserData?.tag || '';
     await addDoc(playersCol, { uid: currentUser.uid, name: nick, tag, source: 'platform', isCaptain: false, teamId: null });
   });
 }
@@ -800,8 +817,11 @@ async function generateBracket(readyTeams){
     await setDoc(doc(matchesCol, m.id), {
       round: m.round, matchIndex: m.matchIndex,
       teamAId: m.teamAId || null, teamBId: m.teamBId || null,
-      winnerId: null, mapsBanned: [], mapPicked: null, coinResult: null,
-      firstBanTeamId: null, firstBanMethod: null, scoreA: null, scoreB: null,
+      winnerId: null,
+      bestOf: tournament.bestOf || 1,
+      pointsToWin: tournament.pointsToWin || null,
+      gamesWonA: 0, gamesWonB: 0,
+      currentGame: { index: 0, firstBanTeamId: null, firstBanMethod: null, mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null },
       serverInfo: null, status: 'por-jogar',
       nextMatchId: m.nextMatchId || null, nextSlot: m.nextSlot || null
     });
@@ -829,9 +849,10 @@ function matchCardHtml(m){
   const aWin = m.winnerId && m.winnerId===m.teamAId;
   const bWin = m.winnerId && m.winnerId===m.teamBId;
   const playable = m.teamAId && m.teamBId && m.status !== 'terminado';
+  const showScore = m.bestOf > 1 || m.gamesWonA > 0 || m.gamesWonB > 0;
   return `<div class="match-card" data-match="${m.id}" style="cursor:pointer;">
-    <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId)}${m.scoreA!=null ? '<span class="score">'+m.scoreA+'</span>' : ''}</div>
-    <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId)}${m.scoreB!=null ? '<span class="score">'+m.scoreB+'</span>' : ''}</div>
+    <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId)}${showScore ? '<span class="score">'+(m.gamesWonA||0)+'</span>' : ''}</div>
+    <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId)}${showScore ? '<span class="score">'+(m.gamesWonB||0)+'</span>' : ''}</div>
     <div class="match-meta">${playable ? '🔓 Abrir lobby →' : m.status}</div>
   </div>`;
 }

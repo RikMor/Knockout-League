@@ -37,18 +37,16 @@ onAuthStateChanged(auth, async function (user) {
   let isAdmin = false;
   let tag = '';
 
-  if (!user.isAnonymous) {
-    try {
-      const snap = await getDoc(doc(db, 'users', user.uid));
-      if (snap.exists()) {
-        const data = snap.data();
-        nick = data.nickname || nick;
-        avatarUrl = data.avatarUrl || avatarUrl;
-        isAdmin = data.role === 'admin';
-        tag = data.tag || '';
-      }
-    } catch (e) { /* falha silenciosa */ }
-  }
+  try {
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if (snap.exists()) {
+      const data = snap.data();
+      nick = data.nickname || nick;
+      avatarUrl = data.avatarUrl || avatarUrl;
+      isAdmin = data.role === 'admin';
+      tag = data.tag || '';
+    }
+  } catch (e) { /* falha silenciosa */ }
 
   area.innerHTML =
     '<div class="nav-user-dd" id="nav-user-dd">' +

@@ -117,6 +117,21 @@
   </div>
 
   <div class="form-group">
+    <label>Melhor de quantas partidas</label>
+    <div class="pill-group" id="pill-bestof">
+      <div class="pill" data-v="1">BO1</div>
+      <div class="pill" data-v="3">BO3</div>
+      <div class="pill" data-v="5">BO5</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Pontos para vencer cada partida <span class="muted" style="text-transform:none;">(opcional)</span></label>
+    <input type="number" id="t-pointstowin" min="1" placeholder="Ex: 13 (deixa vazio para decidir manualmente no fim)"/>
+    <p class="form-hint">Se definires, os capitães sabem quando chegar a esse valor podem finalizar a partida. Se deixares vazio, decides tu quando terminar.</p>
+  </div>
+
+  <div class="form-group">
     <label>Como decidir quem começa</label>
     <div class="pill-group" id="pill-coin">
       <div class="pill" data-v="coin">Moeda ao ar</div>
@@ -159,6 +174,7 @@ bindPills('pill-visibility','public');
 bindPills('pill-assign','roulette');
 bindPills('pill-draft','organizer');
 bindPills('pill-coin','coin');
+bindPills('pill-bestof','1');
 bindPills('pill-layout','one-side');
 function selected(id){ var s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
 
@@ -262,6 +278,9 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const assignMode = selected('pill-assign');
   const draftMode = selected('pill-draft');
   const coinMethod = selected('pill-coin');
+  const bestOf = parseInt(selected('pill-bestof'), 10);
+  const pointsToWinRaw = document.getElementById('t-pointstowin').value;
+  const pointsToWin = pointsToWinRaw ? parseInt(pointsToWinRaw, 10) : null;
   const bracketLayout = bracketType === 'round-robin' ? 'one-side' : selected('pill-layout');
   const mapBanEnabled = document.getElementById('t-banmaps').checked;
   const creatorParticipates = document.getElementById('t-participo').checked;
@@ -278,7 +297,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
     const docRef = await addDoc(collection(db,'tournaments'), {
       name, game, teamSize, maxTeams, bracketType, bracketDrawMode, bracketLayout, visibility,
       inviteCode: visibility === 'private' ? genCode() : null,
-      assignMode, draftMode, coinMethod, mapBanEnabled, maps,
+      assignMode, draftMode, coinMethod, bestOf, pointsToWin, mapBanEnabled, maps,
       creatorUid: currentUser.uid, creatorParticipates, moderatorUids: [],
       status: 'inscricoes', draftTurn: 0,
       createdAt: serverTimestamp()

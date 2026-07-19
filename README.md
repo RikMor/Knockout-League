@@ -29,6 +29,19 @@
 - **`sala-partida.html`** (nova página, `?t=<id-torneio>&m=<id-partida>`) — sala própria de cada confronto, com as duas equipas lado a lado (avatar, nickname#tag, coroa no capitão) e o estado ao centro, inspirada em plataformas como a FACEIT. Reúne tudo o que já existia no modal antigo: quem bane primeiro, banir mapas, quem começa a jogar (moeda/dado/RPS), servidor, pontuação e declarar vencedor.
 - Os cartões da bracket e o destaque "A tua partida" já levam diretamente a esta sala em vez de abrirem um popup — assim que o organizador clica em "Começar torneio", as salas de todas as partidas já existem e são navegáveis de imediato.
 
+## Atualização — sequência da sala, séries BO1/BO3/BO5 e pontuação a duas confirmações
+- **Correção**: convidados já mostram o nickname escolhido (não mais "Convidado" fixo) em toda a plataforma — o bug estava em vários sítios a saltar a leitura do Firestore para contas anónimas.
+- **Redireccionamento automático** — assim que o organizador clica em "Começar torneio", cada jogador que já esteja na página do torneio é levado automaticamente para a sala da sua partida.
+- **Fluxo por fases na sala** (`sala-partida.html`), já não aparece tudo de uma vez:
+  1. **Quem começa** — um único botão, conforme o método escolhido pelo organizador (moeda/dado/pedra-papel-tesoura); o vencedor bane primeiro.
+  2. **Banir mapas** — só aparece depois da fase 1, um mapa de cada vez, à vez (só a equipa da vez consegue clicar).
+  3. **Servidor** — o organizador cola o IP/senha assim que o mapa estiver definido.
+  4. **Pontuação ao vivo** — dois botões grandes ("+1 ponto"), um por equipa, só visíveis aos capitães (ou ao organizador); **cada ponto só conta depois de os dois capitães confirmarem** (um propõe, o outro confirma clicando no mesmo botão).
+  5. **Finalizar partida** — os capitães (ou o organizador) fecham o jogo atual; se for um BO3/BO5 e a série ainda não estiver decidida, começa o jogo seguinte automaticamente, com a equipa que perdeu a decisão da fase 1 anterior a ganhar a vez de banir primeiro desta vez (sem repetir moeda/RPS). Em BO1, termina logo o confronto todo e avança a bracket.
+- **BO1/BO3/BO5 e pontos por jogo** — novas opções ao criar o torneio.
+- **"Configurar sala" do organizador** — dentro da própria sala da partida, secção só para quem gere o torneio, para forçar manualmente "quem começa" se a decisão automática falhar.
+- Os cartões da bracket voltaram a mostrar os **jogos ganhos da série** (2-0, 2-1, etc.) em vez da pontuação de um único jogo.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)
