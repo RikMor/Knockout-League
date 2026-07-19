@@ -93,7 +93,7 @@
     <div id="orphan-teams-box" style="margin-bottom:24px;"></div>
     <div id="regen-bracket-box" style="margin-bottom:24px;display:none;">
       <button class="btn btn-gold btn-sm" id="regen-bracket-btn">Regenerar bracket com todas as equipas atuais</button>
-      <p class="muted" style="font-size:0.8rem;margin-top:8px;">Nenhuma partida foi decidida ainda, por isso podes refazer a bracket do zero incluindo as equipas que faltavam.</p>
+      <p class="muted" id="regen-bracket-warn" style="font-size:0.8rem;margin-top:8px;"></p>
     </div>
     <div id="bracket-box"><p class="muted">A bracket ainda não foi gerada.</p></div>
   </div>
@@ -943,16 +943,32 @@ function renderMyMatch(){
 }
 
 function anyMatchStarted(){
-  return matches.some(m => m.status === 'terminado' || (m.currentGame && (m.currentGame.firstBanTeamId || (m.gamesWonA||0) > 0 || (m.gamesWonB||0) > 0)));
+  // ignora "byes" (partidas resolvidas automaticamente por falta de adversário) —
+  // só conta como "começada" uma partida real, com as duas equipas definidas
+  return matches.some(m => {
+    if(!m.teamAId || !m.teamBId) return false; // bye, não conta
+    return m.status === 'terminado' || (m.currentGame && (m.currentGame.firstBanTeamId || (m.gamesWonA||0) > 0 || (m.gamesWonB||0) > 0));
+  });
 }
 
 function renderRegenBox(){
   const box = document.getElementById('regen-bracket-box');
-  box.style.display = (isAdmin() && bracketGenerated() && !anyMatchStarted()) ? 'block' : 'none';
+  const btn = document.getElementById('regen-bracket-btn');
+  const warn = document.getElementById('regen-bracket-warn');
+  box.style.display = (isAdmin() && bracketGenerated()) ? 'block' : 'none';
+  if(anyMatchStarted()){
+    btn.className = 'btn btn-danger btn-sm';
+    btn.textContent = 'Reiniciar bracket (há resultados que se vão perder)';
+    warn.textContent = 'Atenção: já há partidas com resultados. Reiniciar apaga tudo e começa a bracket do zero.';
+  } else {
+    btn.className = 'btn btn-gold btn-sm';
+    btn.textContent = 'Regenerar bracket com todas as equipas atuais';
+    warn.textContent = 'Nenhuma partida foi decidida ainda, por isso podes refazer a bracket do zero incluindo as equipas que faltavam.';
+  }
 }
 
 document.getElementById('regen-bracket-btn').addEventListener('click', async function(){
-  if(anyMatchStarted()){ alert('Já há partidas em curso — não é seguro regenerar a bracket.'); return; }
+  const started = anyMatchStarted();
   const result = await autoAssignRemainingPool();
   if(result.skipped && unassignedPlayers().length > 0){
     alert('A atribuição é manual — atribui todos os jogadores do pool a uma equipa antes de regenerar.');
@@ -962,7 +978,12 @@ document.getElementById('regen-bracket-btn').addEventListener('click', async fun
   const freshTeams = teamsSnap.docs.map(d=>({id:d.id, ...d.data()}));
   const readyTeams = freshTeams.filter(t => (t.players||[]).length === tournament.teamSize);
   if(readyTeams.length < 2){ alert('Precisas de pelo menos 2 equipas completas.'); return; }
-  if(!confirm('Vais apagar a bracket atual e criar uma nova com as ' + readyTeams.length + ' equipas de momento prontas. Continuar?')) return;
+
+  const msg = started
+    ? 'Já há partidas com resultados registados. Reiniciar apaga TUDO (incluindo esses resultados) e cria uma bracket nova com as ' + readyTeams.length + ' equipas de momento prontas. De certeza?'
+    : 'Vais apagar a bracket atual e criar uma nova com as ' + readyTeams.length + ' equipas de momento prontas. Continuar?';
+  if(!confirm(msg)) return;
+  if(started && !confirm('Última confirmação: os resultados já registados vão desaparecer. Continuar mesmo assim?')) return;
 
   const oldMatches = await getDocs(matchesCol);
   for(const d of oldMatches.docs) await deleteDoc(d.ref);

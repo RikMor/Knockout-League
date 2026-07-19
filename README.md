@@ -67,6 +67,10 @@
 - **Regenerar bracket** — se ainda não houver nenhuma partida decidida, aparece na aba Bracket um botão para apagar a bracket atual e gerar uma nova já com todas as equipas prontas nesse momento (resolve o caso de teres começado o torneio cedo demais e faltarem equipas).
 - **Substituir equipa já colocada** — se não houver vagas livres (bracket já preenchida por completo) mas ainda houver partidas por decidir, "Colocar na bracket" passa a permitir escolher uma equipa já colocada num desses jogos e substituí-la — a equipa substituída volta automaticamente à lista de "por colocar".
 
+## Atualização — regenerar bracket corrigido (byes já não bloqueiam)
+- **Bug corrigido**: uma "bye" (equipa que passa sozinha à ronda seguinte por falta de adversário) ficava marcada como "partida terminada", o que bloqueava o botão de regenerar mesmo sem nenhum resultado real. Agora só contam partidas verdadeiras (com as duas equipas definidas).
+- **Botão sempre visível ao organizador** — em vez de desaparecer assim que há qualquer resultado, o botão "Regenerar/Reiniciar bracket" fica sempre disponível; muda de texto e cor (aviso a vermelho) quando já existem resultados reais que se vão perder, com uma confirmação extra nesse caso.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)
