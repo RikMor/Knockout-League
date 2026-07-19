@@ -218,7 +218,7 @@ window._fbRegister=async function(d){
 window._fbGuest=async function(nick){
   setBtn('guest-btn',true,'A entrar...');
   try{
-    await setPersistence(auth,browserSessionPersistence);
+    await setPersistence(auth,browserLocalPersistence);
     var cred=await signInAnonymously(auth);
     var uid=cred.user.uid;
     await setDoc(doc(db,'users',uid),{name:'Utilizador Convidado',nickname:nick,nicknameLower:nick.toLowerCase(),tag:genTag(),email:'',avatarUrl:'',isGuest:true,role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},createdAt:new Date().toISOString()});

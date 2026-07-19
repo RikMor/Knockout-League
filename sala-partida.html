@@ -9,14 +9,15 @@
   .room-team-name { font-family: 'Anton'; font-size: 1.5rem; }
   .room-team-name.right { text-align: right; }
   .room-status-box { text-align: center; flex-shrink: 0; }
-  .room-status-pill { font-family: 'IBM Plex Mono'; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; border: 1px solid var(--ink); padding: 5px 14px; display: inline-block; margin-bottom: 6px; }
+  .room-status-pill { font-family: 'IBM Plex Mono'; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; border: 1px solid var(--ink); padding: 5px 14px; display: inline-block; margin-bottom: 8px; }
   .room-status-pill.live { border-color: var(--accent); color: var(--accent); }
   .room-status-pill.done { border-color: var(--win); color: var(--win); }
-  .room-format { font-family: 'IBM Plex Mono'; font-size: 0.68rem; color: var(--muted); letter-spacing: 1px; }
+  .room-format { font-family: 'IBM Plex Mono'; font-size: 0.68rem; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; }
+  .room-bo-line { font-family: 'IBM Plex Mono'; font-size: 0.68rem; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; }
+  .room-games-line { font-family: 'Anton'; font-size: 1.3rem; }
 
-  .room-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
-  .room-col { padding: 24px 5vw; border-right: 1px solid var(--line); }
-  .room-col:last-child { border-right: none; }
+  .room-layout { display: grid; grid-template-columns: 1fr 380px 1fr; }
+  .room-col { padding: 24px 5vw; }
   .room-col.right { text-align: right; }
   .room-player { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
   .room-col.right .room-player { flex-direction: row-reverse; }
@@ -26,10 +27,34 @@
   .room-player-name { font-weight: 700; font-size: 0.92rem; display: flex; align-items: center; gap: 6px; }
   .room-col.right .room-player-name { flex-direction: row-reverse; }
 
+  .room-center { padding: 24px 22px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+  .room-center h4 { font-family: 'IBM Plex Mono'; font-size: 0.68rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; text-align: center; }
+
+  .map-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 4px; border-bottom: 1px solid var(--line); font-size: 0.9rem; }
+  .map-row:last-child { border-bottom: none; }
+  .map-row-name { font-weight: 700; }
+  .map-row.banned .map-row-name { text-decoration: line-through; color: var(--muted); font-weight: 400; }
+  .map-row.picked .map-row-name { color: var(--gold); }
+  .map-ban-link { color: var(--accent); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; background: none; border: none; }
+  .map-ban-link:disabled { color: var(--muted); cursor: default; }
+
+  .rps-row { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+  .rps-btn { width: 52px; height: 52px; border: 1px solid var(--line); background: var(--surface); font-size: 1.4rem; cursor: pointer; }
+  .rps-btn:hover { border-color: var(--accent); }
+  .rps-btn.chosen { border-color: var(--gold); background: rgba(232,185,59,0.12); }
+
   .room-section { padding: 32px 5vw; border-top: 1px solid var(--line); }
   .room-section h3 { font-family: 'IBM Plex Mono'; font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  .score-server-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
   .not-found { text-align: center; padding: 100px 20px; }
-  @media(max-width:800px){ .room-teams{grid-template-columns:1fr;} .room-col{border-right:none;border-bottom:1px solid var(--line);} .room-col.right{text-align:left;} .room-col.right .room-player, .room-col.right .room-player-name{flex-direction:row;} }
+
+  @media(max-width:900px){
+    .room-layout { grid-template-columns: 1fr; }
+    .room-center { border-left: none; border-right: none; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .room-col.right { text-align: left; }
+    .room-col.right .room-player, .room-col.right .room-player-name { flex-direction: row; }
+    .score-server-grid { grid-template-columns: 1fr; gap: 24px; }
+  }
 </style>
 </head>
 <body>
@@ -54,84 +79,77 @@
     <div class="room-status-box">
       <div class="room-status-pill" id="rt-status">—</div>
       <div class="room-format" id="rt-format"></div>
+      <div class="room-bo-line" id="rt-bo-label"></div>
+      <div class="room-games-line"><span id="rt-games-a">0</span> <span class="muted" style="font-family:'Inter';font-size:0.9rem;">—</span> <span id="rt-games-b">0</span></div>
     </div>
     <div class="room-team-name right" id="rt-name-b">—</div>
   </div>
 
-  <div class="room-teams">
+  <div class="room-layout">
     <div class="room-col" id="rt-players-a"></div>
+
+    <div class="room-center">
+      <div id="rt-firstban-section">
+        <h4>Quem começa (bane primeiro)</h4>
+        <div id="rt-firstban-area"></div>
+      </div>
+
+      <div id="rt-maps-section" style="display:none;margin-top:26px;">
+        <h4>Banir mapas <span id="rt-ban-turn"></span></h4>
+        <div id="rt-maps"></div>
+        <p class="muted" id="rt-map-picked" style="margin-top:12px;font-size:0.85rem;text-align:center;"></p>
+      </div>
+    </div>
+
     <div class="room-col right" id="rt-players-b"></div>
   </div>
 
-  <div class="room-section">
-    <h3>Série <span id="rt-bo-label"></span> — Jogo <span id="rt-game-index"></span></h3>
-    <div style="display:flex;gap:10px;font-family:'Anton';font-size:1.5rem;justify-content:center;margin-bottom:6px;">
-      <span id="rt-games-a">0</span><span class="muted" style="font-family:'Inter';">jogos —</span><span id="rt-games-b">0</span>
-    </div>
-  </div>
-
-  <!-- FASE 1: quem começa -->
-  <div class="room-section" id="rt-firstban-section">
-    <h3>Fase 1 — Quem começa (bane primeiro)</h3>
-    <div id="rt-firstban-area"></div>
-  </div>
-
-  <!-- FASE 2: banir mapas -->
-  <div class="room-section" id="rt-maps-section" style="display:none;">
-    <h3>Fase 2 — Banir mapas <span id="rt-ban-turn" class="muted" style="text-transform:none;font-family:'Inter';font-weight:600;"></span></h3>
-    <div class="pill-group" id="rt-maps"></div>
-    <p class="muted" id="rt-map-picked" style="margin-top:12px;font-size:0.9rem;"></p>
-  </div>
-
-  <!-- FASE 3: servidor -->
-  <div class="room-section" id="rt-server-section" style="display:none;">
-    <h3>Servidor / forma de entrar no jogo</h3>
-    <input type="text" id="rt-server-input" placeholder="Ex: IP 123.45.6.7:27015, senha knockout" style="width:100%;max-width:480px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
-    <button class="btn btn-sm btn-outline" id="rt-server-save" style="margin-top:8px;">Guardar</button>
-    <p class="muted" id="rt-server-current" style="margin-top:10px;font-size:0.85rem;"></p>
-  </div>
-
-  <!-- FASE 4: pontuação -->
-  <div class="room-section" id="rt-score-section" style="display:none;">
-    <h3>Fase 3 — Pontuação ao vivo <span class="muted" style="text-transform:none;font-family:'Inter';">— os dois capitães têm de confirmar cada ponto</span></h3>
-    <div style="display:flex;gap:30px;align-items:center;justify-content:center;margin-bottom:18px;flex-wrap:wrap;">
-      <div style="text-align:center;">
-        <div style="font-family:'Anton';font-size:2.4rem;" id="rt-cur-score-a">0</div>
-        <button class="btn btn-accent btn-sm" id="rt-point-a">+1 ponto — <span id="rt-team-a-btn-name"></span></button>
+  <div class="room-section" id="rt-score-server-section" style="display:none;">
+    <div class="score-server-grid">
+      <div>
+        <h3>Pontuação ao vivo <span class="muted" style="text-transform:none;font-family:'Inter';font-weight:400;font-size:0.78rem;">— os dois capitães confirmam cada ponto</span></h3>
+        <div style="display:flex;gap:30px;align-items:center;justify-content:center;margin-bottom:14px;flex-wrap:wrap;">
+          <div style="text-align:center;">
+            <div style="font-family:'Anton';font-size:2.4rem;" id="rt-cur-score-a">0</div>
+            <button class="btn btn-accent btn-sm" id="rt-point-a">+1 — <span id="rt-team-a-btn-name"></span></button>
+          </div>
+          <div class="muted" style="font-family:'Anton';font-size:1.4rem;">—</div>
+          <div style="text-align:center;">
+            <div style="font-family:'Anton';font-size:2.4rem;" id="rt-cur-score-b">0</div>
+            <button class="btn btn-accent btn-sm" id="rt-point-b">+1 — <span id="rt-team-b-btn-name"></span></button>
+          </div>
+        </div>
+        <p class="muted" id="rt-pending-msg" style="text-align:center;min-height:1.2em;font-size:0.85rem;"></p>
       </div>
-      <div class="muted" style="font-family:'Anton';font-size:1.4rem;">—</div>
-      <div style="text-align:center;">
-        <div style="font-family:'Anton';font-size:2.4rem;" id="rt-cur-score-b">0</div>
-        <button class="btn btn-accent btn-sm" id="rt-point-b">+1 ponto — <span id="rt-team-b-btn-name"></span></button>
-      </div>
-    </div>
-    <p class="muted" id="rt-pending-msg" style="text-align:center;min-height:1.2em;"></p>
-    <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:16px;">
-      <p class="muted" style="font-size:0.78rem;margin-bottom:8px;">Correção manual (organizador):</p>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <input type="number" id="rt-score-a" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
-        <span class="muted">—</span>
-        <input type="number" id="rt-score-b" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
-        <button class="btn btn-outline btn-sm" id="rt-score-save">Guardar</button>
+      <div>
+        <h3>Servidor / forma de entrar no jogo</h3>
+        <input type="text" id="rt-server-input" placeholder="Ex: IP 123.45.6.7:27015, senha knockout" style="width:100%;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+        <button class="btn btn-sm btn-outline" id="rt-server-save" style="margin-top:8px;">Guardar</button>
+        <p class="muted" id="rt-server-current" style="margin-top:10px;font-size:0.85rem;"></p>
       </div>
     </div>
   </div>
 
-  <!-- FASE 5: finalizar -->
   <div class="room-section" id="rt-winner-section" style="display:none;">
     <h3>Finalizar este jogo</h3>
     <p class="muted" id="rt-finalize-hint" style="margin-bottom:14px;"></p>
     <button class="btn btn-gold" id="rt-finalize-btn">Finalizar partida</button>
   </div>
 
-  <!-- ORGANIZADOR: definições avançadas -->
-  <div class="room-section" id="rt-admin-override-section" style="display:none;background:rgba(232,90,54,0.04);">
-    <h3>Configurar sala (organizador) — se algo correr mal</h3>
-    <p class="muted" style="font-size:0.82rem;margin-bottom:12px;">Substitui manualmente quem bane primeiro nesta fase, se a decisão automática tiver falhado.</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+  <div class="room-section" id="rt-admin-section" style="display:none;background:rgba(232,90,54,0.04);">
+    <h3>Configurar sala (organizador)</h3>
+    <p class="muted" style="font-size:0.82rem;margin-bottom:12px;">Se algo correr mal, força aqui manualmente quem bane primeiro, ou corrige a pontuação.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
       <button class="btn btn-sm btn-outline" data-adminfb="A">Forçar: <span id="rt-admin-team-a"></span> bane primeiro</button>
       <button class="btn btn-sm btn-outline" data-adminfb="B">Forçar: <span id="rt-admin-team-b"></span> bane primeiro</button>
       <button class="btn btn-sm btn-danger" id="rt-admin-fb-reset">Redefinir decisão</button>
+    </div>
+    <p class="muted" style="font-size:0.78rem;margin-bottom:8px;">Corrigir pontuação manualmente:</p>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <input type="number" id="rt-score-a" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
+      <span class="muted">—</span>
+      <input type="number" id="rt-score-b" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
+      <button class="btn btn-outline btn-sm" id="rt-score-save">Guardar</button>
     </div>
   </div>
 </div>
@@ -165,12 +183,25 @@ function isAdmin(){
 }
 function teamById(id){ return teams.find(t=>t.id===id); }
 function teamName(id){ const t = teamById(id); return t ? t.name : (id ? '—' : 'A definir'); }
-function isInMatch(){
-  if(!currentUser || !match) return false;
-  const a = (teamById(match.teamAId)?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
-  const b = (teamById(match.teamBId)?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
-  return a.includes(currentUser.uid) || b.includes(currentUser.uid);
+function myTeamId(){
+  if(!currentUser || !match) return null;
+  const teamA = teamById(match.teamAId), teamB = teamById(match.teamBId);
+  const uidsA = (teamA?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
+  const uidsB = (teamB?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
+  if(uidsA.includes(currentUser.uid)) return match.teamAId;
+  if(uidsB.includes(currentUser.uid)) return match.teamBId;
+  return null;
 }
+function myCaptainTeam(){
+  if(!currentUser || !match) return null;
+  const teamA = teamById(match.teamAId), teamB = teamById(match.teamBId);
+  const capA = players.find(p => p.id === teamA?.captainPlayerId);
+  const capB = players.find(p => p.id === teamB?.captainPlayerId);
+  if(capA && capA.uid === currentUser.uid) return 'A';
+  if(capB && capB.uid === currentUser.uid) return 'B';
+  return null;
+}
+function isInMatch(){ return !!myTeamId(); }
 function canManage(){ return isAdmin() || isInMatch(); }
 
 onAuthStateChanged(auth, async function(user){
@@ -207,25 +238,43 @@ function renderTeamCol(elId, teamId){
   }).join('') || '<p class="muted">Sem jogadores.</p>';
 }
 
-function myTeamId(){
-  if(!currentUser) return null;
-  const teamA = teamById(match.teamAId), teamB = teamById(match.teamBId);
-  const uidsA = (teamA?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
-  const uidsB = (teamB?.players||[]).map(pid=>players.find(p=>p.id===pid)?.uid);
-  if(uidsA.includes(currentUser.uid)) return match.teamAId;
-  if(uidsB.includes(currentUser.uid)) return match.teamBId;
-  return null;
+async function decideFirstBan(){
+  const g = match.currentGame;
+  if(tournament.coinMethod === 'dice'){
+    const value = 1 + Math.floor(Math.random()*6);
+    const winnerTeam = value % 2 === 0 ? match.teamAId : match.teamBId;
+    await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'dado (' + value + ')' });
+  } else if(tournament.coinMethod === 'rps'){
+    // tratado à parte, via escolhas dos dois lados — ver renderFirstBan
+  } else {
+    const winnerTeam = Math.random()<0.5 ? match.teamAId : match.teamBId;
+    await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'moeda ao ar' });
+  }
 }
 
-function myCaptainTeam(){
-  // devolve 'A' ou 'B' se o utilizador atual for capitão de uma das equipas desta partida, senão null
-  if(!currentUser) return null;
-  const teamA = teamById(match.teamAId), teamB = teamById(match.teamBId);
-  const capA = players.find(p => p.id === teamA?.captainPlayerId);
-  const capB = players.find(p => p.id === teamB?.captainPlayerId);
-  if(capA && capA.uid === currentUser.uid) return 'A';
-  if(capB && capB.uid === currentUser.uid) return 'B';
-  return null;
+const RPS_BEATS = { pedra: 'tesoura', tesoura: 'papel', papel: 'pedra' };
+async function chooseRps(mySide, jogada){
+  const g = match.currentGame;
+  const field = mySide === 'A' ? 'currentGame.rpsChoiceA' : 'currentGame.rpsChoiceB';
+  await updateDoc(matchRef, { [field]: jogada });
+  const otherChoice = mySide === 'A' ? g.rpsChoiceB : g.rpsChoiceA;
+  const myChoice = jogada;
+  if(otherChoice){
+    let winnerSide;
+    if(otherChoice === myChoice){ winnerSide = null; }
+    else if(RPS_BEATS[myChoice] === otherChoice){ winnerSide = mySide; }
+    else { winnerSide = mySide === 'A' ? 'B' : 'A'; }
+
+    if(winnerSide){
+      const winnerTeam = winnerSide === 'A' ? match.teamAId : match.teamBId;
+      await updateDoc(matchRef, {
+        'currentGame.firstBanTeamId': winnerTeam,
+        'currentGame.firstBanMethod': 'pedra, papel, tesoura'
+      });
+    } else {
+      await updateDoc(matchRef, { 'currentGame.rpsChoiceA': null, 'currentGame.rpsChoiceB': null });
+    }
+  }
 }
 
 async function addPoint(team){
@@ -236,13 +285,12 @@ async function addPoint(team){
   if(!pending){
     update['currentGame.pending'] = { team, proposedBy: myUid };
   } else if(pending.team === team && pending.proposedBy !== myUid){
-    // confirmado pelo outro capitão
     const field = team === 'A' ? 'currentGame.scoreA' : 'currentGame.scoreB';
     const current = team === 'A' ? (g.scoreA||0) : (g.scoreB||0);
     update[field] = current + 1;
     update['currentGame.pending'] = null;
   } else if(pending.team === team && pending.proposedBy === myUid){
-    return; // já proposto por ti, à espera do outro capitão
+    return;
   } else {
     update['currentGame.pending'] = { team, proposedBy: myUid };
   }
@@ -269,8 +317,46 @@ async function finalizeGame(){
     const nextFirstBan = g.firstBanTeamId === match.teamAId ? match.teamBId : match.teamAId;
     await updateDoc(matchRef, {
       gamesWonA: newGamesWonA, gamesWonB: newGamesWonB,
-      currentGame: { index: (g.index||0)+1, firstBanTeamId: nextFirstBan, firstBanMethod: 'prioridade automática (perdeu o jogo anterior)', mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null }
+      currentGame: { index: (g.index||0)+1, firstBanTeamId: nextFirstBan, firstBanMethod: 'prioridade automática (perdeu o jogo anterior)', mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null }
     });
+  }
+}
+
+function renderFirstBan(g, manage, finished, ready){
+  const fbArea = document.getElementById('rt-firstban-area');
+  const coinLabels = { dice: 'Lançar dado', coin: 'Lançar moeda' };
+
+  if(g.firstBanTeamId){
+    fbArea.innerHTML = `<p style="text-align:center;font-weight:700;">${teamName(g.firstBanTeamId)} começa</p><p class="muted" style="text-align:center;font-size:0.8rem;">${g.firstBanMethod||''}</p>`;
+    return;
+  }
+  if(!manage || finished || !ready){ fbArea.innerHTML = '<p class="muted" style="text-align:center;">Ainda por decidir.</p>'; return; }
+
+  if(tournament.coinMethod === 'rps'){
+    const mySide = myCaptainTeam();
+    const myChoice = mySide === 'A' ? g.rpsChoiceA : (mySide === 'B' ? g.rpsChoiceB : null);
+    const otherWaiting = (g.rpsChoiceA && !g.rpsChoiceB) || (!g.rpsChoiceA && g.rpsChoiceB);
+    let html = '<p class="muted" style="text-align:center;font-size:0.82rem;margin-bottom:8px;">Os capitães jogam pedra, papel, tesoura um contra o outro.</p>';
+    if(!mySide){
+      html += `<p class="muted" style="text-align:center;">${otherWaiting ? 'Um capitão já escolheu — à espera do outro...' : 'À espera dos dois capitães.'}</p>`;
+    } else if(myChoice){
+      html += `<p style="text-align:center;">A tua escolha: <strong>${myChoice}</strong> — à espera do outro capitão...</p>`;
+    } else {
+      html += `<div class="rps-row">
+        <button class="rps-btn" data-rps="pedra">🪨</button>
+        <button class="rps-btn" data-rps="papel">📄</button>
+        <button class="rps-btn" data-rps="tesoura">✂️</button>
+      </div><p class="muted" style="text-align:center;font-size:0.75rem;margin-top:6px;">Pedra / Papel / Tesoura</p>`;
+    }
+    fbArea.innerHTML = html;
+    if(mySide && !myChoice){
+      fbArea.querySelectorAll('[data-rps]').forEach(btn=>{
+        btn.addEventListener('click', ()=> chooseRps(mySide, btn.dataset.rps));
+      });
+    }
+  } else {
+    fbArea.innerHTML = `<div style="text-align:center;"><button class="btn btn-accent btn-sm" id="rt-decide-btn">${coinLabels[tournament.coinMethod] || 'Decidir'}</button></div>`;
+    document.getElementById('rt-decide-btn').addEventListener('click', decideFirstBan);
   }
 }
 
@@ -284,9 +370,7 @@ function renderAll(){
   const statusPill = document.getElementById('rt-status');
   statusPill.textContent = match.status === 'terminado' ? 'Terminado' : (match.status === 'lobby' ? 'Lobby' : (match.teamAId && match.teamBId ? 'Por jogar' : 'À espera'));
   statusPill.className = 'room-status-pill' + (match.status==='terminado' ? ' done' : (match.teamAId && match.teamBId ? ' live' : ''));
-
-  document.getElementById('rt-bo-label').textContent = 'BO' + (match.bestOf||1);
-  document.getElementById('rt-game-index').textContent = (g.index||0) + 1;
+  document.getElementById('rt-bo-label').textContent = 'BO' + (match.bestOf||1) + ' · Jogo ' + ((g.index||0)+1);
   document.getElementById('rt-games-a').textContent = match.gamesWonA || 0;
   document.getElementById('rt-games-b').textContent = match.gamesWonB || 0;
 
@@ -297,25 +381,8 @@ function renderAll(){
   const finished = match.status === 'terminado';
   const ready = match.teamAId && match.teamBId;
 
-  // FASE 1 — quem começa
-  const fbArea = document.getElementById('rt-firstban-area');
-  const coinLabels = { dice: 'Lançar dado', rps: 'Jogar pedra, papel, tesoura', coin: 'Lançar moeda' };
-  if(g.firstBanTeamId){
-    fbArea.innerHTML = `<p class="coin-result">${teamName(g.firstBanTeamId)} começa ${tournament.mapBanEnabled ? '(vai banir primeiro)' : ''} <span class="muted">— ${g.firstBanMethod||''}</span></p>`;
-  } else if(manage && !finished && ready){
-    fbArea.innerHTML = `<button class="btn btn-accent btn-sm" id="rt-decide-btn">${coinLabels[tournament.coinMethod] || 'Decidir'}</button>`;
-    document.getElementById('rt-decide-btn').addEventListener('click', async function(){
-      let winnerTeam, value = null, jogada = null;
-      if(tournament.coinMethod === 'dice'){ value = 1 + Math.floor(Math.random()*6); winnerTeam = value % 2 === 0 ? match.teamAId : match.teamBId; }
-      else if(tournament.coinMethod === 'rps'){ const j=['Pedra','Papel','Tesoura']; jogada = j[Math.floor(Math.random()*3)]; winnerTeam = Math.random()<0.5 ? match.teamAId : match.teamBId; }
-      else { winnerTeam = Math.random()<0.5 ? match.teamAId : match.teamBId; }
-      await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': (tournament.coinMethod==='dice'?'dado':tournament.coinMethod==='rps'?'pedra, papel, tesoura':'moeda ao ar') });
-    });
-  } else {
-    fbArea.innerHTML = '<p class="muted">Ainda por decidir.</p>';
-  }
+  renderFirstBan(g, manage, finished, ready);
 
-  // FASE 2 — banir mapas (só depois da fase 1, só se ativo no torneio)
   const mapsSection = document.getElementById('rt-maps-section');
   const available = (tournament.maps||[]).filter(m => !(g.mapsBanned||[]).includes(m));
   const mapPhaseActive = g.firstBanTeamId && tournament.mapBanEnabled && available.length > 1;
@@ -328,88 +395,80 @@ function renderAll(){
     const mapsEl = document.getElementById('rt-maps');
     mapsEl.innerHTML = (tournament.maps||[]).map(map=>{
       const banned = (g.mapsBanned||[]).includes(map);
-      return `<div class="pill ${banned?'banned':''}" data-map="${map}">${map}</div>`;
+      const isThePick = available.length === 1 && available[0] === map;
+      const canClickThis = canBan && mapPhaseActive && !banned;
+      return `<div class="map-row ${banned?'banned':''} ${isThePick?'picked':''}">
+        <span class="map-row-name">${map}${isThePick?' ✓':''}</span>
+        ${canClickThis ? '<button class="map-ban-link" data-map="'+map+'">Banir</button>' : (banned ? '<span class="map-ban-link" disabled>Banido</span>' : '')}
+      </div>`;
     }).join('');
     document.getElementById('rt-map-picked').textContent = available.length === 1 ? ('Mapa escolhido: ' + available[0]) : '';
-    if(canBan && mapPhaseActive){
-      mapsEl.querySelectorAll('[data-map]').forEach(p=>{
-        p.addEventListener('click', async function(){
-          if((g.mapsBanned||[]).includes(p.dataset.map)) return;
-          await updateDoc(matchRef, { 'currentGame.mapsBanned': [...(g.mapsBanned||[]), p.dataset.map] });
-        });
+    mapsEl.querySelectorAll('[data-map]').forEach(btn=>{
+      btn.addEventListener('click', async function(){
+        await updateDoc(matchRef, { 'currentGame.mapsBanned': [...(g.mapsBanned||[]), btn.dataset.map] });
       });
-    }
+    });
   }
 
   const mapPhaseDone = !tournament.mapBanEnabled || (g.firstBanTeamId && available.length <= 1);
 
-  // FASE 3 — servidor (visível ao organizador a partir daqui)
-  document.getElementById('rt-server-section').style.display = (g.firstBanTeamId && mapPhaseDone) ? 'block' : 'none';
-  document.getElementById('rt-server-current').textContent = match.serverInfo ? ('Atual: ' + match.serverInfo.value) : 'Ainda não definido.';
-  document.getElementById('rt-server-input').style.display = isAdmin() ? 'block' : 'none';
-  document.getElementById('rt-server-save').style.display = isAdmin() ? 'inline-flex' : 'none';
-  document.getElementById('rt-server-save').onclick = async function(){
-    const v = document.getElementById('rt-server-input').value.trim();
-    if(!v) return;
-    await updateDoc(matchRef, { serverInfo: { value: v }, status: 'lobby' });
-    document.getElementById('rt-server-input').value = '';
-  };
-
-  // FASE 4 — pontuação (só depois dos mapas resolvidos)
-  const scoreSection = document.getElementById('rt-score-section');
-  scoreSection.style.display = (g.firstBanTeamId && mapPhaseDone && !finished) ? 'block' : 'none';
+  const scoreServerSection = document.getElementById('rt-score-server-section');
+  scoreServerSection.style.display = (g.firstBanTeamId && mapPhaseDone) ? 'block' : 'none';
   if(g.firstBanTeamId && mapPhaseDone){
     document.getElementById('rt-cur-score-a').textContent = g.scoreA || 0;
     document.getElementById('rt-cur-score-b').textContent = g.scoreB || 0;
     document.getElementById('rt-team-a-btn-name').textContent = teamName(match.teamAId);
     document.getElementById('rt-team-b-btn-name').textContent = teamName(match.teamBId);
     const myCap = myCaptainTeam();
-    document.getElementById('rt-point-a').style.display = (myCap || isAdmin()) && !finished ? 'inline-flex' : 'none';
-    document.getElementById('rt-point-b').style.display = (myCap || isAdmin()) && !finished ? 'inline-flex' : 'none';
+    document.getElementById('rt-point-a').style.display = (myCap && !finished) ? 'inline-flex' : 'none';
+    document.getElementById('rt-point-b').style.display = (myCap && !finished) ? 'inline-flex' : 'none';
     document.getElementById('rt-point-a').onclick = () => addPoint('A');
     document.getElementById('rt-point-b').onclick = () => addPoint('B');
     const pendingMsg = document.getElementById('rt-pending-msg');
     if(g.pending){
-      const teamName_ = g.pending.team === 'A' ? teamName(match.teamAId) : teamName(match.teamBId);
-      pendingMsg.textContent = `Ponto proposto para ${teamName_} — à espera de confirmação do outro capitão.`;
+      const nm = g.pending.team === 'A' ? teamName(match.teamAId) : teamName(match.teamBId);
+      pendingMsg.textContent = `Ponto proposto para ${nm} — à espera de confirmação do outro capitão.`;
     } else { pendingMsg.textContent = ''; }
 
-    document.getElementById('rt-score-a').value = g.scoreA ?? 0;
-    document.getElementById('rt-score-b').value = g.scoreB ?? 0;
-    document.getElementById('rt-score-a').disabled = !isAdmin();
-    document.getElementById('rt-score-b').disabled = !isAdmin();
-    document.getElementById('rt-score-save').style.display = isAdmin() ? 'inline-flex' : 'none';
-    document.getElementById('rt-score-save').onclick = async function(){
-      const a = document.getElementById('rt-score-a').value;
-      const b = document.getElementById('rt-score-b').value;
-      await updateDoc(matchRef, { 'currentGame.scoreA': a===''?0:Number(a), 'currentGame.scoreB': b===''?0:Number(b) });
+    document.getElementById('rt-server-current').textContent = match.serverInfo ? ('Atual: ' + match.serverInfo.value) : 'Ainda não definido.';
+    document.getElementById('rt-server-input').style.display = isAdmin() ? 'block' : 'none';
+    document.getElementById('rt-server-save').style.display = isAdmin() ? 'inline-flex' : 'none';
+    document.getElementById('rt-server-save').onclick = async function(){
+      const v = document.getElementById('rt-server-input').value.trim();
+      if(!v) return;
+      await updateDoc(matchRef, { serverInfo: { value: v }, status: 'lobby' });
+      document.getElementById('rt-server-input').value = '';
     };
   }
 
-  // FASE 5 — finalizar jogo
   const winSection = document.getElementById('rt-winner-section');
   const canFinalize = (myCaptainTeam() || isAdmin()) && !finished && g.firstBanTeamId && mapPhaseDone;
   winSection.style.display = canFinalize ? 'block' : 'none';
   if(canFinalize){
-    const hint = tournament.pointsToWin ? `Quando uma equipa chegar aos ${tournament.pointsToWin} pontos, finaliza este jogo.` : 'Finaliza quando o jogo chegar ao fim.';
-    document.getElementById('rt-finalize-hint').textContent = hint;
+    document.getElementById('rt-finalize-hint').textContent = tournament.pointsToWin ? `Quando uma equipa chegar aos ${tournament.pointsToWin} pontos, finaliza este jogo.` : 'Finaliza quando o jogo chegar ao fim.';
     document.getElementById('rt-finalize-btn').onclick = finalizeGame;
   }
 
-  // ORGANIZADOR — configurar sala / substituir decisão da fase 1
-  const overrideSection = document.getElementById('rt-admin-override-section');
-  overrideSection.style.display = isAdmin() && !finished && ready ? 'block' : 'none';
-  if(isAdmin()){
+  const adminSection = document.getElementById('rt-admin-section');
+  adminSection.style.display = (isAdmin() && !finished && ready) ? 'block' : 'none';
+  if(isAdmin() && !finished && ready){
     document.getElementById('rt-admin-team-a').textContent = teamName(match.teamAId);
     document.getElementById('rt-admin-team-b').textContent = teamName(match.teamBId);
-    overrideSection.querySelectorAll('[data-adminfb]').forEach(btn=>{
+    adminSection.querySelectorAll('[data-adminfb]').forEach(btn=>{
       btn.onclick = async function(){
         const winnerTeam = btn.dataset.adminfb === 'A' ? match.teamAId : match.teamBId;
         await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'definido manualmente pelo organizador' });
       };
     });
     document.getElementById('rt-admin-fb-reset').onclick = async function(){
-      await updateDoc(matchRef, { 'currentGame.firstBanTeamId': null, 'currentGame.firstBanMethod': null, 'currentGame.mapsBanned': [] });
+      await updateDoc(matchRef, { 'currentGame.firstBanTeamId': null, 'currentGame.firstBanMethod': null, 'currentGame.mapsBanned': [], 'currentGame.rpsChoiceA': null, 'currentGame.rpsChoiceB': null });
+    };
+    document.getElementById('rt-score-a').value = g.scoreA ?? 0;
+    document.getElementById('rt-score-b').value = g.scoreB ?? 0;
+    document.getElementById('rt-score-save').onclick = async function(){
+      const a = document.getElementById('rt-score-a').value;
+      const b = document.getElementById('rt-score-b').value;
+      await updateDoc(matchRef, { 'currentGame.scoreA': a===''?0:Number(a), 'currentGame.scoreB': b===''?0:Number(b) });
     };
   }
 }

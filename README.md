@@ -42,6 +42,16 @@
 - **"Configurar sala" do organizador** — dentro da própria sala da partida, secção só para quem gere o torneio, para forçar manualmente "quem começa" se a decisão automática falhar.
 - Os cartões da bracket voltaram a mostrar os **jogos ganhos da série** (2-0, 2-1, etc.) em vez da pontuação de um único jogo.
 
+## Atualização — bugs de convidado corrigidos + sala redesenhada
+- **Bug raiz encontrado e corrigido**: o `pagehide` (usado para limpar contas convidado) disparava em qualquer navegação dentro do site — não só ao fechar o browser — apagando a conta a meio da visita. Isso causava três sintomas em simultâneo: nickname a aparecer como "Convidado"/"Jogador" em vez do nome escolhido, e a conta a "desaparecer" ao voltar ao perfil. Removido o `pagehide`; a limpeza de convidados volta a ser só "preguiçosa" (contas com mais de 1h, feita em `login.html`). Convidados passam também a usar sessão persistente local em vez de só-de-sessão, para não se perderem ao navegar.
+- **Sala da partida redesenhada**:
+  - Cabeçalho único: nomes das equipas, estado, formato, BOx e o placar de jogos da série, tudo junto no topo.
+  - Layout de 3 colunas: equipa A | fase "quem começa" + banimento de mapas (ao centro, entre as equipas) | equipa B.
+  - Banir mapas agora é uma lista (nome do mapa + link "Banir" ao lado), não pills clicáveis inteiras.
+  - Pontuação e servidor lado a lado, depois dos mapas.
+  - As opções do organizador ("Configurar sala") só aparecem mesmo para quem gere o torneio — deixaram de aparecer (só desativadas) aos jogadores normais.
+  - **Pedra, papel, tesoura a sério**: quando o método escolhido é RPS, os dois capitães jogam um contra o outro (cada um escolhe pedra/papel/tesoura sem ver a escolha do outro até ambos terem escolhido); em empate, repetem automaticamente.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)

@@ -821,7 +821,7 @@ async function generateBracket(readyTeams){
       bestOf: tournament.bestOf || 1,
       pointsToWin: tournament.pointsToWin || null,
       gamesWonA: 0, gamesWonB: 0,
-      currentGame: { index: 0, firstBanTeamId: null, firstBanMethod: null, mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null },
+      currentGame: { index: 0, firstBanTeamId: null, firstBanMethod: null, mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null },
       serverInfo: null, status: 'por-jogar',
       nextMatchId: m.nextMatchId || null, nextSlot: m.nextSlot || null
     });

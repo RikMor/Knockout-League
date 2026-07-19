@@ -3,25 +3,9 @@ import { auth, db, doc } from './firebase.js';
 import { getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
-// ── Limpeza automática de contas convidado ao fechar a aba/browser ──
-let anonToken = null;
-onAuthStateChanged(auth, async function(user){
-  if(user && user.isAnonymous){
-    try{ anonToken = await user.getIdToken(); }catch(e){ anonToken = null; }
-  } else {
-    anonToken = null;
-  }
-});
-window.addEventListener('pagehide', function(){
-  const user = auth.currentUser;
-  if(user && user.isAnonymous && anonToken){
-    try{
-      const projectId = auth.app.options.projectId;
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${user.uid}`;
-      fetch(url, { method: 'DELETE', headers: { Authorization: 'Bearer ' + anonToken }, keepalive: true });
-    }catch(e){ /* falha silenciosa */ }
-  }
-});
+// Nota: a limpeza de contas convidado é feita de forma "preguiçosa" (lazy) —
+// ver login.html — em vez de apagar no pagehide, que disparava também ao navegar
+// dentro do próprio site e apagava a conta a meio da visita.
 
 onAuthStateChanged(auth, async function (user) {
   const area = document.getElementById('nav-user-area');
