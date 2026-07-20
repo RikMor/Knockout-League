@@ -72,7 +72,8 @@
     <h3 style="margin-bottom:10px;">Pool de jogadores</h3>
     <div class="card" id="pool-box" style="margin-bottom:30px;"><p class="muted">Sem jogadores ainda.</p></div>
 
-    <h3 style="margin-bottom:10px;">Equipas</h3>
+    <h3 style="margin-bottom:6px;">Equipas</h3>
+    <p class="muted" id="teams-order-hint" style="font-size:0.82rem;margin-bottom:14px;display:none;"></p>
     <div class="grid grid-3" id="teams-box"></div>
   </div>
 
@@ -557,7 +558,21 @@ function renderTeams(){
   box.innerHTML = '';
   const mine = myPoolEntry();
   const canJoinSelf = tournament.status === 'inscricoes' && mine && !mine.teamId;
-  const showSeed = tournament.bracketDrawMode === 'seed' && !bracketGenerated();
+  const showSeed = (tournament.bracketDrawMode === 'seed' || tournament.bracketDrawMode === 'manual') && (!bracketGenerated() || isAdmin());
+
+  const hintEl = document.getElementById('teams-order-hint');
+  if(showSeed && isAdmin()){
+    hintEl.style.display = 'block';
+    hintEl.textContent = tournament.bracketDrawMode === 'manual'
+      ? (bracketGenerated()
+          ? 'Ajusta as posições e usa "Regenerar bracket" (aba Bracket) para aplicar — posição 1 joga contra a 2, a 3 contra a 4, etc.'
+          : 'Define a posição de cada equipa — a 1 joga contra a 2, a 3 contra a 4, etc.')
+      : (bracketGenerated()
+          ? 'Ajusta as seeds e usa "Regenerar bracket" (aba Bracket) para aplicar.'
+          : 'Define a seed de cada equipa antes de gerar a bracket.');
+  } else {
+    hintEl.style.display = 'none';
+  }
 
   teams.forEach(function(t){
     const card = document.createElement('div');
@@ -566,8 +581,9 @@ function renderTeams(){
     const full = tplayers.length >= tournament.teamSize;
     let seedHtml = '';
     if(showSeed){
+      const label = tournament.bracketDrawMode === 'manual' ? 'Posição' : 'Seed';
       seedHtml = isAdmin()
-        ? `<div style="margin-bottom:8px;"><label class="muted" style="font-size:0.72rem;">Seed: </label><input type="number" min="1" value="${t.seed||''}" data-seed="${t.id}" style="width:56px;padding:4px 6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>`
+        ? `<div style="margin-bottom:8px;"><label class="muted" style="font-size:0.72rem;">${label}: </label><input type="number" min="1" value="${t.seed||''}" data-seed="${t.id}" style="width:56px;padding:4px 6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>`
         : `<p class="muted" style="font-size:0.75rem;margin-bottom:8px;">Seed: ${t.seed||'—'}</p>`;
     }
     let joinBtn = (canJoinSelf && !full) ? `<button class="btn btn-sm btn-outline" data-jointeam="${t.id}" style="margin-top:8px;">Juntar-me a esta equipa</button>` : '';
@@ -800,6 +816,12 @@ async function generateBracket(readyTeams){
       const bySeed = [...readyTeams].sort((a,b) => (a.seed || 999) - (b.seed || 999));
       const positions = seedPositions(size); // ex: [1,16,9,8,5,12,13,4,...]
       slots = positions.map(seedNum => (bySeed[seedNum-1] ? bySeed[seedNum-1].id : null));
+    } else if(tournament.bracketDrawMode === 'manual'){
+      // ordena as equipas pela posição definida pelo organizador e coloca-as sequencialmente:
+      // posição 1 vs 2, 3 vs 4, 5 vs 6... exatamente como o organizador decidiu
+      const byPosition = [...readyTeams].sort((a,b) => (a.seed || 999) - (b.seed || 999));
+      slots = byPosition.map(t => t.id);
+      while(slots.length < size) slots.push(null);
     } else {
       // sorteio aleatório
       const shuffled = [...teamIds].sort(()=>Math.random()-0.5);

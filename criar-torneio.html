@@ -66,7 +66,8 @@
     <label>Modo de sorteio da bracket</label>
     <div class="pill-group" id="pill-draw-mode">
       <div class="pill" data-v="random">Aleatório</div>
-      <div class="pill" data-v="seed">Por seed (posições)</div>
+      <div class="pill" data-v="seed">Por seed (espalhado)</div>
+      <div class="pill" data-v="manual">Manual (eu escolho quem joga contra quem)</div>
     </div>
     <p class="form-hint" id="draw-mode-explain"></p>
   </div>
@@ -214,7 +215,8 @@ updateBracketExplain();
 // Explicação do modo de sorteio
 var drawModeExplanations = {
   'random': 'As equipas entram em posições sorteadas ao acaso na bracket.',
-  'seed': 'Tu ordenas as equipas por posição (seed) antes de gerar a bracket — a 1ª só encontra a 2ª na final, tal como em torneios oficiais.'
+  'seed': 'Tu ordenas as equipas por posição (seed) antes de gerar a bracket — a 1ª só encontra a 2ª na final, tal como em torneios oficiais.',
+  'manual': 'Tu decides diretamente quem joga contra quem na 1ª ronda, definindo a posição de cada equipa antes de gerar a bracket.'
 };
 function updateDrawModeExplain(){
   document.getElementById('draw-mode-explain').textContent = drawModeExplanations[selected('pill-draw-mode')] || '';

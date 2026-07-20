@@ -71,6 +71,10 @@
 - **Bug corrigido**: uma "bye" (equipa que passa sozinha à ronda seguinte por falta de adversário) ficava marcada como "partida terminada", o que bloqueava o botão de regenerar mesmo sem nenhum resultado real. Agora só contam partidas verdadeiras (com as duas equipas definidas).
 - **Botão sempre visível ao organizador** — em vez de desaparecer assim que há qualquer resultado, o botão "Regenerar/Reiniciar bracket" fica sempre disponível; muda de texto e cor (aviso a vermelho) quando já existem resultados reais que se vão perder, com uma confirmação extra nesse caso.
 
+## Atualização — modo manual de posicionamento na bracket
+- **Novo modo de sorteio "Manual"** (ao lado de Aleatório e Por seed) — o organizador define a posição de cada equipa (1, 2, 3, 4...) e a bracket usa-a diretamente: posição 1 joga contra a 2, a 3 contra a 4, etc. Dá controlo total sobre quem enfrenta quem na 1ª ronda.
+- O campo de posição/seed nas equipas passou a poder ser editado mesmo depois da bracket já ter sido gerada (só o organizador o vê) — ajusta-se e depois usa-se "Regenerar bracket" na aba Bracket para aplicar.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)
