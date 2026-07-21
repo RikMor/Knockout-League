@@ -62,16 +62,6 @@
     <p class="form-hint" id="bracket-explain"></p>
   </div>
 
-  <div class="form-group" id="group-draw-mode">
-    <label>Modo de sorteio da bracket</label>
-    <div class="pill-group" id="pill-draw-mode">
-      <div class="pill" data-v="random">Aleatório</div>
-      <div class="pill" data-v="seed">Por seed (espalhado)</div>
-      <div class="pill" data-v="manual">Manual (eu escolho quem joga contra quem)</div>
-    </div>
-    <p class="form-hint" id="draw-mode-explain"></p>
-  </div>
-
   <div class="form-group">
     <label>Visibilidade</label>
     <div class="pill-group" id="pill-visibility">
@@ -83,24 +73,6 @@
   <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
     <input type="checkbox" id="t-participo" style="width:auto;margin-top:4px;"/>
     <label for="t-participo" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Eu, organizador, também vou jogar.</label>
-  </div>
-
-  <div class="form-group">
-    <label>Atribuição de jogadores às equipas</label>
-    <div class="pill-group" id="pill-assign">
-      <div class="pill" data-v="roulette">Roleta</div>
-      <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
-      <div class="pill" data-v="manual">Manual</div>
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label>Quando houver mais de 2 capitães, quem escolhe os jogadores?</label>
-    <div class="pill-group" id="pill-draft">
-      <div class="pill" data-v="organizer">Eu decido (organizador)</div>
-      <div class="pill" data-v="captains">Os capitães escolhem</div>
-      <div class="pill" data-v="random">Aleatório</div>
-    </div>
   </div>
 
   <div class="form-group">
@@ -123,20 +95,21 @@
       <div class="pill" data-v="1">BO1</div>
       <div class="pill" data-v="3">BO3</div>
       <div class="pill" data-v="5">BO5</div>
+      <div class="pill" data-v="custom">Personalizado</div>
     </div>
+    <input type="number" id="t-bestof-custom" min="1" step="2" placeholder="Ex: 7 (tem de ser ímpar)" style="display:none;margin-top:10px;max-width:160px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
   </div>
 
   <div class="form-group">
-    <label>Pontos para vencer cada partida <span class="muted" style="text-transform:none;">(opcional)</span></label>
-    <input type="number" id="t-pointstowin" min="1" placeholder="Ex: 13 (deixa vazio para decidir manualmente no fim)"/>
-    <p class="form-hint">Se definires, os capitães sabem quando chegar a esse valor podem finalizar a partida. Se deixares vazio, decides tu quando terminar.</p>
+    <label>Pontos para vencer cada partida</label>
+    <input type="number" id="t-pointstowin" min="1" placeholder="Ex: 13"/>
+    <p class="form-hint">Assim que uma equipa chegar a este valor, a partida termina sozinha.</p>
   </div>
 
   <div class="form-group">
     <label>Como decidir quem começa</label>
     <div class="pill-group" id="pill-coin">
       <div class="pill" data-v="coin">Moeda ao ar</div>
-      <div class="pill" data-v="dice">Dado</div>
       <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
     </div>
   </div>
@@ -170,14 +143,17 @@ function bindPills(id, def){
 }
 bindPills('pill-teamsize','5');
 bindPills('pill-bracket','single');
-bindPills('pill-draw-mode','random');
 bindPills('pill-visibility','public');
-bindPills('pill-assign','roulette');
-bindPills('pill-draft','organizer');
 bindPills('pill-coin','coin');
 bindPills('pill-bestof','1');
 bindPills('pill-layout','one-side');
 function selected(id){ var s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
+
+document.querySelectorAll('#pill-bestof .pill').forEach(function(p){
+  p.addEventListener('click', function(){
+    document.getElementById('t-bestof-custom').style.display = (p.dataset.v === 'custom') ? 'block' : 'none';
+  });
+});
 
 // Rótulo "equipas" vs "jogadores" consoante o formato
 function updateMaxTeamsLabel(){
@@ -205,26 +181,11 @@ var bracketExplanations = {
 };
 function updateBracketExplain(){
   document.getElementById('bracket-explain').textContent = bracketExplanations[selected('pill-bracket')] || '';
-  document.getElementById('group-draw-mode').style.display = selected('pill-bracket') === 'round-robin' ? 'none' : 'block';
 }
 document.querySelectorAll('#pill-bracket .pill').forEach(function(p){
   p.addEventListener('click', updateBracketExplain);
 });
 updateBracketExplain();
-
-// Explicação do modo de sorteio
-var drawModeExplanations = {
-  'random': 'As equipas entram em posições sorteadas ao acaso na bracket.',
-  'seed': 'Tu ordenas as equipas por posição (seed) antes de gerar a bracket — a 1ª só encontra a 2ª na final, tal como em torneios oficiais.',
-  'manual': 'Tu decides diretamente quem joga contra quem na 1ª ronda, definindo a posição de cada equipa antes de gerar a bracket.'
-};
-function updateDrawModeExplain(){
-  document.getElementById('draw-mode-explain').textContent = drawModeExplanations[selected('pill-draw-mode')] || '';
-}
-document.querySelectorAll('#pill-draw-mode .pill').forEach(function(p){
-  p.addEventListener('click', updateDrawModeExplain);
-});
-updateDrawModeExplain();
 
 var maps = [];
 function renderMaps(){
@@ -275,12 +236,13 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const teamSize = parseInt(selected('pill-teamsize'), 10);
   const maxTeams = parseInt(document.getElementById('t-maxteams').value, 10);
   const bracketType = selected('pill-bracket');
-  const bracketDrawMode = bracketType === 'round-robin' ? 'random' : selected('pill-draw-mode');
+  const bracketDrawMode = 'random'; // ajustável mais tarde dentro do torneio
   const visibility = selected('pill-visibility');
-  const assignMode = selected('pill-assign');
-  const draftMode = selected('pill-draft');
+  const assignMode = 'roulette'; // ajustável mais tarde dentro do torneio
+  const draftMode = 'organizer'; // ajustável mais tarde dentro do torneio
   const coinMethod = selected('pill-coin');
-  const bestOf = parseInt(selected('pill-bestof'), 10);
+  const bestOfSelected = selected('pill-bestof');
+  const bestOf = bestOfSelected === 'custom' ? parseInt(document.getElementById('t-bestof-custom').value, 10) : parseInt(bestOfSelected, 10);
   const pointsToWinRaw = document.getElementById('t-pointstowin').value;
   const pointsToWin = pointsToWinRaw ? parseInt(pointsToWinRaw, 10) : null;
   const bracketLayout = bracketType === 'round-robin' ? 'one-side' : selected('pill-layout');
@@ -291,6 +253,8 @@ document.getElementById('create-btn').addEventListener('click', async function()
   if(!game){ showError('Indica o jogo do torneio.'); return; }
   if(!maxTeams || maxTeams < 2){ showError('Precisas de pelo menos 2 equipas.'); return; }
   if(maps.length === 0){ showError('Adiciona pelo menos um mapa.'); return; }
+  if(!bestOf || bestOf < 1 || bestOf % 2 === 0){ showError('O número de "melhor de quantas partidas" tem de ser ímpar (1, 3, 5, 7...).'); return; }
+  if(!pointsToWin){ showError('Define os pontos para vencer cada partida.'); return; }
 
   const btn = document.getElementById('create-btn');
   btn.disabled = true; btn.textContent = 'A criar...';

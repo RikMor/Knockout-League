@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>O meu clã — Knockout League</title>
+<link rel="stylesheet" href="shared.css?v=2"/>
+<style>
+  .member-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); gap: 10px; flex-wrap: wrap; }
+  .member-row:last-child { border-bottom: none; }
+  .not-logged { text-align: center; padding: 100px 20px; }
+  .badge-role { font-family:'IBM Plex Mono'; font-size:0.6rem; letter-spacing:1px; text-transform:uppercase; border:1px solid var(--gold); color:var(--gold); padding:2px 8px; margin-left:6px; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li><a href="faq.html">FAQ</a></li>
+    <li><a href="contacto.html">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="wrap page-head">
+  <div class="eyebrow">Equipa</div>
+  <h1>O meu clã</h1>
+  <p class="muted" style="margin-top:10px;">Um clã é uma equipa fixa — entra já formada em qualquer torneio, sem sorteios.</p>
+</div>
+
+<div class="wrap" style="padding-bottom:90px;">
+  <div class="not-logged" id="not-logged" style="display:none;">
+    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para geres um clã.</p>
+    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+  </div>
+
+  <div id="content" style="display:none;">
+    <div id="create-box" class="card" style="margin-bottom:30px;display:none;">
+      <h3 style="margin-bottom:12px;">Ainda não tens um clã</h3>
+      <div class="form-group"><label>Nome do clã</label><input type="text" id="clan-name-input" placeholder="Ex: Os Invencíveis"/></div>
+      <button class="btn btn-accent" id="create-clan-btn">Criar clã</button>
+      <p class="form-error" id="create-clan-error" style="margin-top:12px;"></p>
+    </div>
+
+    <div id="owned-box" style="display:none;margin-bottom:40px;">
+      <h2 id="owned-clan-name" style="margin-bottom:20px;"></h2>
+      <div style="display:flex;gap:8px;max-width:520px;margin-bottom:20px;flex-wrap:wrap;">
+        <input type="text" id="member-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+        <button class="btn btn-outline btn-sm" id="add-member-btn">Adicionar</button>
+      </div>
+      <p class="form-error" id="member-error" style="margin-bottom:16px;"></p>
+      <div class="card" id="members-list"><p class="muted">Sem membros ainda.</p></div>
+    </div>
+
+    <div id="memberof-box" style="display:none;">
+      <h2 style="margin-bottom:16px;">Clãs onde sou membro</h2>
+      <div class="card" id="memberof-list"></div>
+    </div>
+  </div>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script type="module">
+import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp } from './firebase.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+let currentUser = null;
+let ownedClan = null;
+let members = [];
+
+onAuthStateChanged(auth, async function(user){
+  currentUser = user;
+  if(!user){ document.getElementById('not-logged').style.display = 'block'; return; }
+  document.getElementById('content').style.display = 'block';
+  await loadOwnedClan();
+  await loadMemberOf();
+});
+
+async function loadOwnedClan(){
+  const q = query(collection(db,'clans'), where('ownerUid','==',currentUser.uid));
+  const snap = await getDocs(q);
+  if(snap.empty){
+    ownedClan = null;
+    document.getElementById('create-box').style.display = 'block';
+    document.getElementById('owned-box').style.display = 'none';
+    return;
+  }
+  const d = snap.docs[0];
+  ownedClan = { id: d.id, ...d.data() };
+  document.getElementById('create-box').style.display = 'none';
+  document.getElementById('owned-box').style.display = 'block';
+  document.getElementById('owned-clan-name').textContent = ownedClan.name;
+  await loadMembers();
+}
+
+function roleSelectHtml(m){
+  return `<select data-role="${m.id}" style="padding:5px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:0.78rem;">
+    <option value="">Sem cargo</option>
+    <option value="captain" ${ownedClan.captainUid===m.uid?'selected':''}>Capitão</option>
+    <option value="subcaptain" ${ownedClan.subCaptainUid===m.uid?'selected':''}>Sub-capitão</option>
+  </select>`;
+}
+
+async function loadMembers(){
+  const snap = await getDocs(collection(db,'clans',ownedClan.id,'members'));
+  members = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  const el = document.getElementById('members-list');
+  if(members.length === 0){ el.innerHTML = '<p class="muted">Sem membros ainda.</p>'; return; }
+  el.innerHTML = members.map(m => {
+    const roleTag = ownedClan.captainUid === m.uid ? '<span class="badge-role">Capitão</span>' : (ownedClan.subCaptainUid === m.uid ? '<span class="badge-role">Sub-capitão</span>' : '');
+    return `<div class="member-row">
+      <span>${m.nickname}${roleTag}</span>
+      <span style="display:flex;gap:8px;align-items:center;">
+        ${roleSelectHtml(m)}
+        <button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>
+      </span>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-rm]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      if(!confirm('Remover este membro do clã?')) return;
+      const m = members.find(x=>x.id===btn.dataset.rm);
+      const upd = {};
+      if(m && ownedClan.captainUid === m.uid) upd.captainUid = null;
+      if(m && ownedClan.subCaptainUid === m.uid) upd.subCaptainUid = null;
+      if(Object.keys(upd).length) await updateDoc(doc(db,'clans',ownedClan.id), upd);
+      await deleteDoc(doc(db,'clans',ownedClan.id,'members',btn.dataset.rm));
+      loadOwnedClan();
+    });
+  });
+  el.querySelectorAll('[data-role]').forEach(sel=>{
+    sel.addEventListener('change', async function(){
+      const m = members.find(x=>x.id===sel.dataset.role);
+      const upd = {};
+      if(sel.value === 'captain'){ upd.captainUid = m.uid; if(ownedClan.subCaptainUid === m.uid) upd.subCaptainUid = null; }
+      else if(sel.value === 'subcaptain'){ upd.subCaptainUid = m.uid; if(ownedClan.captainUid === m.uid) upd.captainUid = null; }
+      else {
+        if(ownedClan.captainUid === m.uid) upd.captainUid = null;
+        if(ownedClan.subCaptainUid === m.uid) upd.subCaptainUid = null;
+      }
+      await updateDoc(doc(db,'clans',ownedClan.id), upd);
+      loadOwnedClan();
+    });
+  });
+}
+
+async function loadMemberOf(){
+  const q = query(collectionGroup(db,'members'), where('uid','==',currentUser.uid));
+  const snap = await getDocs(q);
+  const clanMemberships = snap.docs.filter(d => d.ref.parent.parent.parent.id === 'clans');
+  const box = document.getElementById('memberof-box');
+  if(clanMemberships.length === 0){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const list = document.getElementById('memberof-list');
+  const cards = await Promise.all(clanMemberships.map(async d=>{
+    const clanRef = d.ref.parent.parent;
+    if(clanRef.id === (ownedClan && ownedClan.id)) return '';
+    const clanSnap = await getDoc(clanRef);
+    if(!clanSnap.exists()) return '';
+    return `<div class="member-row"><span>${clanSnap.data().name}</span></div>`;
+  }));
+  const filtered = cards.filter(Boolean);
+  list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clã.</p>';
+}
+
+document.getElementById('create-clan-btn').addEventListener('click', async function(){
+  const err = document.getElementById('create-clan-error');
+  err.style.display = 'none';
+  const name = document.getElementById('clan-name-input').value.trim();
+  if(!name){ err.textContent = 'Dá um nome ao clã.'; err.style.display = 'block'; return; }
+  try{
+    await addDoc(collection(db,'clans'), { name, ownerUid: currentUser.uid, captainUid: null, subCaptainUid: null, createdAt: serverTimestamp() });
+    await loadOwnedClan();
+  }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
+});
+
+document.getElementById('add-member-btn').addEventListener('click', async function(){
+  const err = document.getElementById('member-error');
+  err.style.display = 'none';
+  const input = document.getElementById('member-input').value.trim();
+  const parts = input.split('#');
+  if(parts.length !== 2 || !parts[0] || !parts[1]){ err.textContent = 'Formato inválido. Usa nickname#tag.'; err.style.display = 'block'; return; }
+  const nick = parts[0].trim(), tag = parts[1].trim().toUpperCase();
+  try{
+    const q = query(collection(db,'users'), where('nicknameLower','==',nick.toLowerCase()));
+    const snap = await getDocs(q);
+    const found = snap.docs.find(d => (d.data().tag||'').toUpperCase() === tag);
+    if(!found){ err.textContent = 'Não encontrei nenhum jogador com esse nickname e tag.'; err.style.display = 'block'; return; }
+    if(members.some(m => m.uid === found.id)){ err.textContent = 'Já é membro deste clã.'; err.style.display = 'block'; return; }
+    await addDoc(collection(db,'clans',ownedClan.id,'members'), { uid: found.id, nickname: found.data().nickname });
+    document.getElementById('member-input').value = '';
+    loadMembers();
+  }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
+});
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

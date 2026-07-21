@@ -41,6 +41,8 @@ onAuthStateChanged(auth, async function (user) {
       '<div class="nav-user-menu">' +
         '<a href="perfil.html">O meu perfil</a>' +
         '<a href="os-meus-torneios.html">Os meus torneios</a>' +
+        '<a href="clube.html">O meu clube</a>' +
+        '<a href="clan.html">O meu clã</a>' +
         '<a href="definicoes.html">Definições</a>' +
         (isAdmin ? '<a href="admin.html">Painel de admin</a>' : '') +
         '<button id="nav-logout-btn">Terminar sessão</button>' +

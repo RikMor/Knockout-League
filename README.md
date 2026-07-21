@@ -75,6 +75,16 @@
 - **Novo modo de sorteio "Manual"** (ao lado de Aleatório e Por seed) — o organizador define a posição de cada equipa (1, 2, 3, 4...) e a bracket usa-a diretamente: posição 1 joga contra a 2, a 3 contra a 4, etc. Dá controlo total sobre quem enfrenta quem na 1ª ronda.
 - O campo de posição/seed nas equipas passou a poder ser editado mesmo depois da bracket já ter sido gerada (só o organizador o vê) — ajusta-se e depois usa-se "Regenerar bracket" na aba Bracket para aplicar.
 
+## Atualização — criação simplificada, Clubes, Clãs
+- **`criar-torneio.html` simplificado** — removidos "Modo de sorteio da bracket", "Atribuição de jogadores às equipas" e "Quando houver mais de 2 capitães, quem escolhe" do formulário de criação; passam a ser configuráveis dentro do torneio (aba **Configurações**), a qualquer momento.
+- **Melhor de quantas partidas** ganhou a opção **"Personalizado"** (qualquer número ímpar, ex: BO7).
+- **Pontos para vencer cada partida** passou a ser **obrigatório**.
+- **Como decidir quem começa** só tem agora Moeda ao ar e Pedra-papel-tesoura (tirado o Dado, em todo o lado — criação e configurações).
+- **"+ Jogador manual" removido** de `torneio.html` — todo o jogador tem de entrar pelo nickname#tag (via "+ Jogador registado") ou ser um Bot.
+- **Moderadores** também veem agora a opção de terminar/eliminar o torneio na aba Configurações (antes só o organizador).
+- **Clubes** (`clube.html`, novo) — qualquer jogador pode criar um clube (um nome à escolha), adicionar membros pelo nickname#tag, e dar-lhes permissão para **criar torneios** ou **moderar torneios**. Acede-se pelo menu do utilizador ou pelo perfil.
+- **Clãs** (`clan.html`, novo) — equipa fixa e reutilizável entre torneios: cria-se um clã, adicionam-se membros pelo nickname#tag, e define-se **capitão** e **sub-capitão**. Dentro de qualquer sala de torneio (aba Equipas, durante as inscrições), aparece um botão **"Juntar o clã"** que cria logo a equipa completa com todos os membros do clã.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)
