@@ -47,13 +47,13 @@
 
     <div id="owned-box" style="display:none;margin-bottom:40px;">
       <h2 id="owned-club-name" style="margin-bottom:20px;"></h2>
-      <div style="display:flex;gap:8px;max-width:520px;margin-bottom:20px;flex-wrap:wrap;">
-        <input type="text" id="member-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
-        <select id="member-perm" style="padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);">
-          <option value="moderador">Pode moderar torneios</option>
-          <option value="organizador">Pode criar torneios</option>
-        </select>
-        <button class="btn btn-outline btn-sm" id="add-member-btn">Adicionar</button>
+      <div style="max-width:520px;margin-bottom:20px;">
+        <input type="text" id="member-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);margin-bottom:10px;"/>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-organizador" style="width:auto;"/> Pode criar torneios</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-moderador" style="width:auto;"/> Pode moderar torneios</label>
+        </div>
+        <button class="btn btn-outline btn-sm" id="add-member-btn">Confirmar</button>
       </div>
       <p class="form-error" id="member-error" style="margin-bottom:16px;"></p>
       <div class="card" id="members-list"><p class="muted">Sem membros ainda.</p></div>
@@ -109,24 +109,41 @@ async function loadOwnedClub(){
   }
 }
 
+function memberPerms(m){
+  // suporta membros antigos gravados com `permission` singular
+  if(Array.isArray(m.permissions)) return m.permissions;
+  return m.permission ? [m.permission] : [];
+}
+
 async function loadMembers(){
   const snap = await getDocs(collection(db,'clubs',ownedClub.id,'members'));
   members = snap.docs.map(d=>({id:d.id, ...d.data()}));
   const el = document.getElementById('members-list');
   if(members.length === 0){ el.innerHTML = '<p class="muted">Sem membros ainda.</p>'; return; }
-  el.innerHTML = members.map(m => `
-    <div class="member-row">
+  el.innerHTML = members.map(m => {
+    const perms = memberPerms(m);
+    return `<div class="member-row">
       <span>${m.nickname}</span>
-      <span style="display:flex;gap:8px;align-items:center;">
-        <span class="badge-perm">${m.permission === 'organizador' ? 'Pode criar torneios' : 'Pode moderar'}</span>
+      <span style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="organizador" ${perms.includes('organizador')?'checked':''} style="width:auto;"/> Criar torneios</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="moderador" ${perms.includes('moderador')?'checked':''} style="width:auto;"/> Moderar</label>
         <button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>
       </span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   el.querySelectorAll('[data-rm]').forEach(btn=>{
     btn.addEventListener('click', async function(){
       if(!confirm('Remover este membro do clube?')) return;
       await deleteDoc(doc(db,'clubs',ownedClub.id,'members',btn.dataset.rm));
       loadMembers();
+    });
+  });
+  el.querySelectorAll('[data-editperm]').forEach(cb=>{
+    cb.addEventListener('change', async function(){
+      const memberId = cb.dataset.editperm;
+      const row = el.querySelectorAll('[data-editperm="'+memberId+'"]');
+      const newPerms = [...row].filter(x=>x.checked).map(x=>x.dataset.permval);
+      await updateDoc(doc(db,'clubs',ownedClub.id,'members',memberId), { permissions: newPerms, permission: null });
     });
   });
 }
@@ -145,8 +162,9 @@ async function loadMemberOf(){
       if(clubRef.id === (ownedClub && ownedClub.id)) return ''; // não repetir o próprio clube
       const clubSnap = await getDoc(clubRef);
       if(!clubSnap.exists()) return '';
-      const perm = d.data().permission;
-      return `<div class="member-row"><span>${clubSnap.data().name}</span><span class="badge-perm">${perm === 'organizador' ? 'Podes criar torneios' : 'Podes moderar'}</span></div>`;
+      const perms = memberPerms(d.data());
+      const labels = perms.map(p => p === 'organizador' ? 'Podes criar torneios' : 'Podes moderar').join(' · ');
+      return `<div class="member-row"><span>${clubSnap.data().name}</span><span class="badge-perm">${labels || 'Sem permissões'}</span></div>`;
     }));
     const filtered = cards.filter(Boolean);
     list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clube.</p>';
@@ -168,9 +186,12 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
   const err = document.getElementById('member-error');
   err.style.display = 'none';
   const input = document.getElementById('member-input').value.trim();
-  const permission = document.getElementById('member-perm').value;
+  const permissions = [];
+  if(document.getElementById('perm-organizador').checked) permissions.push('organizador');
+  if(document.getElementById('perm-moderador').checked) permissions.push('moderador');
   const parts = input.split('#');
   if(parts.length !== 2 || !parts[0] || !parts[1]){ err.textContent = 'Formato inválido. Usa nickname#tag.'; err.style.display = 'block'; return; }
+  if(permissions.length === 0){ err.textContent = 'Escolhe pelo menos uma permissão.'; err.style.display = 'block'; return; }
   const nick = parts[0].trim(), tag = parts[1].trim().toUpperCase();
   try{
     const q = query(collection(db,'users'), where('nicknameLower','==',nick.toLowerCase()));
@@ -178,8 +199,10 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
     const found = snap.docs.find(d => (d.data().tag||'').toUpperCase() === tag);
     if(!found){ err.textContent = 'Não encontrei nenhum jogador com esse nickname e tag.'; err.style.display = 'block'; return; }
     if(members.some(m => m.uid === found.id)){ err.textContent = 'Já é membro deste clube.'; err.style.display = 'block'; return; }
-    await addDoc(collection(db,'clubs',ownedClub.id,'members'), { uid: found.id, nickname: found.data().nickname, permission });
+    await addDoc(collection(db,'clubs',ownedClub.id,'members'), { uid: found.id, nickname: found.data().nickname, permissions });
     document.getElementById('member-input').value = '';
+    document.getElementById('perm-organizador').checked = false;
+    document.getElementById('perm-moderador').checked = false;
     loadMembers();
   }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
 });

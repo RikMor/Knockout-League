@@ -85,6 +85,13 @@
 - **Clubes** (`clube.html`, novo) — qualquer jogador pode criar um clube (um nome à escolha), adicionar membros pelo nickname#tag, e dar-lhes permissão para **criar torneios** ou **moderar torneios**. Acede-se pelo menu do utilizador ou pelo perfil.
 - **Clãs** (`clan.html`, novo) — equipa fixa e reutilizável entre torneios: cria-se um clã, adicionam-se membros pelo nickname#tag, e define-se **capitão** e **sub-capitão**. Dentro de qualquer sala de torneio (aba Equipas, durante as inscrições), aparece um botão **"Juntar o clã"** que cria logo a equipa completa com todos os membros do clã.
 
+## Atualização — bracket totalmente flexível, atribuição do organizador, permissões do clube
+- **Eliminar equipa da bracket a qualquer momento** — já não é preciso esperar que o torneio não tenha começado; ao eliminar uma equipa que já esteja numa partida por decidir, essa vaga fica livre automaticamente.
+- **Mover/colocar qualquer equipa na bracket** — a caixa na aba Bracket já não mostra só equipas "órfãs": lista todas as equipas prontas, com a posição atual (ou "Fora da bracket"), e deixa mover qualquer uma para outra vaga livre ou substituir uma equipa já colocada numa partida ainda por decidir.
+- **Nome da equipa = nickname do jogador** — nova opção ao criar o torneio, útil em 1v1: as equipas criadas automaticamente (roleta, "criar a minha equipa") usam o nickname do jogador em vez de "Equipa N".
+- **Quem organizou** — ao criar um torneio, se fores dono ou tiveres permissão de "criar torneios" nalgum clube, escolhes se o torneio é criado em teu nome ou em nome do clube; aparece no cabeçalho da sala ("Organizado por ...").
+- **Clube: permissões múltiplas** — ao adicionar (ou editar) um membro, dá para marcar as duas checkboxes ("Pode criar torneios" e "Pode moderar") em vez de escolher só uma.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)

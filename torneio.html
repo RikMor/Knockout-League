@@ -102,7 +102,7 @@
   <div class="tab-panel" id="panel-moderadores">
     <p class="muted" style="margin-bottom:18px;">Moderadores têm as mesmas permissões que tu nesta sala (equipas, mapas, bracket, resultados) — exceto gerir outros moderadores.</p>
     <div style="display:flex;gap:8px;max-width:420px;margin-bottom:24px;">
-      <input type="text" id="mod-nick-input" placeholder="Nickname do jogador" style="flex:1;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+      <input type="text" id="mod-nick-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="flex:1;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
       <button class="btn btn-outline btn-sm" id="mod-add-btn">Adicionar</button>
     </div>
     <p class="form-error" id="mod-error" style="margin-bottom:16px;"></p>
@@ -312,9 +312,11 @@ function maybeAutoRedirect(){
   }
 }
 
+let organizerNameCache = null;
 function renderHeader(){
   const badgeClass = tournament.visibility==='private' ? 'badge-private' : 'badge-open';
   const badgeText = tournament.visibility==='private' ? 'Privado' : 'Público';
+  const orgName = tournament.organizerDisplayName || organizerNameCache;
   document.getElementById('t-header').innerHTML = `
     <div class="eyebrow">${tournament.game || ''} · ${tournament.teamSize}v${tournament.teamSize}</div>
     <h1>${tournament.name}</h1>
@@ -322,7 +324,15 @@ function renderHeader(){
       <span class="badge ${badgeClass}">${badgeText}</span>
       <span class="badge badge-live">${tournament.status}</span>
       ${tournament.visibility==='private' && isAdmin() ? '<span class="invite-code">'+tournament.inviteCode+'</span>' : ''}
-    </div>`;
+    </div>
+    <p class="muted" style="margin-top:12px;font-size:0.85rem;">${orgName ? 'Organizado por ' + orgName : ''}</p>`;
+
+  if(!tournament.organizerDisplayName && !organizerNameCache && tournament.creatorUid){
+    getDoc(doc(db,'users',tournament.creatorUid)).then(s=>{
+      organizerNameCache = s.exists() ? (s.data().nickname || null) : null;
+      if(organizerNameCache) renderHeader();
+    }).catch(()=>{});
+  }
 }
 
 // ── CONFIGURAÇÕES DA SALA ──────────────────────────────────────────
@@ -425,13 +435,18 @@ async function renderModerators(){
 document.getElementById('mod-add-btn').addEventListener('click', async function(){
   const err = document.getElementById('mod-error');
   err.style.display = 'none';
-  const nick = document.getElementById('mod-nick-input').value.trim();
-  if(!nick){ err.textContent = 'Escreve um nickname.'; err.style.display='block'; return; }
+  const input = document.getElementById('mod-nick-input').value.trim();
+  if(!input){ err.textContent = 'Escreve o nickname#tag do jogador.'; err.style.display='block'; return; }
+  const parts = input.split('#');
+  if(parts.length !== 2 || !parts[0] || !parts[1]){ err.textContent = 'Formato inválido. Usa nickname#tag, ex: ShadowBlade#A1B2'; err.style.display='block'; return; }
+  const nick = parts[0].trim();
+  const tag = parts[1].trim().toUpperCase();
   try{
     const q = query(collection(db,'users'), where('nicknameLower','==',nick.toLowerCase()));
     const snap = await getDocs(q);
-    if(snap.empty){ err.textContent = 'Nenhum jogador com esse nickname.'; err.style.display='block'; return; }
-    const uid = snap.docs[0].id;
+    const found = snap.docs.find(d => (d.data().tag||'').toUpperCase() === tag);
+    if(!found){ err.textContent = 'Não encontrei nenhum jogador com esse nickname e tag.'; err.style.display='block'; return; }
+    const uid = found.id;
     if(uid === tournament.creatorUid){ err.textContent = 'Já és o organizador.'; err.style.display='block'; return; }
     if((tournament.moderatorUids||[]).includes(uid)){ err.textContent = 'Já é moderador.'; err.style.display='block'; return; }
     await updateDoc(tRef, { moderatorUids: [...(tournament.moderatorUids||[]), uid] });
@@ -505,8 +520,13 @@ async function renderSelfTeamBox(){
     '<button class="btn btn-outline btn-sm" id="self-join-clan-btn" style="display:none;">Juntar o meu clã</button> ' +
     '<span class="muted" style="font-size:0.82rem;">Forma uma equipa já pronta (ou usa o teu clã) e convida outros jogadores do pool a juntarem-se.</span>';
   document.getElementById('self-create-team-btn').addEventListener('click', async function(){
-    const name = prompt('Nome da tua equipa:');
-    if(!name) return;
+    let name;
+    if(tournament.usePlayerNames){
+      name = mine.name;
+    } else {
+      name = prompt('Nome da tua equipa:');
+      if(!name) return;
+    }
     const teamRef = await addDoc(teamsCol, { name, captainPlayerId: null, players: [], seed: teams.length + 1 });
     await updateDoc(doc(playersCol, mine.id), { teamId: teamRef.id, isCaptain: true });
     await updateDoc(teamRef, { captainPlayerId: mine.id, players: [mine.id] });
@@ -659,7 +679,7 @@ function renderTeams(){
         : `<p class="muted" style="font-size:0.75rem;margin-bottom:8px;">Seed: ${t.seed||'—'}</p>`;
     }
     let joinBtn = (canJoinSelf && !full) ? `<button class="btn btn-sm btn-outline" data-jointeam="${t.id}" style="margin-top:8px;">Juntar-me a esta equipa</button>` : '';
-    let delTeamBtn = (isAdmin() && !bracketGenerated()) ? `<button class="btn btn-sm btn-danger" data-delteam="${t.id}" style="margin-top:8px;margin-left:6px;">Eliminar equipa</button>` : '';
+    let delTeamBtn = isAdmin() ? `<button class="btn btn-sm btn-danger" data-delteam="${t.id}" style="margin-top:8px;margin-left:6px;">Eliminar equipa</button>` : '';
     card.innerHTML = `<h4>${t.name}</h4>${seedHtml}<p class="muted" style="font-size:0.78rem;margin-bottom:10px;">${tplayers.length}/${tournament.teamSize} jogadores</p>` +
       tplayers.map(p => `<div class="player-row"><span>${playerLabel(p)}${p.isCaptain ? '<span class="cap-tag">CAPITÃO</span>' : ''}</span>${isAdmin() ? '<button class="btn btn-sm btn-danger" data-kickmember="'+p.id+'">Remover</button>' : ''}</div>`).join('') +
       joinBtn + delTeamBtn;
@@ -694,11 +714,20 @@ function renderTeams(){
     });
     box.querySelectorAll('[data-delteam]').forEach(btn=>{
       btn.addEventListener('click', async function(){
-        if(!confirm('Eliminar esta equipa? Os jogadores voltam para o pool.')) return;
         const team = teams.find(t=>t.id===btn.dataset.delteam);
         if(!team) return;
+        const inMatch = matches.find(m => m.teamAId === team.id || m.teamBId === team.id);
+        const msg = inMatch
+          ? 'Eliminar esta equipa? Está colocada na bracket — essa vaga fica livre. Os jogadores voltam para o pool.'
+          : 'Eliminar esta equipa? Os jogadores voltam para o pool.';
+        if(!confirm(msg)) return;
         for(const pid of (team.players||[])){
           await updateDoc(doc(playersCol, pid), { teamId: null, isCaptain: false });
+        }
+        for(const m of matches){
+          if(m.status === 'terminado') continue;
+          if(m.teamAId === team.id) await updateDoc(doc(matchesCol, m.id), { teamAId: null });
+          if(m.teamBId === team.id) await updateDoc(doc(matchesCol, m.id), { teamBId: null });
         }
         await deleteDoc(doc(teamsCol, team.id));
       });
@@ -770,7 +799,8 @@ async function autoAssignRemainingPool(){
     let target = workingTeams.find(t => t.players.length < tournament.teamSize);
     if(!target){
       if(workingTeams.length >= tournament.maxTeams) break; // sem mais espaço
-      target = { id: null, name: 'Equipa ' + (workingTeams.length + 1), players: [], captainPlayerId: null, isNew: true, seed: workingTeams.length + 1 };
+      const autoName = (tournament.usePlayerNames && tournament.teamSize === 1) ? pool[0].name : ('Equipa ' + (workingTeams.length + 1));
+      target = { id: null, name: autoName, players: [], captainPlayerId: null, isNew: true, seed: workingTeams.length + 1 };
       workingTeams.push(target);
     }
     const p = pool.shift();
@@ -1078,39 +1108,51 @@ document.getElementById('regen-bracket-btn').addEventListener('click', async fun
   await generateBracket(readyTeams);
 });
 
-function orphanTeams(){
-  if(!bracketGenerated()) return [];
-  const used = new Set();
-  matches.forEach(m => { if(m.teamAId) used.add(m.teamAId); if(m.teamBId) used.add(m.teamBId); });
-  return teams.filter(t => !used.has(t.id) && (t.players||[]).length === tournament.teamSize);
+function currentSlotOf(teamId){
+  for(const m of matches){
+    if(m.teamAId === teamId) return { matchId: m.id, field: 'teamAId', terminado: m.status === 'terminado' };
+    if(m.teamBId === teamId) return { matchId: m.id, field: 'teamBId', terminado: m.status === 'terminado' };
+  }
+  return null;
 }
 
-function emptySlots(){
+function emptySlots(excludeTeamId){
   const slots = [];
   matches.forEach(m => {
     if(m.status === 'terminado') return;
-    if(!m.teamAId) slots.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round, occupied: false });
-    if(!m.teamBId) slots.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round, occupied: false });
+    if(!m.teamAId || m.teamAId === excludeTeamId) slots.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round, occupied: !!m.teamAId });
+    if(!m.teamBId || m.teamBId === excludeTeamId) slots.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round, occupied: !!m.teamBId });
   });
-  if(slots.length === 0){
-    // sem vagas livres — permite substituir uma equipa já colocada num jogo ainda não decidido
-    matches.forEach(m => {
-      if(m.status === 'terminado') return;
-      if(m.teamAId) slots.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round, occupied: true, current: m.teamAId });
-      if(m.teamBId) slots.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round, occupied: true, current: m.teamBId });
-    });
-  }
-  return slots;
+  const free = slots.filter(s => !s.occupied);
+  if(free.length > 0) return free;
+  // sem vagas livres — permite substituir uma equipa já colocada num jogo ainda não decidido
+  const occupied = [];
+  matches.forEach(m => {
+    if(m.status === 'terminado') return;
+    if(m.teamAId && m.teamAId !== excludeTeamId) occupied.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round, occupied: true, current: m.teamAId });
+    if(m.teamBId && m.teamBId !== excludeTeamId) occupied.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round, occupied: true, current: m.teamBId });
+  });
+  return occupied;
+}
+
+function placeableTeams(){
+  if(!bracketGenerated()) return [];
+  return teams.filter(t => (t.players||[]).length === tournament.teamSize);
 }
 
 function renderOrphanTeams(){
   const box = document.getElementById('orphan-teams-box');
   box.innerHTML = '';
   if(!isAdmin()) return;
-  const orphans = orphanTeams();
-  if(orphans.length === 0) return;
-  box.innerHTML = '<div class="ticket" data-tag="Equipas por colocar na bracket">' +
-    orphans.map(t => `<div class="pool-row"><span>${t.name} <span class="muted">(${(t.players||[]).length}/${tournament.teamSize})</span></span><button class="btn btn-sm btn-outline" data-place="${t.id}">Colocar na bracket</button></div>`).join('') +
+  const placeable = placeableTeams();
+  if(placeable.length === 0) return;
+  box.innerHTML = '<div class="ticket" data-tag="Posições na bracket">' +
+    placeable.map(t => {
+      const slot = currentSlotOf(t.id);
+      const status = slot ? ('Ronda ' + (matches.find(m=>m.id===slot.matchId).round + 1) + (slot.terminado ? ' (já decidida — não se pode mover)' : '')) : 'Fora da bracket';
+      const btn = (!slot || !slot.terminado) ? `<button class="btn btn-sm btn-outline" data-place="${t.id}">${slot ? 'Mover' : 'Colocar na bracket'}</button>` : '';
+      return `<div class="pool-row"><span>${t.name} <span class="muted">— ${status}</span></span>${btn}</div>`;
+    }).join('') +
     '</div>';
   box.querySelectorAll('[data-place]').forEach(btn=>{
     btn.addEventListener('click', () => placeOrphanTeam(btn.dataset.place));
@@ -1118,7 +1160,7 @@ function renderOrphanTeams(){
 }
 
 async function placeOrphanTeam(teamId){
-  const slots = emptySlots();
+  const slots = emptySlots(teamId);
   if(slots.length === 0){ alert('Não há nenhuma vaga livre nem nenhuma partida ainda por decidir onde a possas colocar.'); return; }
   const list = slots.map((s,i) => {
     const base = (i+1) + '. Ronda ' + (s.round+1) + ' — vs ' + teamName(s.opponent);
@@ -1131,6 +1173,10 @@ async function placeOrphanTeam(teamId){
   if(isNaN(idx) || !slots[idx]) return;
   const slot = slots[idx];
   if(slot.occupied && !confirm('Isto vai substituir ' + teamName(slot.current) + ' por esta equipa nesse jogo. A equipa substituída volta a ficar por colocar. Continuar?')) return;
+  const oldSlot = currentSlotOf(teamId);
+  if(oldSlot && !oldSlot.terminado && oldSlot.matchId !== slot.matchId){
+    await updateDoc(doc(matchesCol, oldSlot.matchId), { [oldSlot.field]: null });
+  }
   await updateDoc(doc(matchesCol, slot.matchId), { [slot.field]: teamId });
 }
 

@@ -75,6 +75,11 @@
     <label for="t-participo" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Eu, organizador, também vou jogar.</label>
   </div>
 
+  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+    <input type="checkbox" id="t-useplayernames" style="width:auto;margin-top:4px;"/>
+    <label for="t-useplayernames" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Usar o nickname do jogador como nome da equipa (útil em 1v1).</label>
+  </div>
+
   <div class="form-group">
     <label>Mapas do torneio</label>
     <div class="maps-input">
@@ -121,6 +126,11 @@
       <div class="pill" data-v="two-side">Dois lados (espelhada, converge ao centro)</div>
     </div>
     <p class="form-hint">"Dois lados" só se aplica a eliminação simples/dupla.</p>
+  </div>
+
+  <div class="form-group" id="organizer-as-group" style="display:none;">
+    <label>Criar este torneio como</label>
+    <select id="t-organizer-as" style="width:100%;max-width:320px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"></select>
   </div>
 
   <button type="button" class="btn btn-accent" id="create-btn" style="width:100%;margin-top:10px;">Criar torneio</button>
@@ -212,17 +222,53 @@ function showError(msg){ var el = document.getElementById('form-error'); el.text
 </script>
 
 <script type="module">
-import { auth, db, collection, addDoc, serverTimestamp } from './firebase.js';
+import { auth, db, doc, getDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 let currentUser = null;
-onAuthStateChanged(auth, function(user){
+let currentUserData = null;
+let organizerOptions = []; // [{value:'self'|clubId, label, clubName}]
+
+onAuthStateChanged(auth, async function(user){
   currentUser = user;
   document.getElementById('need-login').style.display = user ? 'none' : 'block';
   document.getElementById('need-login-text').textContent = 'Precisas de entrar (ou entrar como convidado) para criar um torneio.';
   document.getElementById('torneio-form').style.display = user ? 'block' : 'none';
   document.getElementById('create-btn').disabled = !user;
+  if(user) await loadOrganizerOptions();
 });
+
+async function loadOrganizerOptions(){
+  organizerOptions = [];
+  let myNickname = 'Eu';
+  if(!currentUser.isAnonymous){
+    try{ const s = await getDoc(doc(db,'users',currentUser.uid)); if(s.exists()) myNickname = s.data().nickname || myNickname; }catch(e){}
+  } else { myNickname = 'Convidado'; }
+  organizerOptions.push({ value: 'self', label: myNickname + ' (eu)', clubId: null, clubName: null });
+
+  if(!currentUser.isAnonymous){
+    try{
+      const owned = await getDocs(query(collection(db,'clubs'), where('ownerUid','==',currentUser.uid)));
+      owned.forEach(d => organizerOptions.push({ value: 'club:'+d.id, label: d.data().name + ' (clube)', clubId: d.id, clubName: d.data().name }));
+
+      const memberQ = await getDocs(query(collectionGroup(db,'members'), where('uid','==',currentUser.uid)));
+      for(const m of memberQ.docs){
+        if(m.ref.parent.parent.parent.id !== 'clubs') continue;
+        if(m.data().permission !== 'organizador') continue;
+        const clubRef = m.ref.parent.parent;
+        if(owned.docs.some(o=>o.id===clubRef.id)) continue; // já listado como dono
+        const clubSnap = await getDoc(clubRef);
+        if(clubSnap.exists()) organizerOptions.push({ value: 'club:'+clubRef.id, label: clubSnap.data().name + ' (clube)', clubId: clubRef.id, clubName: clubSnap.data().name });
+      }
+    }catch(e){ /* falha silenciosa */ }
+  }
+
+  const group = document.getElementById('organizer-as-group');
+  const sel = document.getElementById('t-organizer-as');
+  if(organizerOptions.length <= 1){ group.style.display = 'none'; return; }
+  group.style.display = 'block';
+  sel.innerHTML = organizerOptions.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+}
 
 function genCode(){
   return Math.random().toString(36).slice(2,8).toUpperCase();
@@ -248,6 +294,11 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const bracketLayout = bracketType === 'round-robin' ? 'one-side' : selected('pill-layout');
   const mapBanEnabled = document.getElementById('t-banmaps').checked;
   const creatorParticipates = document.getElementById('t-participo').checked;
+  const usePlayerNames = document.getElementById('t-useplayernames').checked;
+  const orgSelValue = document.getElementById('t-organizer-as').value || 'self';
+  const orgOption = organizerOptions.find(o => o.value === orgSelValue) || organizerOptions[0];
+  const organizerDisplayName = orgOption ? (orgOption.clubName || orgOption.label.replace(' (eu)','')) : null;
+  const organizerClubId = orgOption ? orgOption.clubId : null;
 
   if(!name){ showError('Dá um nome ao torneio.'); return; }
   if(!game){ showError('Indica o jogo do torneio.'); return; }
@@ -265,6 +316,8 @@ document.getElementById('create-btn').addEventListener('click', async function()
       inviteCode: visibility === 'private' ? genCode() : null,
       assignMode, draftMode, coinMethod, bestOf, pointsToWin, mapBanEnabled, maps,
       creatorUid: currentUser.uid, creatorParticipates, moderatorUids: [],
+      organizerDisplayName, organizerClubId,
+      usePlayerNames,
       status: 'inscricoes', draftTurn: 0,
       createdAt: serverTimestamp()
     });
