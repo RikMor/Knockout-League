@@ -77,25 +77,32 @@ onAuthStateChanged(auth, async function(user){
   currentUser = user;
   if(!user){ document.getElementById('not-logged').style.display = 'block'; return; }
   document.getElementById('content').style.display = 'block';
+  document.getElementById('create-box').style.display = 'block'; // por defeito, até sabermos se já há clã
   await loadOwnedClan();
   await loadMemberOf();
 });
 
 async function loadOwnedClan(){
-  const q = query(collection(db,'clans'), where('ownerUid','==',currentUser.uid));
-  const snap = await getDocs(q);
-  if(snap.empty){
-    ownedClan = null;
+  try{
+    const q = query(collection(db,'clans'), where('ownerUid','==',currentUser.uid));
+    const snap = await getDocs(q);
+    if(snap.empty){
+      ownedClan = null;
+      document.getElementById('create-box').style.display = 'block';
+      document.getElementById('owned-box').style.display = 'none';
+      return;
+    }
+    const d = snap.docs[0];
+    ownedClan = { id: d.id, ...d.data() };
+    document.getElementById('create-box').style.display = 'none';
+    document.getElementById('owned-box').style.display = 'block';
+    document.getElementById('owned-clan-name').textContent = ownedClan.name;
+    await loadMembers();
+  }catch(e){
     document.getElementById('create-box').style.display = 'block';
-    document.getElementById('owned-box').style.display = 'none';
-    return;
+    document.getElementById('create-clan-error').textContent = 'Não consegui verificar se já tens clã (' + e.message + '). Ainda podes tentar criar um.';
+    document.getElementById('create-clan-error').style.display = 'block';
   }
-  const d = snap.docs[0];
-  ownedClan = { id: d.id, ...d.data() };
-  document.getElementById('create-box').style.display = 'none';
-  document.getElementById('owned-box').style.display = 'block';
-  document.getElementById('owned-clan-name').textContent = ownedClan.name;
-  await loadMembers();
 }
 
 function roleSelectHtml(m){
@@ -150,22 +157,24 @@ async function loadMembers(){
 }
 
 async function loadMemberOf(){
-  const q = query(collectionGroup(db,'members'), where('uid','==',currentUser.uid));
-  const snap = await getDocs(q);
-  const clanMemberships = snap.docs.filter(d => d.ref.parent.parent.parent.id === 'clans');
-  const box = document.getElementById('memberof-box');
-  if(clanMemberships.length === 0){ box.style.display = 'none'; return; }
-  box.style.display = 'block';
-  const list = document.getElementById('memberof-list');
-  const cards = await Promise.all(clanMemberships.map(async d=>{
-    const clanRef = d.ref.parent.parent;
-    if(clanRef.id === (ownedClan && ownedClan.id)) return '';
-    const clanSnap = await getDoc(clanRef);
-    if(!clanSnap.exists()) return '';
-    return `<div class="member-row"><span>${clanSnap.data().name}</span></div>`;
-  }));
-  const filtered = cards.filter(Boolean);
-  list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clã.</p>';
+  try{
+    const q = query(collectionGroup(db,'members'), where('uid','==',currentUser.uid));
+    const snap = await getDocs(q);
+    const clanMemberships = snap.docs.filter(d => d.ref.parent.parent.parent.id === 'clans');
+    const box = document.getElementById('memberof-box');
+    if(clanMemberships.length === 0){ box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    const list = document.getElementById('memberof-list');
+    const cards = await Promise.all(clanMemberships.map(async d=>{
+      const clanRef = d.ref.parent.parent;
+      if(clanRef.id === (ownedClan && ownedClan.id)) return '';
+      const clanSnap = await getDoc(clanRef);
+      if(!clanSnap.exists()) return '';
+      return `<div class="member-row"><span>${clanSnap.data().name}</span></div>`;
+    }));
+    const filtered = cards.filter(Boolean);
+    list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clã.</p>';
+  }catch(e){ /* falha silenciosa — não é crítico */ }
 }
 
 document.getElementById('create-clan-btn').addEventListener('click', async function(){

@@ -81,25 +81,32 @@ onAuthStateChanged(auth, async function(user){
   currentUser = user;
   if(!user){ document.getElementById('not-logged').style.display = 'block'; return; }
   document.getElementById('content').style.display = 'block';
+  document.getElementById('create-box').style.display = 'block'; // por defeito, até sabermos se já há clube
   await loadOwnedClub();
   await loadMemberOf();
 });
 
 async function loadOwnedClub(){
-  const q = query(collection(db,'clubs'), where('ownerUid','==',currentUser.uid));
-  const snap = await getDocs(q);
-  if(snap.empty){
-    ownedClub = null;
+  try{
+    const q = query(collection(db,'clubs'), where('ownerUid','==',currentUser.uid));
+    const snap = await getDocs(q);
+    if(snap.empty){
+      ownedClub = null;
+      document.getElementById('create-box').style.display = 'block';
+      document.getElementById('owned-box').style.display = 'none';
+      return;
+    }
+    const d = snap.docs[0];
+    ownedClub = { id: d.id, ...d.data() };
+    document.getElementById('create-box').style.display = 'none';
+    document.getElementById('owned-box').style.display = 'block';
+    document.getElementById('owned-club-name').textContent = ownedClub.name;
+    await loadMembers();
+  }catch(e){
     document.getElementById('create-box').style.display = 'block';
-    document.getElementById('owned-box').style.display = 'none';
-    return;
+    document.getElementById('create-club-error').textContent = 'Não consegui verificar se já tens clube (' + e.message + '). Ainda podes tentar criar um.';
+    document.getElementById('create-club-error').style.display = 'block';
   }
-  const d = snap.docs[0];
-  ownedClub = { id: d.id, ...d.data() };
-  document.getElementById('create-box').style.display = 'none';
-  document.getElementById('owned-box').style.display = 'block';
-  document.getElementById('owned-club-name').textContent = ownedClub.name;
-  await loadMembers();
 }
 
 async function loadMembers(){
@@ -125,23 +132,25 @@ async function loadMembers(){
 }
 
 async function loadMemberOf(){
-  const q = query(collectionGroup(db,'members'), where('uid','==',currentUser.uid));
-  const snap = await getDocs(q);
-  const clubMemberships = snap.docs.filter(d => d.ref.parent.parent.parent.id === 'clubs');
-  const box = document.getElementById('memberof-box');
-  if(clubMemberships.length === 0){ box.style.display = 'none'; return; }
-  box.style.display = 'block';
-  const list = document.getElementById('memberof-list');
-  const cards = await Promise.all(clubMemberships.map(async d=>{
-    const clubRef = d.ref.parent.parent;
-    if(clubRef.id === (ownedClub && ownedClub.id)) return ''; // não repetir o próprio clube
-    const clubSnap = await getDoc(clubRef);
-    if(!clubSnap.exists()) return '';
-    const perm = d.data().permission;
-    return `<div class="member-row"><span>${clubSnap.data().name}</span><span class="badge-perm">${perm === 'organizador' ? 'Podes criar torneios' : 'Podes moderar'}</span></div>`;
-  }));
-  const filtered = cards.filter(Boolean);
-  list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clube.</p>';
+  try{
+    const q = query(collectionGroup(db,'members'), where('uid','==',currentUser.uid));
+    const snap = await getDocs(q);
+    const clubMemberships = snap.docs.filter(d => d.ref.parent.parent.parent.id === 'clubs');
+    const box = document.getElementById('memberof-box');
+    if(clubMemberships.length === 0){ box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    const list = document.getElementById('memberof-list');
+    const cards = await Promise.all(clubMemberships.map(async d=>{
+      const clubRef = d.ref.parent.parent;
+      if(clubRef.id === (ownedClub && ownedClub.id)) return ''; // não repetir o próprio clube
+      const clubSnap = await getDoc(clubRef);
+      if(!clubSnap.exists()) return '';
+      const perm = d.data().permission;
+      return `<div class="member-row"><span>${clubSnap.data().name}</span><span class="badge-perm">${perm === 'organizador' ? 'Podes criar torneios' : 'Podes moderar'}</span></div>`;
+    }));
+    const filtered = cards.filter(Boolean);
+    list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clube.</p>';
+  }catch(e){ /* falha silenciosa — não é crítico */ }
 }
 
 document.getElementById('create-club-btn').addEventListener('click', async function(){
