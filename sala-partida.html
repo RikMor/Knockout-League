@@ -135,6 +135,15 @@
     <div class="room-col right" id="rt-players-b"></div>
   </div>
 
+  <div class="room-section" id="rt-chat-section" style="display:none;">
+    <h3>Chat da partida</h3>
+    <div id="rt-chat-messages" style="max-height:320px;overflow-y:auto;border:1px solid var(--line);padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;"></div>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="rt-chat-input" placeholder="Escreve uma mensagem..." style="flex:1;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+      <button class="btn btn-accent btn-sm" id="rt-chat-send">Enviar</button>
+    </div>
+  </div>
+
   <div class="room-section" id="rt-admin-section" style="display:none;background:rgba(232,90,54,0.04);">
     <h3>Configurar sala (organizador)</h3>
     <p class="muted" style="font-size:0.82rem;margin-bottom:12px;">Se algo correr mal, força aqui manualmente quem bane primeiro, ou corrige a pontuação.</p>
@@ -158,7 +167,7 @@
 
 <script src="shared.js"></script>
 <script type="module">
-import { auth, db, doc, getDoc, updateDoc, collection, onSnapshot } from './firebase.js';
+import { auth, db, doc, getDoc, updateDoc, collection, addDoc, query, orderBy, serverTimestamp, onSnapshot } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -173,6 +182,7 @@ const tRef = doc(db, 'tournaments', tId);
 const teamsCol = collection(db, 'tournaments', tId, 'teams');
 const playersCol = collection(db, 'tournaments', tId, 'players');
 const matchRef = doc(db, 'tournaments', tId, 'matches', mId);
+const chatCol = collection(db, 'tournaments', tId, 'matches', mId, 'chat');
 
 function isAdmin(){
   if(!currentUser || !tournament) return false;
@@ -219,6 +229,38 @@ onSnapshot(matchRef, snap=>{
   if(!snap.exists()){ document.getElementById('not-found').style.display='block'; document.getElementById('room').style.display='none'; return; }
   match = {id:snap.id, ...snap.data()}; renderAll();
 });
+
+let chatMsgs = [];
+onSnapshot(query(chatCol, orderBy('createdAt','asc')), snap=>{
+  chatMsgs = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderChat();
+});
+
+function renderChat(){
+  const section = document.getElementById('rt-chat-section');
+  section.style.display = canManage() ? 'block' : 'none';
+  if(!canManage()) return;
+  const box = document.getElementById('rt-chat-messages');
+  box.innerHTML = chatMsgs.map(m => {
+    const mine = currentUser && m.uid === currentUser.uid;
+    return `<div style="align-self:${mine?'flex-end':'flex-start'};max-width:80%;">
+      <div class="muted" style="font-size:0.7rem;margin-bottom:2px;${mine?'text-align:right;':''}">${m.nickname}${m.isAdmin ? ' · organizador' : ''}</div>
+      <div style="background:${mine?'var(--accent)':'var(--surface)'};color:${mine?'#fff':'var(--ink)'};border:1px solid var(--line);padding:8px 12px;font-size:0.88rem;">${m.text}</div>
+    </div>`;
+  }).join('') || '<p class="muted" style="text-align:center;">Sem mensagens ainda.</p>';
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendChatMessage(){
+  const input = document.getElementById('rt-chat-input');
+  const text = input.value.trim();
+  if(!text || !currentUser) return;
+  const nickname = currentUserData?.nickname || (currentUser.isAnonymous ? 'Convidado' : (currentUser.displayName || 'Jogador'));
+  await addDoc(chatCol, { uid: currentUser.uid, nickname, isAdmin: isAdmin(), text: text.slice(0,500), createdAt: serverTimestamp() });
+  input.value = '';
+}
+document.getElementById('rt-chat-send').addEventListener('click', sendChatMessage);
+document.getElementById('rt-chat-input').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); sendChatMessage(); } });
 
 function playerLabel(p){
   const botTag = p.source === 'bot' ? ' 🤖' : '';

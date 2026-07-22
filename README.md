@@ -92,6 +92,14 @@
 - **Quem organizou** — ao criar um torneio, se fores dono ou tiveres permissão de "criar torneios" nalgum clube, escolhes se o torneio é criado em teu nome ou em nome do clube; aparece no cabeçalho da sala ("Organizado por ...").
 - **Clube: permissões múltiplas** — ao adicionar (ou editar) um membro, dá para marcar as duas checkboxes ("Pode criar torneios" e "Pode moderar") em vez de escolher só uma.
 
+## Atualização — notificações, convites com aceitar/recusar, chat, correções
+- **Corrigido: clube/clã não aparecia ao convidado** — a causa era a consulta usada precisar de um índice especial do Firestore que não existe por defeito. Resolvido em definitivo: adicionar alguém a um clube/clã passou a ser um **convite** que fica pendente até a pessoa o aceitar.
+- **Notificações** (`notificacoes.html`, novo, com contador no menu) — convites de clube/clã aparecem aqui com Aceitar/Recusar. Só ao aceitar é que a pessoa entra mesmo no clube/clã (e passa a aparecer corretamente do lado dela).
+- **Clã: cargos "Membro" e "Substituto"** — além de Capitão/Sub-capitão, cada membro pode ser marcado como substituto (independente do cargo).
+- **Menu móvel a branco** — o ícone das 3 linhas já não fica escuro sobre o fundo escuro.
+- **Torneios mostram quem organizou** — nas listagens (Início, Torneios, Os meus torneios) e não só na sala.
+- **Chat na sala da partida** — jogadores das duas equipas e o organizador podem falar entre si diretamente na sala, em tempo real.
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)

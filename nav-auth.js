@@ -1,5 +1,5 @@
 // nav-auth.js — injeta dinamicamente o estado de login na nav
-import { auth, db, doc } from './firebase.js';
+import { auth, db, doc, collection, query, where, getDocs } from './firebase.js';
 import { getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
@@ -32,14 +32,22 @@ onAuthStateChanged(auth, async function (user) {
     }
   } catch (e) { /* falha silenciosa */ }
 
+  let pendingCount = 0;
+  try {
+    const notifQ = query(collection(db, 'notifications'), where('toUid', '==', user.uid));
+    const notifSnap = await getDocs(notifQ);
+    pendingCount = notifSnap.docs.filter(d => d.data().status === 'pending').length;
+  } catch (e) { /* falha silenciosa */ }
+
   area.innerHTML =
     '<div class="nav-user-dd" id="nav-user-dd">' +
       '<button class="nav-user-btn" type="button" id="nav-user-toggle">' +
         '<img class="nav-user-avatar" src="' + avatarUrl + '" alt=""/>' +
-        '<span>' + nick + (tag ? '<span style="opacity:.6;">#' + tag + '</span>' : '') + '</span>' +
+        '<span>' + nick + (tag ? '<span style="opacity:.6;">#' + tag + '</span>' : '') + (pendingCount > 0 ? '<span style="background:var(--accent);color:#fff;border-radius:9px;padding:1px 7px;font-size:0.7rem;margin-left:6px;">' + pendingCount + '</span>' : '') + '</span>' +
       '</button>' +
       '<div class="nav-user-menu">' +
         '<a href="perfil.html">O meu perfil</a>' +
+        '<a href="notificacoes.html">Notificações' + (pendingCount > 0 ? ' (' + pendingCount + ')' : '') + '</a>' +
         '<a href="os-meus-torneios.html">Os meus torneios</a>' +
         '<a href="clube.html">O meu clube</a>' +
         '<a href="clan.html">O meu clã</a>' +

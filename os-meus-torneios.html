@@ -80,6 +80,7 @@ function cardHtml(t, id){
     <span class="badge ${badgeClass}">${badgeText}</span>
     <h3>${t.name}</h3>
     <span class="muted">${t.game||''} · ${t.teamSize}v${t.teamSize} · ${t.status||''}</span>
+    ${t.organizerDisplayName ? '<span class="muted" style="display:block;font-size:0.78rem;margin-top:4px;">Organizado por '+t.organizerDisplayName+'</span>' : ''}
   </a>`;
 }
 

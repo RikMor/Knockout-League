@@ -49,7 +49,7 @@
       <h2 id="owned-clan-name" style="margin-bottom:20px;"></h2>
       <div style="display:flex;gap:8px;max-width:520px;margin-bottom:20px;flex-wrap:wrap;">
         <input type="text" id="member-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
-        <button class="btn btn-outline btn-sm" id="add-member-btn">Confirmar</button>
+        <button class="btn btn-outline btn-sm" id="add-member-btn">Convidar</button>
       </div>
       <p class="form-error" id="member-error" style="margin-bottom:16px;"></p>
       <div class="card" id="members-list"><p class="muted">Sem membros ainda.</p></div>
@@ -107,7 +107,7 @@ async function loadOwnedClan(){
 
 function roleSelectHtml(m){
   return `<select data-role="${m.id}" style="padding:5px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:0.78rem;">
-    <option value="">Sem cargo</option>
+    <option value="">Membro</option>
     <option value="captain" ${ownedClan.captainUid===m.uid?'selected':''}>Capitão</option>
     <option value="subcaptain" ${ownedClan.subCaptainUid===m.uid?'selected':''}>Sub-capitão</option>
   </select>`;
@@ -122,8 +122,9 @@ async function loadMembers(){
     const roleTag = ownedClan.captainUid === m.uid ? '<span class="badge-role">Capitão</span>' : (ownedClan.subCaptainUid === m.uid ? '<span class="badge-role">Sub-capitão</span>' : '');
     return `<div class="member-row">
       <span>${m.nickname}${roleTag}</span>
-      <span style="display:flex;gap:8px;align-items:center;">
+      <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         ${roleSelectHtml(m)}
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-sub="${m.id}" ${m.isSubstitute?'checked':''} style="width:auto;"/> Substituto</label>
         <button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>
       </span>
     </div>`;
@@ -154,21 +155,25 @@ async function loadMembers(){
       loadOwnedClan();
     });
   });
+  el.querySelectorAll('[data-sub]').forEach(cb=>{
+    cb.addEventListener('change', async function(){
+      await updateDoc(doc(db,'clans',ownedClan.id,'members',cb.dataset.sub), { isSubstitute: cb.checked });
+      loadMembers();
+    });
+  });
 }
 
 async function loadMemberOf(){
   try{
-    const q = query(collectionGroup(db,'members'), where('uid','==',currentUser.uid));
-    const snap = await getDocs(q);
-    const clanMemberships = snap.docs.filter(d => d.ref.parent.parent.parent.id === 'clans');
+    const s = await getDoc(doc(db,'users',currentUser.uid));
+    const clanIds = (s.exists() && s.data().clanIds) || [];
     const box = document.getElementById('memberof-box');
-    if(clanMemberships.length === 0){ box.style.display = 'none'; return; }
+    const relevant = clanIds.filter(id => id !== (ownedClan && ownedClan.id));
+    if(relevant.length === 0){ box.style.display = 'none'; return; }
     box.style.display = 'block';
     const list = document.getElementById('memberof-list');
-    const cards = await Promise.all(clanMemberships.map(async d=>{
-      const clanRef = d.ref.parent.parent;
-      if(clanRef.id === (ownedClan && ownedClan.id)) return '';
-      const clanSnap = await getDoc(clanRef);
+    const cards = await Promise.all(relevant.map(async clanId=>{
+      const clanSnap = await getDoc(doc(db,'clans',clanId));
       if(!clanSnap.exists()) return '';
       return `<div class="member-row"><span>${clanSnap.data().name}</span></div>`;
     }));
@@ -201,9 +206,14 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
     const found = snap.docs.find(d => (d.data().tag||'').toUpperCase() === tag);
     if(!found){ err.textContent = 'Não encontrei nenhum jogador com esse nickname e tag.'; err.style.display = 'block'; return; }
     if(members.some(m => m.uid === found.id)){ err.textContent = 'Já é membro deste clã.'; err.style.display = 'block'; return; }
-    await addDoc(collection(db,'clans',ownedClan.id,'members'), { uid: found.id, nickname: found.data().nickname });
+    await addDoc(collection(db,'notifications'), {
+      toUid: found.id, type: 'clan_invite', refId: ownedClan.id, refName: ownedClan.name,
+      status: 'pending', createdAt: serverTimestamp()
+    });
     document.getElementById('member-input').value = '';
-    loadMembers();
+    err.style.color = 'var(--win)'; err.style.borderColor = 'var(--win)';
+    err.textContent = 'Convite enviado — fica à espera de ' + found.data().nickname + ' aceitar nas notificações dele.';
+    err.style.display = 'block';
   }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
 });
 </script>

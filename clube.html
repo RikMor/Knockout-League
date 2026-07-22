@@ -53,7 +53,7 @@
           <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-organizador" style="width:auto;"/> Pode criar torneios</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-moderador" style="width:auto;"/> Pode moderar torneios</label>
         </div>
-        <button class="btn btn-outline btn-sm" id="add-member-btn">Confirmar</button>
+        <button class="btn btn-outline btn-sm" id="add-member-btn">Convidar</button>
       </div>
       <p class="form-error" id="member-error" style="margin-bottom:16px;"></p>
       <div class="card" id="members-list"><p class="muted">Sem membros ainda.</p></div>
@@ -150,20 +150,21 @@ async function loadMembers(){
 
 async function loadMemberOf(){
   try{
-    const q = query(collectionGroup(db,'members'), where('uid','==',currentUser.uid));
-    const snap = await getDocs(q);
-    const clubMemberships = snap.docs.filter(d => d.ref.parent.parent.parent.id === 'clubs');
+    const s = await getDoc(doc(db,'users',currentUser.uid));
+    const clubIds = (s.exists() && s.data().clubIds) || [];
     const box = document.getElementById('memberof-box');
-    if(clubMemberships.length === 0){ box.style.display = 'none'; return; }
+    const relevant = clubIds.filter(id => id !== (ownedClub && ownedClub.id));
+    if(relevant.length === 0){ box.style.display = 'none'; return; }
     box.style.display = 'block';
     const list = document.getElementById('memberof-list');
-    const cards = await Promise.all(clubMemberships.map(async d=>{
-      const clubRef = d.ref.parent.parent;
-      if(clubRef.id === (ownedClub && ownedClub.id)) return ''; // não repetir o próprio clube
-      const clubSnap = await getDoc(clubRef);
+    const cards = await Promise.all(relevant.map(async clubId=>{
+      const clubSnap = await getDoc(doc(db,'clubs',clubId));
       if(!clubSnap.exists()) return '';
-      const perms = memberPerms(d.data());
-      const labels = perms.map(p => p === 'organizador' ? 'Podes criar torneios' : 'Podes moderar').join(' · ');
+      let labels = '';
+      try{
+        const memSnap = await getDocs(query(collection(db,'clubs',clubId,'members'), where('uid','==',currentUser.uid)));
+        if(!memSnap.empty) labels = memberPerms(memSnap.docs[0].data()).map(p => p === 'organizador' ? 'Podes criar torneios' : 'Podes moderar').join(' · ');
+      }catch(e){}
       return `<div class="member-row"><span>${clubSnap.data().name}</span><span class="badge-perm">${labels || 'Sem permissões'}</span></div>`;
     }));
     const filtered = cards.filter(Boolean);
@@ -199,11 +200,16 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
     const found = snap.docs.find(d => (d.data().tag||'').toUpperCase() === tag);
     if(!found){ err.textContent = 'Não encontrei nenhum jogador com esse nickname e tag.'; err.style.display = 'block'; return; }
     if(members.some(m => m.uid === found.id)){ err.textContent = 'Já é membro deste clube.'; err.style.display = 'block'; return; }
-    await addDoc(collection(db,'clubs',ownedClub.id,'members'), { uid: found.id, nickname: found.data().nickname, permissions });
+    await addDoc(collection(db,'notifications'), {
+      toUid: found.id, type: 'club_invite', refId: ownedClub.id, refName: ownedClub.name,
+      permissions, status: 'pending', createdAt: serverTimestamp()
+    });
     document.getElementById('member-input').value = '';
     document.getElementById('perm-organizador').checked = false;
     document.getElementById('perm-moderador').checked = false;
-    loadMembers();
+    err.style.color = 'var(--win)'; err.style.borderColor = 'var(--win)';
+    err.textContent = 'Convite enviado — fica à espera de ' + found.data().nickname + ' aceitar nas notificações dele.';
+    err.style.display = 'block';
   }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
 });
 </script>

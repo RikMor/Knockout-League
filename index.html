@@ -93,7 +93,7 @@ async function loadPublic(){
       const card = document.createElement('a');
       card.href = 'torneio.html?id=' + d.id;
       card.className = 't-card';
-      card.innerHTML = `<span class="badge badge-open">${t.status || 'inscrições'}</span><h3>${t.name}</h3><span class="muted">${t.game || ''} · ${t.teamSize}v${t.teamSize}</span><button class="btn btn-outline btn-sm" style="margin-top:10px;">Ver</button>`;
+      card.innerHTML = `<span class="badge badge-open">${t.status || 'inscrições'}</span><h3>${t.name}</h3><span class="muted">${t.game || ''} · ${t.teamSize}v${t.teamSize}</span>${t.organizerDisplayName ? '<span class="muted" style="display:block;font-size:0.78rem;margin-top:4px;">Organizado por '+t.organizerDisplayName+'</span>' : ''}<button class="btn btn-outline btn-sm" style="margin-top:10px;">Ver</button>`;
       el.appendChild(card);
     });
   }catch(e){ el.innerHTML = '<p class="muted">Liga o teu projeto Firebase em firebase.js para ver torneios reais.</p>'; }

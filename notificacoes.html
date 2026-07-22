@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Notificações — Knockout League</title>
+<link rel="stylesheet" href="shared.css?v=2"/>
+<style>
+  .notif-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line); gap: 14px; flex-wrap: wrap; }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-title { font-weight: 700; }
+  .notif-sub { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+  .notif-status { font-family: 'IBM Plex Mono'; font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; padding: 3px 9px; border: 1px solid var(--line); color: var(--muted); }
+  .not-logged { text-align: center; padding: 100px 20px; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
+  <button class="nav-mobile-toggle">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">Início</a></li>
+    <li><a href="torneios.html">Torneios</a></li>
+    <li><a href="criar-torneio.html">Criar torneio</a></li>
+    <li><a href="faq.html">FAQ</a></li>
+    <li><a href="contacto.html">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+  </ul>
+</nav>
+
+<div class="wrap page-head">
+  <div class="eyebrow">A tua conta</div>
+  <h1>Notificações</h1>
+</div>
+
+<div class="wrap" style="padding-bottom:90px;">
+  <div class="not-logged" id="not-logged" style="display:none;">
+    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para ver as tuas notificações.</p>
+    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+  </div>
+
+  <div id="content" style="display:none;">
+    <div class="card" id="notif-list"><p class="muted">A carregar...</p></div>
+  </div>
+</div>
+
+<footer><span>© 2026 Knockout League</span></footer>
+
+<script src="shared.js"></script>
+<script type="module">
+import { auth, db, doc, getDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, arrayUnion } from './firebase.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+let currentUser = null;
+let currentUserData = null;
+let notifs = [];
+
+onAuthStateChanged(auth, async function(user){
+  currentUser = user;
+  if(!user){ document.getElementById('not-logged').style.display = 'block'; return; }
+  document.getElementById('content').style.display = 'block';
+  try{ const s = await getDoc(doc(db,'users',user.uid)); if(s.exists()) currentUserData = s.data(); }catch(e){}
+  await loadNotifs();
+});
+
+async function loadNotifs(){
+  const box = document.getElementById('notif-list');
+  try{
+    const q = query(collection(db,'notifications'), where('toUid','==',currentUser.uid));
+    const snap = await getDocs(q);
+    notifs = snap.docs.map(d=>({id:d.id, ...d.data()}))
+      .sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0));
+    render();
+  }catch(e){ box.innerHTML = '<p class="muted">Erro ao carregar notificações. (' + e.message + ')</p>'; }
+}
+
+function render(){
+  const box = document.getElementById('notif-list');
+  if(notifs.length === 0){ box.innerHTML = '<p class="muted">Sem notificações.</p>'; return; }
+  box.innerHTML = notifs.map(n => {
+    const isInvite = (n.type === 'club_invite' || n.type === 'clan_invite') && n.status === 'pending';
+    const kind = n.type === 'club_invite' ? 'clube' : 'clã';
+    const permsLine = n.permissions ? (' — pode: ' + n.permissions.map(p => p==='organizador'?'criar torneios':'moderar').join(', ')) : '';
+    return `<div class="notif-item">
+      <div>
+        <div class="notif-title">Convite para o ${kind} "${n.refName}"</div>
+        <div class="notif-sub">${permsLine || ''}</div>
+      </div>
+      ${isInvite
+        ? `<div style="display:flex;gap:8px;"><button class="btn btn-accent btn-sm" data-accept="${n.id}">Aceitar</button><button class="btn btn-outline btn-sm" data-decline="${n.id}">Recusar</button></div>`
+        : `<span class="notif-status">${n.status === 'accepted' ? 'Aceite' : (n.status === 'declined' ? 'Recusado' : n.status)}</span>`}
+    </div>`;
+  }).join('');
+
+  box.querySelectorAll('[data-accept]').forEach(btn=>{
+    btn.addEventListener('click', () => acceptInvite(btn.dataset.accept));
+  });
+  box.querySelectorAll('[data-decline]').forEach(btn=>{
+    btn.addEventListener('click', () => declineInvite(btn.dataset.decline));
+  });
+}
+
+async function acceptInvite(notifId){
+  const n = notifs.find(x=>x.id===notifId);
+  if(!n) return;
+  const nickname = currentUserData?.nickname || currentUser.displayName || 'Jogador';
+  try{
+    if(n.type === 'club_invite'){
+      await addDoc(collection(db,'clubs',n.refId,'members'), { uid: currentUser.uid, nickname, permissions: n.permissions || [] });
+      await updateDoc(doc(db,'users',currentUser.uid), { clubIds: arrayUnion(n.refId) });
+    } else if(n.type === 'clan_invite'){
+      await addDoc(collection(db,'clans',n.refId,'members'), { uid: currentUser.uid, nickname, isSubstitute: false });
+      await updateDoc(doc(db,'users',currentUser.uid), { clanIds: arrayUnion(n.refId) });
+    }
+    await updateDoc(doc(db,'notifications',notifId), { status: 'accepted' });
+    await loadNotifs();
+  }catch(e){ alert('Erro ao aceitar: ' + e.message); }
+}
+
+async function declineInvite(notifId){
+  try{
+    await updateDoc(doc(db,'notifications',notifId), { status: 'declined' });
+    await loadNotifs();
+  }catch(e){ alert('Erro: ' + e.message); }
+}
+</script>
+<script type="module" src="nav-auth.js"></script>
+</body>
+</html>

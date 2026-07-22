@@ -73,7 +73,7 @@ body > nav {
 }
 .nav-links a:hover, .nav-links button:hover { background: rgba(0,0,0,0.06); }
 .nav-links a.active { color: var(--accent); }
-.nav-mobile-toggle { display: none; background: none; border: none; font-size: 1.4rem; cursor: pointer; }
+.nav-mobile-toggle { display: none; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--ink); }
 
 /* USER DROPDOWN */
 .nav-user-dd { position: relative; }
