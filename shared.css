@@ -179,7 +179,10 @@ section { padding: 64px 0; }
 }
 
 /* ROULETTE */
-.roulette-wheel {
+.reorder-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--line); background: var(--surface); margin-bottom: 6px; cursor: grab; user-select: none; }
+.reorder-row.dragging { opacity: 0.4; }
+.reorder-row .drag-handle { color: var(--muted); font-size: 1.1rem; }
+.reorder-row .reorder-num { font-family: 'IBM Plex Mono'; color: var(--accent); font-weight: 700; width: 24px; }
   width: 260px; height: 260px; border-radius: 50%; border: 3px solid var(--ink);
   display: flex; align-items: center; justify-content: center; margin: 0 auto;
   font-family: 'Anton', sans-serif; font-size: 1.6rem; text-align: center; padding: 20px;

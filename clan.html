@@ -47,7 +47,7 @@
 
     <div id="owned-box" style="display:none;margin-bottom:40px;">
       <h2 id="owned-clan-name" style="margin-bottom:20px;"></h2>
-      <div style="display:flex;gap:8px;max-width:520px;margin-bottom:20px;flex-wrap:wrap;">
+      <div id="invite-form-box" style="display:flex;gap:8px;max-width:520px;margin-bottom:20px;flex-wrap:wrap;">
         <input type="text" id="member-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
         <button class="btn btn-outline btn-sm" id="add-member-btn">Convidar</button>
       </div>
@@ -66,11 +66,13 @@
 
 <script src="shared.js"></script>
 <script type="module">
-import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp } from './firebase.js';
+import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp, arrayRemove } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 let currentUser = null;
+let currentUserData = null;
 let ownedClan = null;
+let isOwner = false;
 let members = [];
 
 onAuthStateChanged(auth, async function(user){
@@ -78,25 +80,35 @@ onAuthStateChanged(auth, async function(user){
   if(!user){ document.getElementById('not-logged').style.display = 'block'; return; }
   document.getElementById('content').style.display = 'block';
   document.getElementById('create-box').style.display = 'block'; // por defeito, até sabermos se já há clã
+  try{ const s = await getDoc(doc(db,'users',user.uid)); if(s.exists()) currentUserData = s.data(); }catch(e){}
   await loadOwnedClan();
   await loadMemberOf();
 });
 
 async function loadOwnedClan(){
+  const params = new URLSearchParams(window.location.search);
+  const viewId = params.get('id');
   try{
-    const q = query(collection(db,'clans'), where('ownerUid','==',currentUser.uid));
-    const snap = await getDocs(q);
-    if(snap.empty){
-      ownedClan = null;
-      document.getElementById('create-box').style.display = 'block';
-      document.getElementById('owned-box').style.display = 'none';
-      return;
+    if(viewId){
+      const d = await getDoc(doc(db,'clans',viewId));
+      if(!d.exists()){ document.getElementById('owned-box').style.display = 'none'; document.getElementById('create-box').style.display = 'none'; return; }
+      ownedClan = { id: d.id, ...d.data() };
+    } else {
+      const q = query(collection(db,'clans'), where('ownerUid','==',currentUser.uid));
+      const snap = await getDocs(q);
+      if(snap.empty){
+        ownedClan = null;
+        document.getElementById('create-box').style.display = 'block';
+        document.getElementById('owned-box').style.display = 'none';
+        return;
+      }
+      ownedClan = { id: snap.docs[0].id, ...snap.docs[0].data() };
     }
-    const d = snap.docs[0];
-    ownedClan = { id: d.id, ...d.data() };
+    isOwner = ownedClan.ownerUid === currentUser.uid;
     document.getElementById('create-box').style.display = 'none';
     document.getElementById('owned-box').style.display = 'block';
-    document.getElementById('owned-clan-name').textContent = ownedClan.name;
+    document.getElementById('owned-clan-name').textContent = ownedClan.name + (isOwner ? '' : ' (visitando)');
+    document.getElementById('invite-form-box').style.display = isOwner ? 'block' : 'none';
     await loadMembers();
   }catch(e){
     document.getElementById('create-box').style.display = 'block';
@@ -117,15 +129,17 @@ async function loadMembers(){
   const snap = await getDocs(collection(db,'clans',ownedClan.id,'members'));
   members = snap.docs.map(d=>({id:d.id, ...d.data()}));
   const el = document.getElementById('members-list');
-  if(members.length === 0){ el.innerHTML = '<p class="muted">Sem membros ainda.</p>'; return; }
-  el.innerHTML = members.map(m => {
+  const leaderRow = `<div class="member-row"><span>${ownedClan.ownerNickname || 'Tu'}</span><span class="badge-role">Líder</span></div>`;
+  if(members.length === 0){ el.innerHTML = leaderRow + '<p class="muted" style="margin-top:10px;">Sem mais membros ainda.</p>'; return; }
+  el.innerHTML = leaderRow + members.map(m => {
     const roleTag = ownedClan.captainUid === m.uid ? '<span class="badge-role">Capitão</span>' : (ownedClan.subCaptainUid === m.uid ? '<span class="badge-role">Sub-capitão</span>' : '');
+    const editControls = isOwner
+      ? `${roleSelectHtml(m)}<label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-sub="${m.id}" ${m.isSubstitute?'checked':''} style="width:auto;"/> Substituto</label><button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>`
+      : (m.isSubstitute ? '<span class="badge-role">Substituto</span>' : '');
     return `<div class="member-row">
       <span>${m.nickname}${roleTag}</span>
       <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        ${roleSelectHtml(m)}
-        <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-sub="${m.id}" ${m.isSubstitute?'checked':''} style="width:auto;"/> Substituto</label>
-        <button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>
+        ${editControls}
       </span>
     </div>`;
   }).join('');
@@ -138,6 +152,7 @@ async function loadMembers(){
       if(m && ownedClan.subCaptainUid === m.uid) upd.subCaptainUid = null;
       if(Object.keys(upd).length) await updateDoc(doc(db,'clans',ownedClan.id), upd);
       await deleteDoc(doc(db,'clans',ownedClan.id,'members',btn.dataset.rm));
+      if(m) await updateDoc(doc(db,'users',m.uid), { clanIds: arrayRemove(ownedClan.id) }).catch(()=>{});
       loadOwnedClan();
     });
   });
@@ -175,7 +190,7 @@ async function loadMemberOf(){
     const cards = await Promise.all(relevant.map(async clanId=>{
       const clanSnap = await getDoc(doc(db,'clans',clanId));
       if(!clanSnap.exists()) return '';
-      return `<div class="member-row"><span>${clanSnap.data().name}</span></div>`;
+      return `<a href="clan.html?id=${clanId}" class="member-row" style="text-decoration:none;color:var(--ink);"><span>${clanSnap.data().name} →</span></a>`;
     }));
     const filtered = cards.filter(Boolean);
     list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clã.</p>';
@@ -188,7 +203,7 @@ document.getElementById('create-clan-btn').addEventListener('click', async funct
   const name = document.getElementById('clan-name-input').value.trim();
   if(!name){ err.textContent = 'Dá um nome ao clã.'; err.style.display = 'block'; return; }
   try{
-    await addDoc(collection(db,'clans'), { name, ownerUid: currentUser.uid, captainUid: null, subCaptainUid: null, createdAt: serverTimestamp() });
+    await addDoc(collection(db,'clans'), { name, ownerUid: currentUser.uid, ownerNickname: currentUserData?.nickname || 'Eu', captainUid: null, subCaptainUid: null, createdAt: serverTimestamp() });
     await loadOwnedClan();
   }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
 });

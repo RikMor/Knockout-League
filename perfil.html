@@ -101,7 +101,7 @@ onAuthStateChanged(auth, async function(user){
   const stats = u.stats || {torneios:0,vitorias:0,derrotas:0,mvp:0};
 
   document.getElementById('ph-avatar').src = avatar;
-  document.getElementById('ph-name').textContent = u.name || '';
+  document.getElementById('ph-name').textContent = u.nationality || '';
   document.getElementById('ph-since').textContent = since;
   document.getElementById('stat-torneios').textContent = stats.torneios || 0;
   document.getElementById('stat-vitorias').textContent = stats.vitorias || 0;

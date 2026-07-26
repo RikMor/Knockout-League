@@ -241,8 +241,12 @@ onAuthStateChanged(auth, async function(user){
 async function loadOrganizerOptions(){
   organizerOptions = [];
   let myNickname = 'Eu';
+  let myClubIds = [];
   if(!currentUser.isAnonymous){
-    try{ const s = await getDoc(doc(db,'users',currentUser.uid)); if(s.exists()) myNickname = s.data().nickname || myNickname; }catch(e){}
+    try{
+      const s = await getDoc(doc(db,'users',currentUser.uid));
+      if(s.exists()){ myNickname = s.data().nickname || myNickname; myClubIds = s.data().clubIds || []; }
+    }catch(e){}
   } else { myNickname = 'Convidado'; }
   organizerOptions.push({ value: 'self', label: myNickname + ' (eu)', clubId: null, clubName: null });
 
@@ -251,14 +255,14 @@ async function loadOrganizerOptions(){
       const owned = await getDocs(query(collection(db,'clubs'), where('ownerUid','==',currentUser.uid)));
       owned.forEach(d => organizerOptions.push({ value: 'club:'+d.id, label: d.data().name + ' (clube)', clubId: d.id, clubName: d.data().name }));
 
-      const memberQ = await getDocs(query(collectionGroup(db,'members'), where('uid','==',currentUser.uid)));
-      for(const m of memberQ.docs){
-        if(m.ref.parent.parent.parent.id !== 'clubs') continue;
-        if(m.data().permission !== 'organizador') continue;
-        const clubRef = m.ref.parent.parent;
-        if(owned.docs.some(o=>o.id===clubRef.id)) continue; // já listado como dono
-        const clubSnap = await getDoc(clubRef);
-        if(clubSnap.exists()) organizerOptions.push({ value: 'club:'+clubRef.id, label: clubSnap.data().name + ' (clube)', clubId: clubRef.id, clubName: clubSnap.data().name });
+      for(const clubId of myClubIds){
+        if(owned.docs.some(o=>o.id===clubId)) continue; // já listado como dono
+        const memSnap = await getDocs(query(collection(db,'clubs',clubId,'members'), where('uid','==',currentUser.uid)));
+        if(memSnap.empty) continue;
+        const perms = memSnap.docs[0].data().permissions || [];
+        if(!perms.includes('organizador')) continue;
+        const clubSnap = await getDoc(doc(db,'clubs',clubId));
+        if(clubSnap.exists()) organizerOptions.push({ value: 'club:'+clubId, label: clubSnap.data().name + ' (clube)', clubId, clubName: clubSnap.data().name });
       }
     }catch(e){ /* falha silenciosa */ }
   }

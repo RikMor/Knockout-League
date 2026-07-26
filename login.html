@@ -66,7 +66,6 @@
     </div>
 
     <div class="auth-panel" id="panel-register">
-      <div class="form-group"><label>Nome completo</label><input type="text" id="reg-name" autocomplete="name"/></div>
       <div class="form-group"><label>Nickname</label><input type="text" id="reg-nickname" placeholder="Ex: ShadowBlade99" maxlength="24"/></div>
       <div class="form-group"><label>Email</label><input type="email" id="reg-email" autocomplete="email"/></div>
       <div class="form-group"><label>Palavra-passe</label><input type="password" id="reg-password" autocomplete="new-password"/></div>
@@ -75,9 +74,14 @@
         <input type="password" id="reg-password2" autocomplete="new-password"/>
         <div id="pass-match-error">As palavras-passe não coincidem.</div>
       </div>
+      <div class="form-group"><label>Nacionalidade</label><input type="text" id="reg-nationality" placeholder="Ex: Portuguesa" autocomplete="country-name"/></div>
       <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
         <input type="checkbox" id="reg-age" style="width:auto;margin-top:4px;"/>
         <label for="reg-age" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Confirmo que tenho pelo menos 13 anos.</label>
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+        <input type="checkbox" id="reg-privacy" style="width:auto;margin-top:4px;"/>
+        <label for="reg-privacy" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Li e aceito a <a href="https://rikmor.github.io/manygames/privacidade.html" target="_blank" style="color:var(--accent);">Política de Privacidade</a>.</label>
       </div>
       <button type="button" class="btn btn-accent" id="register-submit" disabled style="width:100%;opacity:.5;">A carregar...</button>
     </div>
@@ -87,6 +91,10 @@
       <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
         <input type="checkbox" id="guest-age" style="width:auto;margin-top:4px;"/>
         <label for="guest-age" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Confirmo que tenho pelo menos 13 anos.</label>
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+        <input type="checkbox" id="guest-privacy" style="width:auto;margin-top:4px;"/>
+        <label for="guest-privacy" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Li e aceito a <a href="https://rikmor.github.io/manygames/privacidade.html" target="_blank" style="color:var(--accent);">Política de Privacidade</a>.</label>
       </div>
       <p class="form-hint" style="text-align:center;margin-bottom:18px;">Sessão temporária — desaparece ao fechar o browser.</p>
       <button type="button" class="btn btn-accent" id="guest-btn" disabled style="width:100%;opacity:.5;">A carregar...</button>
@@ -126,16 +134,16 @@ document.getElementById('login-submit').addEventListener('click', function(){
 });
 
 document.getElementById('register-submit').addEventListener('click', function(){
-  var name=document.getElementById('reg-name').value.trim();
   var nick=document.getElementById('reg-nickname').value.trim();
   var email=document.getElementById('reg-email').value.trim();
   var pass=document.getElementById('reg-password').value;
   var pass2=document.getElementById('reg-password2').value;
+  var nationality=document.getElementById('reg-nationality').value.trim();
   var ageOk=document.getElementById('reg-age').checked;
+  var privacyOk=document.getElementById('reg-privacy').checked;
   document.getElementById('auth-error').style.display='none';
   document.getElementById('pass-match-error').style.display='none';
   document.getElementById('reg-password2').style.borderColor='';
-  if(!name){showError('Introduz o teu nome.');return;}
   if(!nick){showError('Escolhe um nickname.');return;}
   if(!/^[a-zA-Z0-9_.]{3,24}$/.test(nick)){showError('Nickname: 3–24 caracteres, letras, números, _ ou .');return;}
   if(!email){showError('Introduz o teu email.');return;}
@@ -146,18 +154,22 @@ document.getElementById('register-submit').addEventListener('click', function(){
     document.getElementById('reg-password2').style.borderColor='var(--danger)';
     return;
   }
+  if(!nationality){showError('Indica a tua nacionalidade.');return;}
   if(!ageOk){showError('Confirma que tens pelo menos 13 anos.');return;}
+  if(!privacyOk){showError('Tens de aceitar a Política de Privacidade.');return;}
   if(!window._fbRegister){showError('A carregar Firebase... aguarda um segundo.');return;}
-  window._fbRegister({name:name,nickname:nick,email:email,password:pass});
+  window._fbRegister({nickname:nick,email:email,password:pass,nationality:nationality});
 });
 
 document.getElementById('guest-btn').addEventListener('click', function(){
   document.getElementById('auth-error').style.display='none';
   var nick=document.getElementById('guest-nickname').value.trim();
   var ageOk=document.getElementById('guest-age').checked;
+  var privacyOk=document.getElementById('guest-privacy').checked;
   if(!nick){showError('Escolhe um nickname.');return;}
   if(!/^[a-zA-Z0-9_.]{3,24}$/.test(nick)){showError('Nickname: 3–24 caracteres, letras, números, _ ou .');return;}
   if(!ageOk){showError('Confirma que tens pelo menos 13 anos.');return;}
+  if(!privacyOk){showError('Tens de aceitar a Política de Privacidade.');return;}
   if(!window._fbGuest){showError('A carregar Firebase... aguarda um segundo.');return;}
   window._fbGuest(nick);
 });
@@ -210,7 +222,7 @@ window._fbRegister=async function(d){
     setBtn('register-submit',true,'A criar conta...');
     var cred=await createUserWithEmailAndPassword(auth,d.email,d.password);
     await updateProfile(cred.user,{displayName:d.nickname});
-    await setDoc(doc(db,'users',cred.user.uid),{name:d.name,nickname:d.nickname,nicknameLower:d.nickname.toLowerCase(),tag:genTag(),email:d.email,avatarUrl:'',role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},ageConfirmed:true,createdAt:new Date().toISOString()});
+    await setDoc(doc(db,'users',cred.user.uid),{nickname:d.nickname,nicknameLower:d.nickname.toLowerCase(),tag:genTag(),email:d.email,nationality:d.nationality,avatarUrl:'',role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},ageConfirmed:true,privacyAccepted:true,createdAt:new Date().toISOString()});
     window.location.href='perfil.html';
   }catch(err){showError(translateError(err.code)||('Erro: '+err.message));setBtn('register-submit',false,'Criar conta');}
 };
@@ -221,7 +233,7 @@ window._fbGuest=async function(nick){
     await setPersistence(auth,browserLocalPersistence);
     var cred=await signInAnonymously(auth);
     var uid=cred.user.uid;
-    await setDoc(doc(db,'users',uid),{name:'Utilizador Convidado',nickname:nick,nicknameLower:nick.toLowerCase(),tag:genTag(),email:'',avatarUrl:'',isGuest:true,role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},createdAt:new Date().toISOString()});
+    await setDoc(doc(db,'users',uid),{nickname:nick,nicknameLower:nick.toLowerCase(),tag:genTag(),email:'',avatarUrl:'',isGuest:true,role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},privacyAccepted:true,createdAt:new Date().toISOString()});
     window.location.href='perfil.html';
   }catch(err){showError(translateError(err.code)||('Erro: '+err.message));setBtn('guest-btn',false,'Entrar como convidado');}
 };

@@ -47,9 +47,10 @@
 
     <div id="owned-box" style="display:none;margin-bottom:40px;">
       <h2 id="owned-club-name" style="margin-bottom:20px;"></h2>
-      <div style="max-width:520px;margin-bottom:20px;">
+      <div id="invite-form-box" style="max-width:520px;margin-bottom:20px;">
         <input type="text" id="member-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);margin-bottom:10px;"/>
         <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-membro" checked style="width:auto;"/> Só membro</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-organizador" style="width:auto;"/> Pode criar torneios</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-moderador" style="width:auto;"/> Pode moderar torneios</label>
         </div>
@@ -70,11 +71,13 @@
 
 <script src="shared.js"></script>
 <script type="module">
-import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp } from './firebase.js';
+import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp, arrayRemove } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 let currentUser = null;
+let currentUserData = null;
 let ownedClub = null;
+let isOwner = false;
 let members = [];
 
 onAuthStateChanged(auth, async function(user){
@@ -82,25 +85,35 @@ onAuthStateChanged(auth, async function(user){
   if(!user){ document.getElementById('not-logged').style.display = 'block'; return; }
   document.getElementById('content').style.display = 'block';
   document.getElementById('create-box').style.display = 'block'; // por defeito, até sabermos se já há clube
+  try{ const s = await getDoc(doc(db,'users',user.uid)); if(s.exists()) currentUserData = s.data(); }catch(e){}
   await loadOwnedClub();
   await loadMemberOf();
 });
 
 async function loadOwnedClub(){
+  const params = new URLSearchParams(window.location.search);
+  const viewId = params.get('id');
   try{
-    const q = query(collection(db,'clubs'), where('ownerUid','==',currentUser.uid));
-    const snap = await getDocs(q);
-    if(snap.empty){
-      ownedClub = null;
-      document.getElementById('create-box').style.display = 'block';
-      document.getElementById('owned-box').style.display = 'none';
-      return;
+    if(viewId){
+      const d = await getDoc(doc(db,'clubs',viewId));
+      if(!d.exists()){ document.getElementById('owned-box').style.display = 'none'; document.getElementById('create-box').style.display = 'none'; return; }
+      ownedClub = { id: d.id, ...d.data() };
+    } else {
+      const q = query(collection(db,'clubs'), where('ownerUid','==',currentUser.uid));
+      const snap = await getDocs(q);
+      if(snap.empty){
+        ownedClub = null;
+        document.getElementById('create-box').style.display = 'block';
+        document.getElementById('owned-box').style.display = 'none';
+        return;
+      }
+      ownedClub = { id: snap.docs[0].id, ...snap.docs[0].data() };
     }
-    const d = snap.docs[0];
-    ownedClub = { id: d.id, ...d.data() };
+    isOwner = ownedClub.ownerUid === currentUser.uid;
     document.getElementById('create-box').style.display = 'none';
     document.getElementById('owned-box').style.display = 'block';
-    document.getElementById('owned-club-name').textContent = ownedClub.name;
+    document.getElementById('owned-club-name').textContent = ownedClub.name + (isOwner ? '' : ' (visitando)');
+    document.getElementById('invite-form-box').style.display = isOwner ? 'block' : 'none';
     await loadMembers();
   }catch(e){
     document.getElementById('create-box').style.display = 'block';
@@ -119,31 +132,54 @@ async function loadMembers(){
   const snap = await getDocs(collection(db,'clubs',ownedClub.id,'members'));
   members = snap.docs.map(d=>({id:d.id, ...d.data()}));
   const el = document.getElementById('members-list');
-  if(members.length === 0){ el.innerHTML = '<p class="muted">Sem membros ainda.</p>'; return; }
-  el.innerHTML = members.map(m => {
+  const leaderRow = `<div class="member-row"><span>${ownedClub.ownerNickname || 'Tu'}</span><span class="badge-perm" style="border-color:var(--gold);color:var(--gold);">Líder</span></div>`;
+  if(members.length === 0){ el.innerHTML = leaderRow + '<p class="muted" style="margin-top:10px;">Sem mais membros ainda.</p>'; return; }
+  el.innerHTML = leaderRow + members.map(m => {
     const perms = memberPerms(m);
+    const isMembroOnly = perms.length === 0;
+    const editControls = isOwner ? `<button class="btn btn-sm btn-outline" data-save="${m.id}">Guardar</button><button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>` : '';
     return `<div class="member-row">
       <span>${m.nickname}</span>
       <span style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="organizador" ${perms.includes('organizador')?'checked':''} style="width:auto;"/> Criar torneios</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="moderador" ${perms.includes('moderador')?'checked':''} style="width:auto;"/> Moderar</label>
-        <button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="membro" ${isMembroOnly?'checked':''} ${isOwner?'':'disabled'} style="width:auto;"/> Só membro</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="organizador" ${perms.includes('organizador')?'checked':''} ${isOwner?'':'disabled'} style="width:auto;"/> Criar torneios</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="moderador" ${perms.includes('moderador')?'checked':''} ${isOwner?'':'disabled'} style="width:auto;"/> Moderar</label>
+        ${editControls}
       </span>
     </div>`;
   }).join('');
+
   el.querySelectorAll('[data-rm]').forEach(btn=>{
     btn.addEventListener('click', async function(){
       if(!confirm('Remover este membro do clube?')) return;
+      const m = members.find(x=>x.id===btn.dataset.rm);
       await deleteDoc(doc(db,'clubs',ownedClub.id,'members',btn.dataset.rm));
+      if(m) await updateDoc(doc(db,'users',m.uid), { clubIds: arrayRemove(ownedClub.id) }).catch(()=>{});
       loadMembers();
     });
   });
+
+  // "Só membro" desmarca as outras duas, e vice-versa
   el.querySelectorAll('[data-editperm]').forEach(cb=>{
-    cb.addEventListener('change', async function(){
+    cb.addEventListener('change', function(){
       const memberId = cb.dataset.editperm;
-      const row = el.querySelectorAll('[data-editperm="'+memberId+'"]');
-      const newPerms = [...row].filter(x=>x.checked).map(x=>x.dataset.permval);
+      const row = [...el.querySelectorAll('[data-editperm="'+memberId+'"]')];
+      if(cb.dataset.permval === 'membro' && cb.checked){
+        row.forEach(x=>{ if(x.dataset.permval !== 'membro') x.checked = false; });
+      } else if(cb.dataset.permval !== 'membro' && cb.checked){
+        row.find(x=>x.dataset.permval==='membro').checked = false;
+      }
+    });
+  });
+
+  el.querySelectorAll('[data-save]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      const memberId = btn.dataset.save;
+      const row = [...el.querySelectorAll('[data-editperm="'+memberId+'"]')];
+      const newPerms = row.filter(x=>x.checked && x.dataset.permval !== 'membro').map(x=>x.dataset.permval);
       await updateDoc(doc(db,'clubs',ownedClub.id,'members',memberId), { permissions: newPerms, permission: null });
+      btn.textContent = 'Guardado ✓';
+      setTimeout(()=>{ btn.textContent = 'Guardar'; }, 1500);
     });
   });
 }
@@ -165,7 +201,7 @@ async function loadMemberOf(){
         const memSnap = await getDocs(query(collection(db,'clubs',clubId,'members'), where('uid','==',currentUser.uid)));
         if(!memSnap.empty) labels = memberPerms(memSnap.docs[0].data()).map(p => p === 'organizador' ? 'Podes criar torneios' : 'Podes moderar').join(' · ');
       }catch(e){}
-      return `<div class="member-row"><span>${clubSnap.data().name}</span><span class="badge-perm">${labels || 'Sem permissões'}</span></div>`;
+      return `<a href="clube.html?id=${clubId}" class="member-row" style="text-decoration:none;color:var(--ink);"><span>${clubSnap.data().name} →</span><span class="badge-perm">${labels || 'Sem permissões'}</span></a>`;
     }));
     const filtered = cards.filter(Boolean);
     list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clube.</p>';
@@ -178,9 +214,18 @@ document.getElementById('create-club-btn').addEventListener('click', async funct
   const name = document.getElementById('club-name-input').value.trim();
   if(!name){ err.textContent = 'Dá um nome ao clube.'; err.style.display = 'block'; return; }
   try{
-    await addDoc(collection(db,'clubs'), { name, ownerUid: currentUser.uid, createdAt: serverTimestamp() });
+    await addDoc(collection(db,'clubs'), { name, ownerUid: currentUser.uid, ownerNickname: currentUserData?.nickname || 'Eu', createdAt: serverTimestamp() });
     await loadOwnedClub();
   }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
+});
+
+document.getElementById('perm-membro').addEventListener('change', function(){
+  if(this.checked){ document.getElementById('perm-organizador').checked = false; document.getElementById('perm-moderador').checked = false; }
+});
+['perm-organizador','perm-moderador'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', function(){
+    if(this.checked) document.getElementById('perm-membro').checked = false;
+  });
 });
 
 document.getElementById('add-member-btn').addEventListener('click', async function(){
@@ -192,7 +237,6 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
   if(document.getElementById('perm-moderador').checked) permissions.push('moderador');
   const parts = input.split('#');
   if(parts.length !== 2 || !parts[0] || !parts[1]){ err.textContent = 'Formato inválido. Usa nickname#tag.'; err.style.display = 'block'; return; }
-  if(permissions.length === 0){ err.textContent = 'Escolhe pelo menos uma permissão.'; err.style.display = 'block'; return; }
   const nick = parts[0].trim(), tag = parts[1].trim().toUpperCase();
   try{
     const q = query(collection(db,'users'), where('nicknameLower','==',nick.toLowerCase()));
@@ -207,6 +251,7 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
     document.getElementById('member-input').value = '';
     document.getElementById('perm-organizador').checked = false;
     document.getElementById('perm-moderador').checked = false;
+    document.getElementById('perm-membro').checked = true;
     err.style.color = 'var(--win)'; err.style.borderColor = 'var(--win)';
     err.textContent = 'Convite enviado — fica à espera de ' + found.data().nickname + ' aceitar nas notificações dele.';
     err.style.display = 'block';

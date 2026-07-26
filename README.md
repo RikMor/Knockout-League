@@ -100,6 +100,18 @@
 - **Torneios mostram quem organizou** — nas listagens (Início, Torneios, Os meus torneios) e não só na sala.
 - **Chat na sala da partida** — jogadores das duas equipas e o organizador podem falar entre si diretamente na sala, em tempo real.
 
+## Atualização — correções de dados, drag&drop, tempo real, registo completo
+- **Clube**: opção "Só membro" nos checkboxes, botão "Guardar" explícito por membro (deixou de gravar sozinho ao clicar), remover um membro agora limpa mesmo a associação do lado dele (`clubIds`), o líder aparece na lista com destaque "Líder", e quem é membro consegue agora **entrar** no clube (`clube.html?id=...`) para o ver por dentro, não só o nome numa lista.
+- **Clã**: mesmas correções (Guardar, remover limpa `clanIds`, líder na lista, entrar no clã), e cargo extra de **Substituto** (independente de Capitão/Sub-capitão).
+- **Tag do Google corrigida** — contas antigas (criadas antes desta funcionalidade existir) recebem uma tag automaticamente da próxima vez que entram.
+- **Registo igual ao ManyGames** — Nickname, Email, Palavra-passe, Confirmar palavra-passe, Nacionalidade, confirmação de 13+ anos, e aceitação da Política de Privacidade (com link) — também no separador de Convidado.
+- **Configurações do torneio com paridade total** — tipo de bracket, melhor-de-quantas (incluindo personalizado), pontos para vencer, e nome de equipa = nickname, todos editáveis a qualquer momento, não só na criação.
+- **"Criar torneio como" corrigido** — deixou de haver um erro que impedia clubes com permissão "criar torneios" de aparecerem no seletor.
+- **"Organizado por"** ganhou destaque visual (ticket com coroa), em vez de texto pequeno e discreto.
+- **Reordenar a bracket por arrastar** — em vez de escrever números um a um, agora há uma lista onde arrastas as equipas para a ordem que quiseres; a posição de cada uma atualiza-se sozinha.
+- **Tempo real** — a lista de torneios públicos (Início e Torneios) atualiza-se sozinha assim que alguém cria um torneio, sem precisar de refresh; e chega um aviso (toast) no canto do ecrã quando recebes um novo convite de clube/clã, esteja onde estiveres no site.
+- **Menu móvel a branco.**
+
 ## Feito nesta versão
 - `firebase.js`, `shared.css`/`shared.js`, `login.html` (email/password + Google + convidado), `nav-auth.js`
 - `index.html`, `torneios.html`, `criar-torneio.html`, `torneio.html` (motor de bracket completo)

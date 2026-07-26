@@ -1,6 +1,6 @@
 // nav-auth.js — injeta dinamicamente o estado de login na nav
-import { auth, db, doc, collection, query, where, getDocs } from './firebase.js';
-import { getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { auth, db, doc, collection, query, where, getDocs, onSnapshot } from './firebase.js';
+import { getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 // Nota: a limpeza de contas convidado é feita de forma "preguiçosa" (lazy) —
@@ -29,6 +29,12 @@ onAuthStateChanged(auth, async function (user) {
       avatarUrl = data.avatarUrl || avatarUrl;
       isAdmin = data.role === 'admin';
       tag = data.tag || '';
+      if (!tag) {
+        // conta antiga sem tag (ex: Google criada antes da funcionalidade existir) — gera uma agora
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        tag = Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+        updateDoc(doc(db, 'users', user.uid), { tag }).catch(()=>{});
+      }
     }
   } catch (e) { /* falha silenciosa */ }
 
@@ -38,6 +44,8 @@ onAuthStateChanged(auth, async function (user) {
     const notifSnap = await getDocs(notifQ);
     pendingCount = notifSnap.docs.filter(d => d.data().status === 'pending').length;
   } catch (e) { /* falha silenciosa */ }
+
+  setupNotifToast(user.uid);
 
   area.innerHTML =
     '<div class="nav-user-dd" id="nav-user-dd">' +
@@ -69,3 +77,34 @@ onAuthStateChanged(auth, async function (user) {
     if (dd && !dd.contains(e.target)) dd.classList.remove('open');
   });
 });
+
+// ── Toast de notificação em tempo real (novos convites) ──────────
+let notifToastArmed = false;
+let notifKnownIds = new Set();
+function setupNotifToast(uid){
+  if (window.__klNotifWatching) return; // evita duplicar o listener em SPA-like navegação
+  window.__klNotifWatching = true;
+  const q = query(collection(db, 'notifications'), where('toUid', '==', uid));
+  onSnapshot(q, function (snap) {
+    snap.docChanges().forEach(function (change) {
+      const d = change.doc.data();
+      if (change.type === 'added' && d.status === 'pending') {
+        if (!notifToastArmed) { notifKnownIds.add(change.doc.id); return; } // ignora o carregamento inicial
+        if (notifKnownIds.has(change.doc.id)) return;
+        notifKnownIds.add(change.doc.id);
+        showNotifToast(d);
+      }
+    });
+    notifToastArmed = true;
+  });
+}
+
+function showNotifToast(notif){
+  const kind = notif.type === 'club_invite' ? 'clube' : (notif.type === 'clan_invite' ? 'clã' : '');
+  const el = document.createElement('a');
+  el.href = 'notificacoes.html';
+  el.textContent = '🔔 Novo convite para o ' + kind + ' "' + notif.refName + '" — ver notificações';
+  el.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--ink);color:var(--bg);padding:14px 20px;font-family:Inter,sans-serif;font-size:0.85rem;font-weight:600;text-decoration:none;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.3);max-width:320px;';
+  document.body.appendChild(el);
+  setTimeout(function(){ el.remove(); }, 8000);
+}

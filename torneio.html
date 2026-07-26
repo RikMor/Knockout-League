@@ -73,6 +73,7 @@
 
     <h3 style="margin-bottom:6px;">Equipas</h3>
     <p class="muted" id="teams-order-hint" style="font-size:0.82rem;margin-bottom:14px;display:none;"></p>
+    <div id="reorder-teams-box" style="display:none;margin-bottom:24px;"></div>
     <div class="grid grid-3" id="teams-box"></div>
   </div>
 
@@ -122,6 +123,36 @@
         <div class="pill" data-v="public">Pública</div>
         <div class="pill" data-v="private">Privada</div>
       </div>
+    </div>
+
+    <div class="form-group" id="cfg-bracket-type-group">
+      <label>Tipo de bracket <span class="muted" style="text-transform:none;" id="cfg-bracket-type-hint"></span></label>
+      <div class="pill-group" id="cfg-pill-bracket-type">
+        <div class="pill" data-v="single">Eliminação simples</div>
+        <div class="pill" data-v="double">Eliminação dupla</div>
+        <div class="pill" data-v="round-robin">Todos contra todos</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Melhor de quantas partidas</label>
+      <div class="pill-group" id="cfg-pill-bestof">
+        <div class="pill" data-v="1">BO1</div>
+        <div class="pill" data-v="3">BO3</div>
+        <div class="pill" data-v="5">BO5</div>
+        <div class="pill" data-v="custom">Personalizado</div>
+      </div>
+      <input type="number" id="cfg-bestof-custom" min="1" step="2" placeholder="Ex: 7" style="display:none;margin-top:10px;max-width:160px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+    </div>
+
+    <div class="form-group">
+      <label>Pontos para vencer cada partida</label>
+      <input type="number" id="cfg-pointstowin" min="1" style="max-width:160px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+    </div>
+
+    <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+      <input type="checkbox" id="cfg-useplayernames" style="width:auto;margin-top:4px;"/>
+      <label for="cfg-useplayernames" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Usar o nickname do jogador como nome da equipa (útil em 1v1).</label>
     </div>
 
     <div class="form-group">
@@ -325,7 +356,7 @@ function renderHeader(){
       <span class="badge badge-live">${tournament.status}</span>
       ${tournament.visibility==='private' && isAdmin() ? '<span class="invite-code">'+tournament.inviteCode+'</span>' : ''}
     </div>
-    <p class="muted" style="margin-top:12px;font-size:0.85rem;">${orgName ? 'Organizado por ' + orgName : ''}</p>`;
+    ${orgName ? '<div class="ticket" data-tag="Organizador" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 16px;"><span style="color:var(--gold);font-size:1.1rem;">👑</span><strong>'+orgName+'</strong></div>' : ''}`;
 
   if(!tournament.organizerDisplayName && !organizerNameCache && tournament.creatorUid){
     getDoc(doc(db,'users',tournament.creatorUid)).then(s=>{
@@ -350,6 +381,13 @@ bindCfgPills('cfg-pill-layout');
 bindCfgPills('cfg-pill-drawmode');
 bindCfgPills('cfg-pill-assign');
 bindCfgPills('cfg-pill-draft');
+bindCfgPills('cfg-pill-bracket-type');
+bindCfgPills('cfg-pill-bestof');
+document.querySelectorAll('#cfg-pill-bestof .pill').forEach(function(p){
+  p.addEventListener('click', function(){
+    document.getElementById('cfg-bestof-custom').style.display = (p.dataset.v === 'custom') ? 'block' : 'none';
+  });
+});
 function cfgSelected(id){ const s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
 function cfgSetSelected(id, v){
   document.querySelectorAll('#'+id+' .pill').forEach(p=> p.classList.toggle('selected', p.dataset.v === v));
@@ -365,8 +403,16 @@ function renderConfig(){
   cfgSetSelected('cfg-pill-drawmode', tournament.bracketDrawMode || 'random');
   cfgSetSelected('cfg-pill-assign', tournament.assignMode || 'roulette');
   cfgSetSelected('cfg-pill-draft', tournament.draftMode || 'organizer');
+  cfgSetSelected('cfg-pill-bracket-type', tournament.bracketType || 'single');
+  const boSel = ['1','3','5'].includes(String(tournament.bestOf)) ? String(tournament.bestOf) : 'custom';
+  cfgSetSelected('cfg-pill-bestof', boSel);
+  document.getElementById('cfg-bestof-custom').style.display = boSel === 'custom' ? 'block' : 'none';
+  if(boSel === 'custom') document.getElementById('cfg-bestof-custom').value = tournament.bestOf || '';
+  document.getElementById('cfg-pointstowin').value = tournament.pointsToWin || '';
+  document.getElementById('cfg-useplayernames').checked = !!tournament.usePlayerNames;
   document.getElementById('cfg-banmaps').checked = !!tournament.mapBanEnabled;
   document.getElementById('cfg-end-btn').style.display = isAdmin() ? 'inline-flex' : 'none';
+  document.getElementById('cfg-bracket-type-hint').textContent = bracketGenerated() ? '(já gerada — muda com cuidado e usa "Regenerar bracket" na aba Bracket)' : '';
 }
 
 document.getElementById('cfg-save-btn').addEventListener('click', async function(){
@@ -375,6 +421,11 @@ document.getElementById('cfg-save-btn').addEventListener('click', async function
   const name = document.getElementById('cfg-name').value.trim();
   const game = document.getElementById('cfg-game').value.trim();
   if(!name || !game){ msg.textContent = 'Preenche o nome e o jogo.'; msg.style.display = 'block'; return; }
+  const boSel = cfgSelected('cfg-pill-bestof');
+  const bestOf = boSel === 'custom' ? parseInt(document.getElementById('cfg-bestof-custom').value, 10) : parseInt(boSel, 10);
+  const pointsToWin = document.getElementById('cfg-pointstowin').value ? parseInt(document.getElementById('cfg-pointstowin').value, 10) : null;
+  if(!bestOf || bestOf < 1 || bestOf % 2 === 0){ msg.textContent = 'O "melhor de quantas partidas" tem de ser ímpar.'; msg.style.display = 'block'; return; }
+  if(!pointsToWin){ msg.textContent = 'Define os pontos para vencer cada partida.'; msg.style.display = 'block'; return; }
   await updateDoc(tRef, {
     name, game,
     visibility: cfgSelected('cfg-pill-visibility'),
@@ -383,6 +434,9 @@ document.getElementById('cfg-save-btn').addEventListener('click', async function
     bracketDrawMode: cfgSelected('cfg-pill-drawmode'),
     assignMode: cfgSelected('cfg-pill-assign'),
     draftMode: cfgSelected('cfg-pill-draft'),
+    bracketType: cfgSelected('cfg-pill-bracket-type'),
+    bestOf, pointsToWin,
+    usePlayerNames: document.getElementById('cfg-useplayernames').checked,
     mapBanEnabled: document.getElementById('cfg-banmaps').checked
   });
   msg.style.color = 'var(--win)'; msg.style.borderColor = 'var(--win)';
@@ -665,6 +719,7 @@ function renderTeams(){
   } else {
     hintEl.style.display = 'none';
   }
+  renderReorderBox(showSeed);
 
   teams.forEach(function(t){
     const card = document.createElement('div');
@@ -674,9 +729,7 @@ function renderTeams(){
     let seedHtml = '';
     if(showSeed){
       const label = tournament.bracketDrawMode === 'manual' ? 'Posição' : 'Seed';
-      seedHtml = isAdmin()
-        ? `<div style="margin-bottom:8px;"><label class="muted" style="font-size:0.72rem;">${label}: </label><input type="number" min="1" value="${t.seed||''}" data-seed="${t.id}" style="width:56px;padding:4px 6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>`
-        : `<p class="muted" style="font-size:0.75rem;margin-bottom:8px;">Seed: ${t.seed||'—'}</p>`;
+      seedHtml = `<p class="muted" style="font-size:0.75rem;margin-bottom:8px;">${label}: ${t.seed || '—'}</p>`;
     }
     let joinBtn = (canJoinSelf && !full) ? `<button class="btn btn-sm btn-outline" data-jointeam="${t.id}" style="margin-top:8px;">Juntar-me a esta equipa</button>` : '';
     let delTeamBtn = isAdmin() ? `<button class="btn btn-sm btn-danger" data-delteam="${t.id}" style="margin-top:8px;margin-left:6px;">Eliminar equipa</button>` : '';
@@ -692,11 +745,6 @@ function renderTeams(){
     });
   });
   if(isAdmin()){
-    box.querySelectorAll('[data-seed]').forEach(input=>{
-      input.addEventListener('change', async function(){
-        await updateDoc(doc(teamsCol, input.dataset.seed), { seed: parseInt(input.value,10) || null });
-      });
-    });
     box.querySelectorAll('[data-kickmember]').forEach(btn=>{
       btn.addEventListener('click', async function(){
         if(!confirm('Remover este jogador da equipa? Volta para o pool.')) return;
@@ -733,6 +781,41 @@ function renderTeams(){
       });
     });
   }
+}
+
+function renderReorderBox(showSeed){
+  const box = document.getElementById('reorder-teams-box');
+  if(!showSeed || !isAdmin()){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const readyTeams = teams.filter(t => (t.players||[]).length === tournament.teamSize)
+    .sort((a,b) => (a.seed||999) - (b.seed||999));
+  if(readyTeams.length < 2){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'block';
+  box.innerHTML = '<p class="muted" style="font-size:0.8rem;margin-bottom:10px;">Arrasta para reordenar — a posição 1 fica no topo.</p>' +
+    readyTeams.map((t,i) => `<div class="reorder-row" draggable="true" data-teamid="${t.id}"><span class="drag-handle">⠿</span><span class="reorder-num">${i+1}</span><span>${t.name}</span></div>`).join('');
+
+  let dragEl = null;
+  box.querySelectorAll('.reorder-row').forEach(row=>{
+    row.addEventListener('dragstart', function(){ dragEl = row; row.classList.add('dragging'); });
+    row.addEventListener('dragend', async function(){
+      row.classList.remove('dragging');
+      const rows = [...box.querySelectorAll('.reorder-row')];
+      for(let i=0;i<rows.length;i++){
+        await updateDoc(doc(teamsCol, rows[i].dataset.teamid), { seed: i+1 });
+      }
+    });
+    row.addEventListener('dragover', function(e){
+      e.preventDefault();
+      if(!dragEl || dragEl === row) return;
+      const rect = row.getBoundingClientRect();
+      const after = (e.clientY - rect.top) > rect.height / 2;
+      row.parentNode.insertBefore(dragEl, after ? row.nextSibling : row);
+    });
+  });
+  // renumera visualmente enquanto arrasta
+  const observer = new MutationObserver(()=>{
+    box.querySelectorAll('.reorder-row .reorder-num').forEach((el,i)=>{ el.textContent = i+1; });
+  });
+  observer.observe(box, { childList: true });
 }
 
 document.getElementById('add-team-btn').addEventListener('click', async function(){
