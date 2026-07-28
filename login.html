@@ -74,14 +74,23 @@
         <input type="password" id="reg-password2" autocomplete="new-password"/>
         <div id="pass-match-error">As palavras-passe não coincidem.</div>
       </div>
-      <div class="form-group"><label>Nacionalidade</label><input type="text" id="reg-nationality" placeholder="Ex: Portuguesa" autocomplete="country-name"/></div>
+      <div class="form-group"><label>Continente</label>
+        <select id="reg-continent">
+          <option value="">Seleciona o continente</option>
+        </select>
+      </div>
+      <div class="form-group"><label>País</label>
+        <select id="reg-country" disabled>
+          <option value="">Seleciona primeiro o continente</option>
+        </select>
+      </div>
       <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
         <input type="checkbox" id="reg-age" style="width:auto;margin-top:4px;"/>
         <label for="reg-age" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Confirmo que tenho pelo menos 13 anos.</label>
       </div>
       <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
         <input type="checkbox" id="reg-privacy" style="width:auto;margin-top:4px;"/>
-        <label for="reg-privacy" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Li e aceito a <a href="https://rikmor.github.io/manygames/privacidade.html" target="_blank" style="color:var(--accent);">Política de Privacidade</a>.</label>
+        <label for="reg-privacy" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Li e aceito a <a href="politica-privacidade.html" target="_blank" style="color:var(--accent);">Política de Privacidade</a>.</label>
       </div>
       <button type="button" class="btn btn-accent" id="register-submit" disabled style="width:100%;opacity:.5;">A carregar...</button>
     </div>
@@ -94,7 +103,7 @@
       </div>
       <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
         <input type="checkbox" id="guest-privacy" style="width:auto;margin-top:4px;"/>
-        <label for="guest-privacy" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Li e aceito a <a href="https://rikmor.github.io/manygames/privacidade.html" target="_blank" style="color:var(--accent);">Política de Privacidade</a>.</label>
+        <label for="guest-privacy" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.9rem;color:var(--ink);">Li e aceito a <a href="politica-privacidade.html" target="_blank" style="color:var(--accent);">Política de Privacidade</a>.</label>
       </div>
       <p class="form-hint" style="text-align:center;margin-bottom:18px;">Sessão temporária — desaparece ao fechar o browser.</p>
       <button type="button" class="btn btn-accent" id="guest-btn" disabled style="width:100%;opacity:.5;">A carregar...</button>
@@ -123,6 +132,38 @@ function switchTab(tab) {
 
 function showError(msg){ var el=document.getElementById('auth-error'); el.textContent=msg; el.style.display='block'; }
 
+var CONTINENTES_PAISES = {"Europa":["Portugal","Espanha","França","Reino Unido","Alemanha","Itália","Países Baixos","Bélgica","Suíça","Áustria","Irlanda","Suécia","Noruega","Dinamarca","Finlândia","Islândia","Polónia","República Checa","Eslováquia","Hungria","Roménia","Bulgária","Grécia","Croácia","Eslovénia","Sérvia","Bósnia e Herzegovina","Montenegro","Macedónia do Norte","Albânia","Kosovo","Ucrânia","Bielorrússia","Moldávia","Rússia","Turquia","Chipre","Malta","Luxemburgo","Estónia","Letónia","Lituânia","Andorra","Mónaco","Liechtenstein","São Marinho","Vaticano"],"América do Norte":["Estados Unidos","Canadá","México","Guatemala","Belize","Honduras","El Salvador","Nicarágua","Costa Rica","Panamá","Cuba","Jamaica","Haiti","República Dominicana","Bahamas","Trindade e Tobago","Barbados"],"América do Sul":["Brasil","Argentina","Chile","Uruguai","Paraguai","Bolívia","Peru","Equador","Colômbia","Venezuela","Guiana","Suriname"],"África":["Angola","Moçambique","Cabo Verde","Guiné-Bissau","São Tomé e Príncipe","Marrocos","Argélia","Tunísia","Líbia","Egito","Nigéria","Gana","Quénia","Etiópia","África do Sul","Senegal","Costa do Marfim","Camarões","Uganda","Tanzânia","Zâmbia","Zimbabué","Namíbia","Botsuana","Ruanda"],"Ásia":["China","Japão","Coreia do Sul","Coreia do Norte","Índia","Paquistão","Bangladesh","Sri Lanka","Nepal","Indonésia","Filipinas","Vietname","Tailândia","Malásia","Singapura","Camboja","Laos","Mianmar","Arábia Saudita","Emirados Árabes Unidos","Catar","Kuwait","Iraque","Irão","Israel","Jordânia","Líbano","Síria","Iémen","Omã","Cazaquistão","Uzbequistão","Timor-Leste","Taiwan","Hong Kong"],"Oceania":["Austrália","Nova Zelândia","Fiji","Papua-Nova Guiné","Samoa","Tonga"]};
+
+(function(){
+  var contSel = document.getElementById('reg-continent');
+  var countrySel = document.getElementById('reg-country');
+  Object.keys(CONTINENTES_PAISES).forEach(function(c){
+    var opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    contSel.appendChild(opt);
+  });
+  contSel.addEventListener('change', function(){
+    var cont = contSel.value;
+    countrySel.innerHTML = '';
+    if(!cont){
+      countrySel.disabled = true;
+      var placeholder = document.createElement('option');
+      placeholder.value=''; placeholder.textContent='Seleciona primeiro o continente';
+      countrySel.appendChild(placeholder);
+      return;
+    }
+    countrySel.disabled = false;
+    var ph = document.createElement('option');
+    ph.value=''; ph.textContent='Seleciona o país';
+    countrySel.appendChild(ph);
+    CONTINENTES_PAISES[cont].forEach(function(pais){
+      var opt = document.createElement('option');
+      opt.value = pais; opt.textContent = pais;
+      countrySel.appendChild(opt);
+    });
+  });
+})();
+
 document.getElementById('login-submit').addEventListener('click', function(){
   var email=document.getElementById('login-email').value.trim();
   var pass=document.getElementById('login-password').value;
@@ -138,7 +179,9 @@ document.getElementById('register-submit').addEventListener('click', function(){
   var email=document.getElementById('reg-email').value.trim();
   var pass=document.getElementById('reg-password').value;
   var pass2=document.getElementById('reg-password2').value;
-  var nationality=document.getElementById('reg-nationality').value.trim();
+  var continent=document.getElementById('reg-continent').value;
+  var country=document.getElementById('reg-country').value;
+  var nationality=country;
   var ageOk=document.getElementById('reg-age').checked;
   var privacyOk=document.getElementById('reg-privacy').checked;
   document.getElementById('auth-error').style.display='none';
@@ -154,11 +197,12 @@ document.getElementById('register-submit').addEventListener('click', function(){
     document.getElementById('reg-password2').style.borderColor='var(--danger)';
     return;
   }
-  if(!nationality){showError('Indica a tua nacionalidade.');return;}
+  if(!continent){showError('Seleciona o teu continente.');return;}
+  if(!country){showError('Seleciona o teu país.');return;}
   if(!ageOk){showError('Confirma que tens pelo menos 13 anos.');return;}
   if(!privacyOk){showError('Tens de aceitar a Política de Privacidade.');return;}
   if(!window._fbRegister){showError('A carregar Firebase... aguarda um segundo.');return;}
-  window._fbRegister({nickname:nick,email:email,password:pass,nationality:nationality});
+  window._fbRegister({nickname:nick,email:email,password:pass,nationality:nationality,continent:continent});
 });
 
 document.getElementById('guest-btn').addEventListener('click', function(){
@@ -222,7 +266,7 @@ window._fbRegister=async function(d){
     setBtn('register-submit',true,'A criar conta...');
     var cred=await createUserWithEmailAndPassword(auth,d.email,d.password);
     await updateProfile(cred.user,{displayName:d.nickname});
-    await setDoc(doc(db,'users',cred.user.uid),{nickname:d.nickname,nicknameLower:d.nickname.toLowerCase(),tag:genTag(),email:d.email,nationality:d.nationality,avatarUrl:'',role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},ageConfirmed:true,privacyAccepted:true,createdAt:new Date().toISOString()});
+    await setDoc(doc(db,'users',cred.user.uid),{nickname:d.nickname,nicknameLower:d.nickname.toLowerCase(),tag:genTag(),email:d.email,nationality:d.nationality,continent:d.continent,avatarUrl:'',role:'player',stats:{torneios:0,vitorias:0,derrotas:0,mvp:0},ageConfirmed:true,privacyAccepted:true,createdAt:new Date().toISOString()});
     window.location.href='perfil.html';
   }catch(err){showError(translateError(err.code)||('Erro: '+err.message));setBtn('register-submit',false,'Criar conta');}
 };
