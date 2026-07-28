@@ -51,7 +51,7 @@ onAuthStateChanged(auth, async function (user) {
     '<div class="nav-user-dd" id="nav-user-dd">' +
       '<button class="nav-user-btn" type="button" id="nav-user-toggle">' +
         '<img class="nav-user-avatar" src="' + avatarUrl + '" alt=""/>' +
-        '<span>' + nick + (tag ? '<span style="opacity:.6;">#' + tag + '</span>' : '') + (pendingCount > 0 ? '<span style="background:var(--accent);color:#fff;border-radius:9px;padding:1px 7px;font-size:0.7rem;margin-left:6px;">' + pendingCount + '</span>' : '') + '</span>' +
+        '<span>' + nick + (pendingCount > 0 ? '<span style="background:var(--accent);color:#fff;border-radius:9px;padding:1px 7px;font-size:0.7rem;margin-left:6px;">' + pendingCount + '</span>' : '') + '</span>' +
       '</button>' +
       '<div class="nav-user-menu">' +
         '<a href="perfil.html">O meu perfil</a>' +

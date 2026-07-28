@@ -58,6 +58,7 @@
     <div id="join-box" class="card" style="margin-bottom:24px;display:none;"></div>
     <div id="self-team-box" style="margin-bottom:24px;display:none;"></div>
     <div id="draft-banner"></div>
+    <div id="draft-start-box"></div>
 
     <div id="admin-team-controls" style="display:none;margin-bottom:24px;display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-outline btn-sm" id="add-team-btn">+ Equipa</button>
@@ -156,6 +157,15 @@
     </div>
 
     <div class="form-group">
+      <label>Agendamento</label>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Abertura das inscrições</label><input type="datetime-local" id="cfg-reg-open" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+        <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Fecho das inscrições</label><input type="datetime-local" id="cfg-reg-close" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+        <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Início do torneio</label><input type="datetime-local" id="cfg-start" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+      </div>
+    </div>
+
+    <div class="form-group">
       <label>Como decidir quem começa (partidas futuras)</label>
       <div class="pill-group" id="cfg-pill-coin">
         <div class="pill" data-v="coin">Moeda ao ar</div>
@@ -211,6 +221,19 @@
       <p class="muted" style="margin-bottom:14px;font-size:0.85rem;">Termina o torneio permanentemente — apaga a sala, as equipas, os jogadores e as partidas. Não pode ser desfeito.</p>
       <button class="btn btn-danger" id="cfg-end-btn">Terminar e eliminar este torneio</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL DE SELEÇÃO DE MEMBROS DO CLÃ -->
+<div class="modal-backdrop" id="clan-select-modal">
+  <div class="modal">
+    <button class="modal-close" id="clan-select-close">×</button>
+    <div class="eyebrow">Juntar o clã</div>
+    <h3 id="cs-title" style="margin:8px 0 10px;"></h3>
+    <p class="muted" style="font-size:0.85rem;margin-bottom:14px;">O teu clã tem mais membros do que o tamanho da equipa. Escolhe quem participa neste torneio (tu já estás incluído).</p>
+    <div id="cs-members" style="margin-bottom:18px;"></div>
+    <p class="form-error" id="cs-error" style="margin-bottom:12px;"></p>
+    <button type="button" class="btn btn-accent" id="cs-confirm" style="width:100%;">Confirmar equipa</button>
   </div>
 </div>
 
@@ -300,11 +323,34 @@ const matchesCol = collection(db, 'tournaments', tId, 'matches');
 function isCreator(){
   return currentUser && tournament && tournament.creatorUid === currentUser.uid;
 }
+let clubAdminAccess = false;
+async function computeClubAccess(){
+  clubAdminAccess = false;
+  if(currentUser && tournament && tournament.organizerClubId){
+    const clubId = tournament.organizerClubId;
+    try{
+      const clubSnap = await getDoc(doc(db,'clubs',clubId));
+      if(clubSnap.exists() && clubSnap.data().ownerUid === currentUser.uid){
+        clubAdminAccess = true; // o líder do clube tem sempre todos os cargos
+      } else {
+        const memSnap = await getDocs(query(collection(db,'clubs',clubId,'members'), where('uid','==',currentUser.uid)));
+        if(!memSnap.empty){
+          const m = memSnap.docs[0].data();
+          const perms = Array.isArray(m.permissions) ? m.permissions : (m.permission ? [m.permission] : []);
+          if(perms.includes('moderador')) clubAdminAccess = true;
+        }
+      }
+    }catch(e){}
+  }
+  renderHeader();
+  renderAll();
+}
 function isAdmin(){
   if(!currentUser) return false;
   if(isCreator()) return true;
   if(currentUserData && currentUserData.role === 'admin') return true;
   if(tournament && (tournament.moderatorUids||[]).includes(currentUser.uid)) return true;
+  if(clubAdminAccess) return true;
   return false;
 }
 
@@ -313,6 +359,7 @@ onAuthStateChanged(auth, async function(user){
   if(user){
     try{ const s = await getDoc(doc(db,'users',user.uid)); if(s.exists()) currentUserData = s.data(); }catch(e){}
   }
+  await computeClubAccess();
   renderAll();
   maybeAutoRedirect();
 });
@@ -320,6 +367,7 @@ onAuthStateChanged(auth, async function(user){
 onSnapshot(tRef, function(snap){
   if(!snap.exists()){ document.getElementById('t-header').innerHTML = '<p>Este torneio não existe.</p>'; return; }
   tournament = { id: snap.id, ...snap.data() };
+  computeClubAccess();
   renderHeader();
   renderAll();
   maybeAutoRedirect();
@@ -344,6 +392,23 @@ function maybeAutoRedirect(){
 }
 
 let organizerNameCache = null;
+function fmtDT(v){
+  if(!v) return null;
+  const d = new Date(v);
+  if(isNaN(d.getTime())) return null;
+  return d.toLocaleString('pt-PT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function renderScheduleLine(){
+  const open = fmtDT(tournament.regOpensAt);
+  const close = fmtDT(tournament.regClosesAt);
+  const start = fmtDT(tournament.startsAt);
+  if(!open && !close && !start) return '';
+  const parts = [];
+  if(open) parts.push('Inscrições abrem: <strong>'+open+'</strong>');
+  if(close) parts.push('Inscrições fecham: <strong>'+close+'</strong>');
+  if(start) parts.push('Início: <strong>'+start+'</strong>');
+  return '<div class="muted" style="margin-top:12px;font-size:0.82rem;display:flex;gap:18px;flex-wrap:wrap;">'+parts.map(p=>'<span>🗓 '+p+'</span>').join('')+'</div>';
+}
 function renderHeader(){
   const badgeClass = tournament.visibility==='private' ? 'badge-private' : 'badge-open';
   const badgeText = tournament.visibility==='private' ? 'Privado' : 'Público';
@@ -356,7 +421,8 @@ function renderHeader(){
       <span class="badge badge-live">${tournament.status}</span>
       ${tournament.visibility==='private' && isAdmin() ? '<span class="invite-code">'+tournament.inviteCode+'</span>' : ''}
     </div>
-    ${orgName ? '<div class="ticket" data-tag="Organizador" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 16px;"><span style="color:var(--gold);font-size:1.1rem;">👑</span><strong>'+orgName+'</strong></div>' : ''}`;
+    ${orgName ? '<div class="ticket" data-tag="Organizador" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 16px;"><span style="color:var(--gold);font-size:1.1rem;">👑</span><strong>'+orgName+'</strong></div>' : ''}
+    ${renderScheduleLine()}`;
 
   if(!tournament.organizerDisplayName && !organizerNameCache && tournament.creatorUid){
     getDoc(doc(db,'users',tournament.creatorUid)).then(s=>{
@@ -410,6 +476,9 @@ function renderConfig(){
   if(boSel === 'custom') document.getElementById('cfg-bestof-custom').value = tournament.bestOf || '';
   document.getElementById('cfg-pointstowin').value = tournament.pointsToWin || '';
   document.getElementById('cfg-useplayernames').checked = !!tournament.usePlayerNames;
+  document.getElementById('cfg-reg-open').value = tournament.regOpensAt || '';
+  document.getElementById('cfg-reg-close').value = tournament.regClosesAt || '';
+  document.getElementById('cfg-start').value = tournament.startsAt || '';
   document.getElementById('cfg-banmaps').checked = !!tournament.mapBanEnabled;
   document.getElementById('cfg-end-btn').style.display = isAdmin() ? 'inline-flex' : 'none';
   document.getElementById('cfg-bracket-type-hint').textContent = bracketGenerated() ? '(já gerada — muda com cuidado e usa "Regenerar bracket" na aba Bracket)' : '';
@@ -437,6 +506,9 @@ document.getElementById('cfg-save-btn').addEventListener('click', async function
     bracketType: cfgSelected('cfg-pill-bracket-type'),
     bestOf, pointsToWin,
     usePlayerNames: document.getElementById('cfg-useplayernames').checked,
+    regOpensAt: document.getElementById('cfg-reg-open').value || null,
+    regClosesAt: document.getElementById('cfg-reg-close').value || null,
+    startsAt: document.getElementById('cfg-start').value || null,
     mapBanEnabled: document.getElementById('cfg-banmaps').checked
   });
   msg.style.color = 'var(--win)'; msg.style.borderColor = 'var(--win)';
@@ -524,6 +596,7 @@ function renderAll(){
   renderTeams();
   renderMaps();
   renderDraftBanner();
+  renderDraftStartBox();
   renderModerators();
   document.getElementById('tab-moderadores-btn').style.display = isCreator() ? 'inline-block' : 'none';
   document.getElementById('tab-config-btn').style.display = isAdmin() ? 'inline-block' : 'none';
@@ -556,10 +629,13 @@ function playerLabel(p){
 async function myOwnedClan(){
   if(!currentUser || currentUser.isAnonymous) return null;
   try{
-    const q = query(collection(db,'clans'), where('ownerUid','==',currentUser.uid));
-    const snap = await getDocs(q);
-    if(snap.empty) return null;
-    return { id: snap.docs[0].id, ...snap.docs[0].data() };
+    const qOwner = query(collection(db,'clans'), where('ownerUid','==',currentUser.uid));
+    const ownerSnap = await getDocs(qOwner);
+    if(!ownerSnap.empty) return { id: ownerSnap.docs[0].id, ...ownerSnap.docs[0].data() };
+    const qCaptain = query(collection(db,'clans'), where('captainUid','==',currentUser.uid));
+    const captainSnap = await getDocs(qCaptain);
+    if(!captainSnap.empty) return { id: captainSnap.docs[0].id, ...captainSnap.docs[0].data() };
+    return null;
   }catch(e){ return null; }
 }
 
@@ -592,26 +668,62 @@ async function renderSelfTeamBox(){
     clanBtn.style.display = 'inline-flex';
     clanBtn.textContent = 'Juntar o clã "' + clan.name + '"';
     clanBtn.addEventListener('click', async function(){
-      if(!confirm('Isto vai criar uma equipa com todos os membros do clã "' + clan.name + '". Continuar?')) return;
       const membersSnap = await getDocs(collection(db,'clans',clan.id,'members'));
       const clanMembers = membersSnap.docs.map(d=>({id:d.id, ...d.data()}));
-      const allUids = [currentUser.uid, ...clanMembers.map(m=>m.uid)];
-      if(allUids.length > tournament.teamSize){ alert('O teu clã tem mais membros (' + allUids.length + ') do que o tamanho de equipa deste torneio (' + tournament.teamSize + ').'); return; }
-
-      const teamRef = await addDoc(teamsCol, { name: clan.name, captainPlayerId: null, players: [], seed: teams.length + 1 });
-      const playerEntries = [{ playerId: mine.id, uid: currentUser.uid }];
-      await updateDoc(doc(playersCol, mine.id), { teamId: teamRef.id, isCaptain: false });
-      for(const m of clanMembers){
-        if(m.uid === currentUser.uid) continue; // já tratado acima
-        const pRef = await addDoc(playersCol, { uid: m.uid, name: m.nickname, source: 'platform', isCaptain: false, teamId: teamRef.id });
-        playerEntries.push({ playerId: pRef.id, uid: m.uid });
+      if(clanMembers.length + 1 > tournament.teamSize){
+        openClanSelectModal(clan, clanMembers, mine);
+      } else {
+        if(!confirm('Isto vai criar uma equipa com todos os membros do clã "' + clan.name + '". Continuar?')) return;
+        await createClanTeam(clan, clanMembers, mine);
       }
-      const captainEntry = playerEntries.find(e => e.uid === clan.captainUid) || playerEntries[0];
-      await updateDoc(doc(playersCol, captainEntry.playerId), { isCaptain: true });
-      await updateDoc(teamRef, { players: playerEntries.map(e=>e.playerId), captainPlayerId: captainEntry.playerId });
     });
   }
 }
+
+async function createClanTeam(clan, chosenMembers, mine){
+  const teamRef = await addDoc(teamsCol, { name: clan.name, captainPlayerId: null, players: [], seed: teams.length + 1 });
+  const playerEntries = [{ playerId: mine.id, uid: currentUser.uid }];
+  await updateDoc(doc(playersCol, mine.id), { teamId: teamRef.id, isCaptain: false });
+  for(const m of chosenMembers){
+    if(m.uid === currentUser.uid) continue; // já tratado acima
+    const pRef = await addDoc(playersCol, { uid: m.uid, name: m.nickname, source: 'platform', isCaptain: false, teamId: teamRef.id });
+    playerEntries.push({ playerId: pRef.id, uid: m.uid });
+  }
+  const captainEntry = playerEntries.find(e => e.uid === currentUser.uid) || playerEntries[0];
+  await updateDoc(doc(playersCol, captainEntry.playerId), { isCaptain: true });
+  await updateDoc(teamRef, { players: playerEntries.map(e=>e.playerId), captainPlayerId: captainEntry.playerId });
+}
+
+function openClanSelectModal(clan, clanMembers, mine){
+  const wanted = tournament.teamSize - 1; // já contando contigo
+  document.getElementById('cs-title').textContent = 'Escolhe ' + wanted + ' membro' + (wanted===1?'':'s') + ' de "' + clan.name + '"';
+  const box = document.getElementById('cs-members');
+  document.getElementById('cs-error').style.display = 'none';
+  box.innerHTML = clanMembers.map(m => `
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-family:'Inter';font-size:0.9rem;text-transform:none;color:var(--ink);">
+      <input type="checkbox" data-clanmember="${m.id}" style="width:auto;"/> ${m.nickname}
+    </label>`).join('');
+  document.getElementById('clan-select-modal').classList.add('open');
+
+  const confirmBtn = document.getElementById('cs-confirm');
+  const newConfirmBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+  newConfirmBtn.addEventListener('click', async function(){
+    const checked = [...box.querySelectorAll('[data-clanmember]:checked')];
+    const err = document.getElementById('cs-error');
+    if(checked.length !== wanted){
+      err.textContent = 'Escolhe exatamente ' + wanted + ' membro' + (wanted===1?'':'s') + '.';
+      err.style.display = 'block';
+      return;
+    }
+    const chosen = checked.map(cb => clanMembers.find(m => m.id === cb.dataset.clanmember)).filter(Boolean);
+    document.getElementById('clan-select-modal').classList.remove('open');
+    await createClanTeam(clan, chosen, mine);
+  });
+}
+document.getElementById('clan-select-close').addEventListener('click', function(){
+  document.getElementById('clan-select-modal').classList.remove('open');
+});
 
 function renderAdminControls(){
   document.getElementById('admin-team-controls').style.display = isAdmin() ? 'flex' : 'none';
@@ -696,6 +808,76 @@ function renderDraftBanner(){
   if(!turnTeam) { el.innerHTML=''; return; }
   const cap = players.find(p=>p.id===turnTeam.captainPlayerId);
   el.innerHTML = `<div class="draft-banner">É a vez de <strong>${turnTeam.name}</strong>${cap ? ' ('+cap.name+')' : ''} escolher um jogador do pool.</div>`;
+}
+
+const RPS_BEATS_DRAFT = { pedra: 'tesoura', tesoura: 'papel', papel: 'pedra' };
+function myCaptainTeamIndex(){
+  const mine = myPoolEntry();
+  if(!mine || !mine.isCaptain) return -1;
+  return teams.findIndex(t => t.id === mine.teamId);
+}
+async function chooseDraftRps(choice){
+  const idx = myCaptainTeamIndex();
+  if(idx !== 0 && idx !== 1) return;
+  const field = idx === 0 ? 'draftRps.choiceA' : 'draftRps.choiceB';
+  await updateDoc(tRef, { [field]: choice });
+  const dr = tournament.draftRps || {};
+  const other = idx === 0 ? dr.choiceB : dr.choiceA;
+  const mineChoice = choice;
+  if(other){
+    let winnerIdx = null;
+    if(mineChoice !== other){
+      if(RPS_BEATS_DRAFT[mineChoice] === other) winnerIdx = idx;
+      else winnerIdx = idx === 0 ? 1 : 0;
+    }
+    if(winnerIdx !== null){
+      await updateDoc(tRef, { draftTurn: winnerIdx, draftStarted: true, 'draftRps.choiceA': null, 'draftRps.choiceB': null });
+    } else {
+      await updateDoc(tRef, { 'draftRps.choiceA': null, 'draftRps.choiceB': null }); // empate, repete
+    }
+  }
+}
+
+function renderDraftStartBox(){
+  const el = document.getElementById('draft-start-box');
+  if(tournament.draftMode !== 'captains' || bracketGenerated() || teams.length < 2){ el.innerHTML=''; return; }
+  const allHaveCaptains = teams.every(t => t.captainPlayerId);
+  if(!allHaveCaptains || tournament.draftStarted){ el.innerHTML=''; return; }
+
+  let html = '';
+  if(isAdmin()){
+    html += '<div class="card" style="margin-bottom:18px;"><h4 style="margin-bottom:10px;">Quem começa a escolher?</h4>' +
+      '<p class="muted" style="font-size:0.8rem;margin-bottom:10px;">Podes decidir diretamente, ou (com 2 capitães) deixar que joguem pedra, papel, tesoura.</p>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      teams.map((t,i) => `<button class="btn btn-sm btn-outline" data-startdraft="${i}">Começa: ${t.name}</button>`).join('') +
+      '</div></div>';
+  }
+  if(teams.length === 2){
+    const myIdx = myCaptainTeamIndex();
+    if(myIdx === 0 || myIdx === 1){
+      const dr = tournament.draftRps || {};
+      const myChoice = myIdx === 0 ? dr.choiceA : dr.choiceB;
+      const otherChoice = myIdx === 0 ? dr.choiceB : dr.choiceA;
+      html += '<div class="card" style="margin-bottom:18px;text-align:center;">' +
+        '<p class="muted" style="font-size:0.85rem;margin-bottom:8px;">Pedra, papel, tesoura para decidir quem escolhe primeiro:</p>' +
+        (myChoice
+          ? '<p style="font-weight:600;">Escolheste. ' + (otherChoice ? 'A decidir...' : 'À espera do outro capitão...') + '</p>'
+          : '<div class="rps-row" style="justify-content:center;"><button class="rps-btn" data-draftrps="pedra">🪨</button><button class="rps-btn" data-draftrps="papel">📄</button><button class="rps-btn" data-draftrps="tesoura">✂️</button></div>') +
+        '</div>';
+    }
+  }
+  el.innerHTML = html;
+
+  if(isAdmin()){
+    el.querySelectorAll('[data-startdraft]').forEach(btn=>{
+      btn.addEventListener('click', async function(){
+        await updateDoc(tRef, { draftTurn: parseInt(btn.dataset.startdraft,10), draftStarted: true });
+      });
+    });
+  }
+  el.querySelectorAll('[data-draftrps]').forEach(btn=>{
+    btn.addEventListener('click', function(){ chooseDraftRps(btn.dataset.draftrps); });
+  });
 }
 
 function renderTeams(){

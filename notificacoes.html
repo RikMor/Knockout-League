@@ -108,7 +108,7 @@ async function acceptInvite(notifId){
       await addDoc(collection(db,'clubs',n.refId,'members'), { uid: currentUser.uid, nickname, permissions: n.permissions || [] });
       await updateDoc(doc(db,'users',currentUser.uid), { clubIds: arrayUnion(n.refId) });
     } else if(n.type === 'clan_invite'){
-      await addDoc(collection(db,'clans',n.refId,'members'), { uid: currentUser.uid, nickname, isSubstitute: false });
+      await addDoc(collection(db,'clans',n.refId,'members'), { uid: currentUser.uid, nickname });
       await updateDoc(doc(db,'users',currentUser.uid), { clanIds: arrayUnion(n.refId) });
     }
     await updateDoc(doc(db,'notifications',notifId), { status: 'accepted' });

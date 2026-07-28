@@ -46,7 +46,10 @@
     </div>
 
     <div id="owned-box" style="display:none;margin-bottom:40px;">
-      <h2 id="owned-club-name" style="margin-bottom:20px;"></h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+        <h2 id="owned-club-name" style="margin-bottom:0;"></h2>
+        <button class="btn btn-danger btn-sm" id="delete-club-btn" style="display:none;">Eliminar clube</button>
+      </div>
       <div id="invite-form-box" style="max-width:520px;margin-bottom:20px;">
         <input type="text" id="member-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);margin-bottom:10px;"/>
         <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;">
@@ -114,6 +117,7 @@ async function loadOwnedClub(){
     document.getElementById('owned-box').style.display = 'block';
     document.getElementById('owned-club-name').textContent = ownedClub.name + (isOwner ? '' : ' (visitando)');
     document.getElementById('invite-form-box').style.display = isOwner ? 'block' : 'none';
+    document.getElementById('delete-club-btn').style.display = isOwner ? 'inline-block' : 'none';
     await loadMembers();
   }catch(e){
     document.getElementById('create-box').style.display = 'block';
@@ -256,6 +260,21 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
     err.textContent = 'Convite enviado — fica à espera de ' + found.data().nickname + ' aceitar nas notificações dele.';
     err.style.display = 'block';
   }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
+});
+
+document.getElementById('delete-club-btn').addEventListener('click', async function(){
+  if(!ownedClub || !isOwner) return;
+  if(!confirm('Eliminar o clube "'+ownedClub.name+'"? Esta ação é irreversível e remove todos os membros.')) return;
+  try{
+    const memSnap = await getDocs(collection(db,'clubs',ownedClub.id,'members'));
+    await Promise.all(memSnap.docs.map(async m=>{
+      await deleteDoc(doc(db,'clubs',ownedClub.id,'members',m.id));
+      if(m.data().uid) await updateDoc(doc(db,'users',m.data().uid), { clubIds: arrayRemove(ownedClub.id) }).catch(()=>{});
+    }));
+    await deleteDoc(doc(db,'clubs',ownedClub.id));
+    ownedClub = null;
+    window.location.href = 'clube.html';
+  }catch(e){ alert('Erro ao eliminar clube: ' + e.message); }
 });
 </script>
 <script type="module" src="nav-auth.js"></script>

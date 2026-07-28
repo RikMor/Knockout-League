@@ -167,7 +167,7 @@
 
 <script src="shared.js"></script>
 <script type="module">
-import { auth, db, doc, getDoc, updateDoc, collection, addDoc, query, orderBy, serverTimestamp, onSnapshot } from './firebase.js';
+import { auth, db, doc, getDoc, getDocs, updateDoc, collection, addDoc, query, where, orderBy, serverTimestamp, onSnapshot } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -184,11 +184,33 @@ const playersCol = collection(db, 'tournaments', tId, 'players');
 const matchRef = doc(db, 'tournaments', tId, 'matches', mId);
 const chatCol = collection(db, 'tournaments', tId, 'matches', mId, 'chat');
 
+let clubAdminAccess = false;
+async function computeClubAccess(){
+  clubAdminAccess = false;
+  if(currentUser && tournament && tournament.organizerClubId){
+    const clubId = tournament.organizerClubId;
+    try{
+      const clubSnap = await getDoc(doc(db,'clubs',clubId));
+      if(clubSnap.exists() && clubSnap.data().ownerUid === currentUser.uid){
+        clubAdminAccess = true;
+      } else {
+        const memSnap = await getDocs(query(collection(db,'clubs',clubId,'members'), where('uid','==',currentUser.uid)));
+        if(!memSnap.empty){
+          const m = memSnap.docs[0].data();
+          const perms = Array.isArray(m.permissions) ? m.permissions : (m.permission ? [m.permission] : []);
+          if(perms.includes('moderador')) clubAdminAccess = true;
+        }
+      }
+    }catch(e){}
+  }
+  renderAll();
+}
 function isAdmin(){
   if(!currentUser || !tournament) return false;
   if(tournament.creatorUid === currentUser.uid) return true;
   if(currentUserData && currentUserData.role === 'admin') return true;
   if((tournament.moderatorUids||[]).includes(currentUser.uid)) return true;
+  if(clubAdminAccess) return true;
   return false;
 }
 function teamById(id){ return teams.find(t=>t.id===id); }
@@ -219,10 +241,11 @@ onAuthStateChanged(auth, async function(user){
   if(user){
     try{ const s = await getDoc(doc(db,'users',user.uid)); if(s.exists()) currentUserData = s.data(); }catch(e){}
   }
+  await computeClubAccess();
   renderAll();
 });
 
-onSnapshot(tRef, snap=>{ if(!snap.exists()){ document.getElementById('not-found').style.display='block'; return; } tournament = {id:snap.id, ...snap.data()}; document.getElementById('room').style.display='block'; renderAll(); });
+onSnapshot(tRef, snap=>{ if(!snap.exists()){ document.getElementById('not-found').style.display='block'; return; } tournament = {id:snap.id, ...snap.data()}; document.getElementById('room').style.display='block'; computeClubAccess(); renderAll(); });
 onSnapshot(teamsCol, snap=>{ teams = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
 onSnapshot(playersCol, snap=>{ players = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
 onSnapshot(matchRef, snap=>{

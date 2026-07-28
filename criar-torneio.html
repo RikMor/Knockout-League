@@ -133,6 +133,16 @@
     <select id="t-organizer-as" style="width:100%;max-width:320px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"></select>
   </div>
 
+  <div class="form-group">
+    <label>Agendamento (opcional)</label>
+    <p class="form-hint" style="margin-bottom:10px;">Define quando as inscrições abrem, fecham, e quando o torneio começa. Fica visível aos jogadores na página do torneio.</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Abertura das inscrições</label><input type="datetime-local" id="t-reg-open" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+      <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Fecho das inscrições</label><input type="datetime-local" id="t-reg-close" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+      <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Início do torneio</label><input type="datetime-local" id="t-start" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+    </div>
+  </div>
+
   <button type="button" class="btn btn-accent" id="create-btn" style="width:100%;margin-top:10px;">Criar torneio</button>
   </div>
 </div>
@@ -303,6 +313,9 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const orgOption = organizerOptions.find(o => o.value === orgSelValue) || organizerOptions[0];
   const organizerDisplayName = orgOption ? (orgOption.clubName || orgOption.label.replace(' (eu)','')) : null;
   const organizerClubId = orgOption ? orgOption.clubId : null;
+  const regOpensAt = document.getElementById('t-reg-open').value || null;
+  const regClosesAt = document.getElementById('t-reg-close').value || null;
+  const startsAt = document.getElementById('t-start').value || null;
 
   if(!name){ showError('Dá um nome ao torneio.'); return; }
   if(!game){ showError('Indica o jogo do torneio.'); return; }
@@ -321,6 +334,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
       assignMode, draftMode, coinMethod, bestOf, pointsToWin, mapBanEnabled, maps,
       creatorUid: currentUser.uid, creatorParticipates, moderatorUids: [],
       organizerDisplayName, organizerClubId,
+      regOpensAt, regClosesAt, startsAt,
       usePlayerNames,
       status: 'inscricoes', draftTurn: 0,
       createdAt: serverTimestamp()
