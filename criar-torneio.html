@@ -81,7 +81,7 @@
   </div>
 
   <div class="form-group">
-    <label>Mapas do torneio</label>
+    <label>Mapas do torneio (opcional — só é preciso se ativares o banimento de mapas)</label>
     <div class="maps-input">
       <input type="text" id="map-input" placeholder="Nome do mapa e Enter"/>
       <button type="button" class="btn btn-outline btn-sm" id="map-add">Adicionar</button>
@@ -320,7 +320,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
   if(!name){ showError('Dá um nome ao torneio.'); return; }
   if(!game){ showError('Indica o jogo do torneio.'); return; }
   if(!maxTeams || maxTeams < 2){ showError('Precisas de pelo menos 2 equipas.'); return; }
-  if(maps.length === 0){ showError('Adiciona pelo menos um mapa.'); return; }
+  if(document.getElementById('t-banmaps').checked && maps.length === 0){ showError('Ativaste o banimento de mapas — adiciona pelo menos um mapa (ou desativa o banimento).'); return; }
   if(!bestOf || bestOf < 1 || bestOf % 2 === 0){ showError('O número de "melhor de quantas partidas" tem de ser ímpar (1, 3, 5, 7...).'); return; }
   if(!pointsToWin){ showError('Define os pontos para vencer cada partida.'); return; }
 

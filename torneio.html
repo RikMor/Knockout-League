@@ -24,6 +24,16 @@
   .draft-banner { border: 1px solid var(--gold); background: rgba(227,172,43,0.12); padding: 12px 16px; margin-bottom: 20px; font-weight: 600; font-size: 0.9rem; }
   .invite-code { font-family:'IBM Plex Mono'; letter-spacing: 3px; font-size: 1.1rem; border: 1px dashed var(--ink); padding: 8px 14px; display: inline-block; }
   .coin-result, .roulette-result { text-align: center; margin-top: 16px; font-weight: 700; }
+  .pos-editor { display: flex; gap: 20px; border: 1px solid var(--ink); padding: 18px; flex-wrap: wrap; }
+  .pos-editor-rounds { display: flex; flex-direction: column; gap: 6px; min-width: 130px; }
+  .pos-editor-rounds button { padding: 9px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; font-family:'IBM Plex Mono'; font-size: 0.72rem; letter-spacing: 0.5px; text-transform: uppercase; }
+  .pos-editor-rounds button.active { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .pos-editor-list { flex: 1; min-width: 240px; }
+  .pos-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .pos-row.locked { opacity: 0.6; }
+  .pos-row .pos-num { font-family:'IBM Plex Mono'; font-size: 0.8rem; color: var(--muted); width: 22px; }
+  .pos-row .pos-handle { cursor: grab; color: var(--muted); font-size: 1rem; }
+  .pos-row.dragging { opacity: 0.4; }
 </style>
 </head>
 <body>
@@ -97,6 +107,7 @@
       <button class="btn btn-gold btn-sm" id="regen-bracket-btn">Regenerar bracket com todas as equipas atuais</button>
       <p class="muted" id="regen-bracket-warn" style="font-size:0.8rem;margin-top:8px;"></p>
     </div>
+    <div id="positions-editor-box" style="display:none;margin-bottom:32px;"></div>
     <div id="bracket-box"><p class="muted">A bracket ainda não foi gerada.</p></div>
   </div>
 
@@ -1216,7 +1227,7 @@ async function generateBracket(readyTeams){
       bestOf: tournament.bestOf || 1,
       pointsToWin: tournament.pointsToWin || null,
       gamesWonA: 0, gamesWonB: 0,
-      currentGame: { index: 0, firstBanTeamId: null, firstBanMethod: null, mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null },
+      currentGame: { index: 0, firstBanTeamId: null, firstBanMethod: null, mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null, resultProposal: null, disputed: false },
       serverInfo: null, status: 'por-jogar',
       nextMatchId: m.nextMatchId || null, nextSlot: m.nextSlot || null
     });
@@ -1252,10 +1263,112 @@ function matchCardHtml(m){
   </div>`;
 }
 
+// ── EDITOR DE POSIÇÕES NA BRACKET ──────────────────────────────
+let posEditorRound = 0;
+function roundHasDecidedMatch(rn){
+  return matches.some(m => m.round === rn && m.status === 'terminado' && m.teamAId && m.teamBId);
+}
+function roundsBeforeStarted(rn){
+  return matches.some(m => m.round < rn && m.status === 'terminado' && m.teamAId && m.teamBId);
+}
+function renderPositionsEditor(){
+  const box = document.getElementById('positions-editor-box');
+  if(!isAdmin() || tournament.bracketType === 'round-robin' || matches.length === 0){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+
+  const byRound = {};
+  matches.forEach(m => { (byRound[m.round] = byRound[m.round] || []).push(m); });
+  const roundNums = Object.keys(byRound).map(Number).sort((a,b)=>a-b);
+  if(!roundNums.includes(posEditorRound)) posEditorRound = roundNums[0];
+
+  const roundsHtml = roundNums.map(rn =>
+    `<button data-posround="${rn}" class="${rn===posEditorRound?'active':''}">Ronda ${rn+1}</button>`
+  ).join('');
+
+  const ms = byRound[posEditorRound].slice().sort((a,b)=>a.matchIndex-b.matchIndex);
+  const locked = roundHasDecidedMatch(posEditorRound);
+  const slots = [];
+  ms.forEach(m => { slots.push({ matchId:m.id, side:'A', teamId:m.teamAId }); slots.push({ matchId:m.id, side:'B', teamId:m.teamBId }); });
+
+  const rowsHtml = slots.map((s,i) => `
+    <div class="pos-row ${locked?'locked':''}" draggable="${!locked}" data-slotidx="${i}">
+      ${!locked ? '<span class="pos-handle">⠿</span>' : '<span style="width:16px;"></span>'}
+      <span class="pos-num">${i+1}.</span>
+      <span>${teamName(s.teamId)}</span>
+    </div>`).join('');
+
+  box.innerHTML = `
+    <h3 style="margin-bottom:14px;">Posições na bracket</h3>
+    <p class="muted" style="font-size:0.82rem;margin-bottom:14px;">${locked ? 'Esta ronda já tem resultados — as posições ficam bloqueadas.' : 'Arrasta pelo ⠿ para mudar a ordem. Guarda para aplicar aos confrontos desta ronda.'}</p>
+    <div class="pos-editor">
+      <div class="pos-editor-rounds">${roundsHtml}</div>
+      <div class="pos-editor-list">
+        <div id="pos-rows">${rowsHtml}</div>
+        ${!locked ? '<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;"><button class="btn btn-outline btn-sm" id="pos-save-btn">Guardar</button><button class="btn btn-gold btn-sm" id="pos-start-btn">Começar aqui</button></div>' : ''}
+      </div>
+    </div>`;
+
+  box.querySelectorAll('[data-posround]').forEach(btn=>{
+    btn.addEventListener('click', function(){ posEditorRound = parseInt(btn.dataset.posround,10); renderPositionsEditor(); });
+  });
+
+  if(!locked){
+    let currentSlots = slots.slice();
+    const rowsBox = document.getElementById('pos-rows');
+    let dragIdx = null;
+    function wireRows(){
+      rowsBox.querySelectorAll('.pos-row').forEach(row=>{
+        row.addEventListener('dragstart', function(){ dragIdx = parseInt(row.dataset.slotidx,10); row.classList.add('dragging'); });
+        row.addEventListener('dragend', function(){ row.classList.remove('dragging'); });
+        row.addEventListener('dragover', function(e){
+          e.preventDefault();
+          if(dragIdx === null) return;
+          const overIdx = parseInt(row.dataset.slotidx,10);
+          if(overIdx === dragIdx) return;
+          const [moved] = currentSlots.splice(dragIdx,1);
+          currentSlots.splice(overIdx,0,moved);
+          dragIdx = overIdx;
+          rowsBox.innerHTML = currentSlots.map((s,i) => `
+            <div class="pos-row" draggable="true" data-slotidx="${i}">
+              <span class="pos-handle">⠿</span><span class="pos-num">${i+1}.</span><span>${teamName(s.teamId)}</span>
+            </div>`).join('');
+          wireRows();
+        });
+      });
+    }
+    wireRows();
+
+    document.getElementById('pos-save-btn').addEventListener('click', async function(){
+      for(let i=0;i<ms.length;i++){
+        await updateDoc(doc(matchesCol, ms[i].id), { teamAId: currentSlots[i*2].teamId || null, teamBId: currentSlots[i*2+1].teamId || null });
+      }
+      alert('Posições guardadas para a Ronda ' + (posEditorRound+1) + '.');
+    });
+
+    document.getElementById('pos-start-btn').addEventListener('click', async function(){
+      if(roundsBeforeStarted(posEditorRound)){ alert('Já há resultados em rondas anteriores — não é possível começar aqui.'); return; }
+      if(!confirm('Isto marca as rondas anteriores como puladas e começa o torneio na Ronda ' + (posEditorRound+1) + ' com esta ordem. Continuar?')) return;
+      for(let i=0;i<ms.length;i++){
+        await updateDoc(doc(matchesCol, ms[i].id), { teamAId: currentSlots[i*2].teamId || null, teamBId: currentSlots[i*2+1].teamId || null });
+      }
+      for(const m of matches){
+        if(m.round < posEditorRound){
+          await updateDoc(doc(matchesCol, m.id), { status: 'terminado', winnerId: null });
+        } else if(m.round > posEditorRound){
+          await updateDoc(doc(matchesCol, m.id), { teamAId: null, teamBId: null, status: 'por-jogar', winnerId: null });
+        }
+      }
+      await updateDoc(tRef, { status: 'em-curso' });
+      alert('Torneio a começar na Ronda ' + (posEditorRound+1) + '.');
+    });
+  }
+}
+
 function renderBracket(){
   renderMyMatch();
   renderOrphanTeams();
   renderRegenBox();
+  renderPositionsEditor();
   const box = document.getElementById('bracket-box');
   if(matches.length === 0){ box.innerHTML = '<p class="muted">A bracket ainda não foi gerada.</p>'; return; }
   const byRound = {};

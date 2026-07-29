@@ -50,7 +50,7 @@
   .page-header p { color: var(--muted); font-size: 0.86rem; margin-top: 6px; font-family: 'Inter'; text-transform: none; letter-spacing: normal; }
 
   /* STATS */
-  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 28px; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 16px; margin-bottom: 28px; }
   .stat-card { background: var(--card); border: 1px solid var(--border); padding: 20px 24px; position: relative; overflow: hidden; }
   .stat-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
   .stat-card.red::after { background: var(--accent); } .stat-card.gold::after { background: var(--gold); }
@@ -134,6 +134,8 @@
     <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span><span>Dashboard</span></div>
     <div class="nav-item" data-page="torneios"><span class="icon">🏆</span><span>Torneios</span></div>
     <div class="nav-item" data-page="utilizadores"><span class="icon">👤</span><span>Utilizadores</span></div>
+    <div class="nav-item" data-page="clubes"><span class="icon">🏛️</span><span>Clubes</span></div>
+    <div class="nav-item" data-page="clas"><span class="icon">⚔️</span><span>Clãs</span></div>
     <div class="nav-item" data-page="contactos"><span class="icon">✉️</span><span>Contactos</span><span class="nav-badge-count" id="contact-badge" style="display:none;"></span></div>
     <div class="sidebar-logout" id="logout-btn"><span class="icon">⏻</span><span>Sair</span></div>
   </div>
@@ -147,6 +149,8 @@
         <div class="stat-card green"><div class="stat-n" id="d-ativos">—</div><div class="stat-l">Em curso</div></div>
         <div class="stat-card gold"><div class="stat-n" id="d-utilizadores">—</div><div class="stat-l">Utilizadores</div></div>
         <div class="stat-card blue"><div class="stat-n" id="d-mensagens">—</div><div class="stat-l">Mensagens</div></div>
+        <div class="stat-card gold"><div class="stat-n" id="d-clubes">—</div><div class="stat-l">Clubes</div></div>
+        <div class="stat-card red"><div class="stat-n" id="d-clas">—</div><div class="stat-l">Clãs</div></div>
       </div>
       <div class="section-title">Torneios recentes</div>
       <div class="recent-list" id="d-recent-tournaments"><div class="empty">A carregar...</div></div>
@@ -163,8 +167,8 @@
           <select id="t-filter-vis"><option value="">Todas visibilidades</option><option value="public">Público</option><option value="private">Privado</option></select>
         </div>
         <table>
-          <thead><tr><th>Nome</th><th>Jogo</th><th>Formato</th><th>Visibilidade</th><th>Estado</th><th></th></tr></thead>
-          <tbody id="t-tbody"><tr><td colspan="6" class="td-muted">A carregar...</td></tr></tbody>
+          <thead><tr><th>Nome</th><th>Jogo</th><th>Formato</th><th>Organizador</th><th>Visibilidade</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="t-tbody"><tr><td colspan="7" class="td-muted">A carregar...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -180,6 +184,34 @@
         <table>
           <thead><tr><th>Nickname</th><th>Email</th><th>Tipo</th><th>Papel</th><th></th></tr></thead>
           <tbody id="u-tbody"><tr><td colspan="5" class="td-muted">A carregar...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CLUBES -->
+    <div class="page" id="page-clubes">
+      <div class="page-header"><h1>Clubes</h1><p>Todos os clubes criados na plataforma.</p></div>
+      <div class="table-wrap">
+        <div class="toolbar">
+          <input type="text" id="cl-search" placeholder="Procurar por nome de clube..."/>
+        </div>
+        <table>
+          <thead><tr><th>Nome</th><th>Líder</th><th>Membros</th><th></th></tr></thead>
+          <tbody id="cl-tbody"><tr><td colspan="4" class="td-muted">A carregar...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CLÃS -->
+    <div class="page" id="page-clas">
+      <div class="page-header"><h1>Clãs</h1><p>Todos os clãs criados na plataforma.</p></div>
+      <div class="table-wrap">
+        <div class="toolbar">
+          <input type="text" id="cn-search" placeholder="Procurar por nome de clã..."/>
+        </div>
+        <table>
+          <thead><tr><th>Nome</th><th>Líder</th><th>Membros</th><th></th></tr></thead>
+          <tbody id="cn-tbody"><tr><td colspan="4" class="td-muted">A carregar...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -210,10 +242,10 @@
 </div>
 
 <script type="module">
-import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, getDocs, query, orderBy } from './firebase.js';
+import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, getDocs, query, orderBy, onSnapshot } from './firebase.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
-let allUsers = [], allTournaments = [], allContacts = [];
+let allUsers = [], allTournaments = [], allContacts = [], allClubs = [], allClans = [];
 
 window.doLogin = async function(){
   const email = document.getElementById('login-email').value.trim();
@@ -248,18 +280,32 @@ onAuthStateChanged(auth, async function(user){
 });
 
 async function loadAll(){
-  const [uSnap, tSnap, cSnap] = await Promise.all([
-    getDocs(collection(db,'users')),
-    getDocs(collection(db,'tournaments')),
-    getDocs(query(collection(db,'contactos'), orderBy('createdAt','desc'))).catch(()=>({docs:[]}))
-  ]);
-  allUsers = uSnap.docs.map(d=>({id:d.id, ...d.data()}));
-  allTournaments = tSnap.docs.map(d=>({id:d.id, ...d.data()}));
-  allContacts = cSnap.docs ? cSnap.docs.map(d=>({id:d.id, ...d.data()})) : [];
-  renderDashboard();
-  renderUsers(allUsers);
-  renderTournaments(allTournaments);
-  renderContacts();
+  onSnapshot(collection(db,'users'), snap=>{
+    allUsers = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderDashboard(); filterUsers();
+  });
+  onSnapshot(collection(db,'tournaments'), snap=>{
+    allTournaments = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderDashboard(); filterTournaments();
+  });
+  onSnapshot(query(collection(db,'contactos'), orderBy('createdAt','desc')), snap=>{
+    allContacts = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderDashboard(); renderContacts();
+  }, ()=>{ allContacts = []; renderDashboard(); renderContacts(); });
+  onSnapshot(collection(db,'clubs'), async snap=>{
+    allClubs = await Promise.all(snap.docs.map(async d=>{
+      const memSnap = await getDocs(collection(db,'clubs',d.id,'members'));
+      return { id:d.id, ...d.data(), memberCount: memSnap.size };
+    }));
+    filterClubs();
+  });
+  onSnapshot(collection(db,'clans'), async snap=>{
+    allClans = await Promise.all(snap.docs.map(async d=>{
+      const memSnap = await getDocs(collection(db,'clans',d.id,'members'));
+      return { id:d.id, ...d.data(), memberCount: memSnap.size };
+    }));
+    filterClans();
+  });
 }
 
 // NAV
@@ -278,6 +324,8 @@ function renderDashboard(){
   document.getElementById('d-ativos').textContent = allTournaments.filter(t=>t.status==='em-curso').length;
   document.getElementById('d-utilizadores').textContent = allUsers.length;
   document.getElementById('d-mensagens').textContent = allContacts.length;
+  document.getElementById('d-clubes').textContent = allClubs.length;
+  document.getElementById('d-clas').textContent = allClans.length;
 
   const badge = document.getElementById('contact-badge');
   if(allContacts.length > 0){ badge.textContent = allContacts.length; badge.style.display = 'inline-block'; }
@@ -340,7 +388,7 @@ function filterUsers(){
   const term = document.getElementById('u-search').value.trim().toLowerCase();
   const type = document.getElementById('u-filter-type').value;
   renderUsers(allUsers.filter(u => {
-    const matchesTerm = (u.nickname||'').toLowerCase().includes(term) || (u.email||'').toLowerCase().includes(term);
+    const matchesTerm = (u.nickname||'').toLowerCase().includes(term) || (u.email||'').toLowerCase().includes(term) || (u.tag||'').toLowerCase().includes(term);
     const uType = u.isGuest ? 'guest' : (u.provider === 'google' ? 'google' : 'registered');
     const matchesType = !type || uType === type;
     return matchesTerm && matchesType;
@@ -352,12 +400,13 @@ document.getElementById('u-filter-type').addEventListener('change', filterUsers)
 // TORNEIOS
 function renderTournaments(list){
   const tbody = document.getElementById('t-tbody');
-  if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="6" class="td-muted">Sem torneios.</td></tr>'; return; }
+  if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="7" class="td-muted">Sem torneios.</td></tr>'; return; }
   tbody.innerHTML = list.map(t=>`
     <tr>
       <td><a href="torneio.html?id=${t.id}" style="color:var(--accent);font-weight:600;text-decoration:none;">${t.name}</a></td>
       <td class="td-muted">${t.game || '—'}</td>
       <td class="td-muted">${t.teamSize}v${t.teamSize}</td>
+      <td class="td-muted">${t.organizerDisplayName || '—'}</td>
       <td><span class="badge ${t.visibility==='private'?'badge-private':'badge-public'}">${t.visibility==='private'?'Privado':'Público'}</span></td>
       <td class="td-muted">${t.status || '—'}</td>
       <td style="display:flex;gap:6px;">
@@ -369,8 +418,6 @@ function renderTournaments(list){
     b.addEventListener('click', async function(){
       if(!confirm('Eliminar este torneio permanentemente?')) return;
       await deleteDoc(doc(db,'tournaments', b.dataset.del));
-      allTournaments = allTournaments.filter(t=>t.id!==b.dataset.del);
-      renderTournaments(allTournaments); renderDashboard();
     });
   });
 }
@@ -378,7 +425,7 @@ function filterTournaments(){
   const term = document.getElementById('t-search').value.trim().toLowerCase();
   const vis = document.getElementById('t-filter-vis').value;
   renderTournaments(allTournaments.filter(t =>
-    ((t.name||'').toLowerCase().includes(term) || (t.game||'').toLowerCase().includes(term)) &&
+    ((t.name||'').toLowerCase().includes(term) || (t.game||'').toLowerCase().includes(term) || (t.organizerDisplayName||'').toLowerCase().includes(term)) &&
     (!vis || t.visibility === vis)
   ));
 }
@@ -429,6 +476,58 @@ function openContact(id){
   };
   document.getElementById('c-modal').classList.add('open');
 }
+
+// CLUBES
+function renderClubs(list){
+  const tbody = document.getElementById('cl-tbody');
+  if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="4" class="td-muted">Sem clubes.</td></tr>'; return; }
+  tbody.innerHTML = list.map(c=>`
+    <tr>
+      <td>${c.name}</td>
+      <td class="td-muted">${c.ownerNickname || '—'}</td>
+      <td class="td-muted">${c.memberCount ?? 0}</td>
+      <td><button class="btn-sm btn-del" data-delclub="${c.id}">Eliminar</button></td>
+    </tr>`).join('');
+  tbody.querySelectorAll('[data-delclub]').forEach(b=>{
+    b.addEventListener('click', async function(){
+      if(!confirm('Eliminar este clube e todos os seus membros?')) return;
+      const memSnap = await getDocs(collection(db,'clubs', b.dataset.delclub,'members'));
+      await Promise.all(memSnap.docs.map(m=>deleteDoc(doc(db,'clubs', b.dataset.delclub,'members', m.id))));
+      await deleteDoc(doc(db,'clubs', b.dataset.delclub));
+    });
+  });
+}
+function filterClubs(){
+  const term = document.getElementById('cl-search').value.trim().toLowerCase();
+  renderClubs(allClubs.filter(c => (c.name||'').toLowerCase().includes(term)));
+}
+document.getElementById('cl-search').addEventListener('input', filterClubs);
+
+// CLÃS
+function renderClans(list){
+  const tbody = document.getElementById('cn-tbody');
+  if(list.length === 0){ tbody.innerHTML = '<tr><td colspan="4" class="td-muted">Sem clãs.</td></tr>'; return; }
+  tbody.innerHTML = list.map(c=>`
+    <tr>
+      <td>${c.name}</td>
+      <td class="td-muted">${c.ownerNickname || '—'}</td>
+      <td class="td-muted">${c.memberCount ?? 0}</td>
+      <td><button class="btn-sm btn-del" data-delclan="${c.id}">Eliminar</button></td>
+    </tr>`).join('');
+  tbody.querySelectorAll('[data-delclan]').forEach(b=>{
+    b.addEventListener('click', async function(){
+      if(!confirm('Eliminar este clã e todos os seus membros?')) return;
+      const memSnap = await getDocs(collection(db,'clans', b.dataset.delclan,'members'));
+      await Promise.all(memSnap.docs.map(m=>deleteDoc(doc(db,'clans', b.dataset.delclan,'members', m.id))));
+      await deleteDoc(doc(db,'clans', b.dataset.delclan));
+    });
+  });
+}
+function filterClans(){
+  const term = document.getElementById('cn-search').value.trim().toLowerCase();
+  renderClans(allClans.filter(c => (c.name||'').toLowerCase().includes(term)));
+}
+document.getElementById('cn-search').addEventListener('input', filterClans);
 </script>
 </body>
 </html>

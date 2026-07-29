@@ -104,19 +104,19 @@
       <div id="rt-play-phase" style="display:none;">
         <p class="muted" id="rt-map-picked" style="text-align:center;font-size:0.85rem;margin-bottom:20px;"></p>
 
-        <h4>Pontuação ao vivo</h4>
-        <p class="muted" style="text-align:center;font-size:0.76rem;margin-bottom:14px;margin-top:-8px;">os dois capitães confirmam cada ponto</p>
-        <div style="display:flex;gap:18px;align-items:center;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
+        <h4>Resultado da partida</h4>
+        <div style="display:flex;gap:18px;align-items:center;justify-content:center;margin-bottom:14px;flex-wrap:wrap;">
           <div style="text-align:center;">
             <div style="font-family:'Anton';font-size:2rem;" id="rt-cur-score-a">0</div>
-            <button class="btn btn-accent btn-sm" id="rt-point-a">+1 — <span id="rt-team-a-btn-name"></span></button>
+            <div class="muted" style="font-size:0.75rem;" id="rt-team-a-btn-name"></div>
           </div>
           <div class="muted" style="font-family:'Anton';font-size:1.2rem;">—</div>
           <div style="text-align:center;">
             <div style="font-family:'Anton';font-size:2rem;" id="rt-cur-score-b">0</div>
-            <button class="btn btn-accent btn-sm" id="rt-point-b">+1 — <span id="rt-team-b-btn-name"></span></button>
+            <div class="muted" style="font-size:0.75rem;" id="rt-team-b-btn-name"></div>
           </div>
         </div>
+        <div id="rt-result-area" style="max-width:360px;margin:0 auto 20px;"></div>
         <p class="muted" id="rt-pending-msg" style="text-align:center;min-height:1.2em;font-size:0.82rem;margin-bottom:20px;"></p>
 
         <h4>Servidor / forma de entrar no jogo</h4>
@@ -146,7 +146,7 @@
 
   <div class="room-section" id="rt-admin-section" style="display:none;background:rgba(232,90,54,0.04);">
     <h3>Configurar sala (organizador)</h3>
-    <p class="muted" style="font-size:0.82rem;margin-bottom:12px;">Se algo correr mal, força aqui manualmente quem bane primeiro, ou corrige a pontuação.</p>
+    <p class="muted" style="font-size:0.82rem;margin-bottom:12px;">Se algo correr mal — ou os capitães não concordarem no resultado — força aqui manualmente quem bane primeiro, ou corrige a pontuação e finaliza o jogo.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
       <button class="btn btn-sm btn-outline" data-adminfb="A">Forçar: <span id="rt-admin-team-a"></span> bane primeiro</button>
       <button class="btn btn-sm btn-outline" data-adminfb="B">Forçar: <span id="rt-admin-team-b"></span> bane primeiro</button>
@@ -342,32 +342,25 @@ async function chooseRps(mySide, jogada){
   }
 }
 
-async function addPoint(team){
-  const g = match.currentGame;
+async function proposeResult(winnerTeam, scoreA, scoreB){
   const myUid = currentUser.uid;
-  let pending = g.pending;
-  let update = {};
-  if(!pending){
-    update['currentGame.pending'] = { team, proposedBy: myUid };
-    await updateDoc(matchRef, update);
-  } else if(pending.team === team && pending.proposedBy !== myUid){
-    const field = team === 'A' ? 'currentGame.scoreA' : 'currentGame.scoreB';
-    const current = team === 'A' ? (g.scoreA||0) : (g.scoreB||0);
-    const newScore = current + 1;
-    update[field] = newScore;
-    update['currentGame.pending'] = null;
-    await updateDoc(matchRef, update);
-    // se o torneio tem pontos definidos para vencer, finaliza automaticamente ao atingi-los
-    if(tournament.pointsToWin && newScore >= tournament.pointsToWin){
-      const updatedGame = { ...g, scoreA: team==='A'?newScore:(g.scoreA||0), scoreB: team==='B'?newScore:(g.scoreB||0), pending: null };
-      await finalizeGame(updatedGame);
-    }
-  } else if(pending.team === team && pending.proposedBy === myUid){
-    return;
-  } else {
-    update['currentGame.pending'] = { team, proposedBy: myUid };
-    await updateDoc(matchRef, update);
-  }
+  await updateDoc(matchRef, {
+    'currentGame.resultProposal': { winnerTeam, scoreA, scoreB, proposedBy: myUid }
+  });
+}
+
+async function confirmResult(){
+  const g = match.currentGame;
+  const p = g.resultProposal;
+  if(!p) return;
+  await updateDoc(matchRef, {
+    'currentGame.scoreA': p.scoreA, 'currentGame.scoreB': p.scoreB, 'currentGame.resultProposal': null
+  });
+  await finalizeGame({ ...g, scoreA: p.scoreA, scoreB: p.scoreB });
+}
+
+async function disputeResult(){
+  await updateDoc(matchRef, { 'currentGame.resultProposal': null, 'currentGame.disputed': true });
 }
 
 async function finalizeGame(gameOverride){
@@ -390,7 +383,7 @@ async function finalizeGame(gameOverride){
     const nextFirstBan = g.firstBanTeamId === match.teamAId ? match.teamBId : match.teamAId;
     await updateDoc(matchRef, {
       gamesWonA: newGamesWonA, gamesWonB: newGamesWonB,
-      currentGame: { index: (g.index||0)+1, firstBanTeamId: nextFirstBan, firstBanMethod: 'prioridade automática (perdeu o jogo anterior)', mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null }
+      currentGame: { index: (g.index||0)+1, firstBanTeamId: nextFirstBan, firstBanMethod: 'prioridade automática (perdeu o jogo anterior)', mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null, resultProposal: null, disputed: false }
     });
   }
 }
@@ -495,15 +488,60 @@ function renderAll(){
     document.getElementById('rt-team-a-btn-name').textContent = teamName(match.teamAId);
     document.getElementById('rt-team-b-btn-name').textContent = teamName(match.teamBId);
     const myCap = myCaptainTeam();
-    document.getElementById('rt-point-a').style.display = (myCap && !finished) ? 'inline-flex' : 'none';
-    document.getElementById('rt-point-b').style.display = (myCap && !finished) ? 'inline-flex' : 'none';
-    document.getElementById('rt-point-a').onclick = () => addPoint('A');
-    document.getElementById('rt-point-b').onclick = () => addPoint('B');
+    const resultArea = document.getElementById('rt-result-area');
+    const p = g.resultProposal;
+    if(finished){
+      resultArea.innerHTML = '';
+    } else if(!p){
+      if(myCap && !finished){
+        resultArea.innerHTML = `
+          <div class="card" style="padding:16px;">
+            <p class="muted" style="font-size:0.8rem;margin-bottom:10px;">Terminar a partida — indica quem ganhou e o resultado final:</p>
+            <div style="display:flex;gap:10px;align-items:center;justify-content:center;margin-bottom:10px;">
+              <input type="number" id="rt-propose-score-a" min="0" value="${g.scoreA||0}" style="width:64px;padding:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-align:center;"/>
+              <span class="muted">—</span>
+              <input type="number" id="rt-propose-score-b" min="0" value="${g.scoreB||0}" style="width:64px;padding:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-align:center;"/>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+              <button class="btn btn-sm btn-outline" id="rt-propose-a">${teamName(match.teamAId)} venceu</button>
+              <button class="btn btn-sm btn-outline" id="rt-propose-b">${teamName(match.teamBId)} venceu</button>
+            </div>
+          </div>`;
+        document.getElementById('rt-propose-a').onclick = () => {
+          const sa = parseInt(document.getElementById('rt-propose-score-a').value,10)||0;
+          const sb = parseInt(document.getElementById('rt-propose-score-b').value,10)||0;
+          proposeResult('A', sa, sb);
+        };
+        document.getElementById('rt-propose-b').onclick = () => {
+          const sa = parseInt(document.getElementById('rt-propose-score-a').value,10)||0;
+          const sb = parseInt(document.getElementById('rt-propose-score-b').value,10)||0;
+          proposeResult('B', sa, sb);
+        };
+      } else {
+        resultArea.innerHTML = '';
+      }
+    } else {
+      const winnerName = p.winnerTeam === 'A' ? teamName(match.teamAId) : teamName(match.teamBId);
+      if(myCap && p.proposedBy !== currentUser.uid){
+        resultArea.innerHTML = `
+          <div class="card" style="padding:16px;text-align:center;">
+            <p style="margin-bottom:12px;">O outro capitão propôs: <strong>${winnerName}</strong> venceu, ${p.scoreA} — ${p.scoreB}.</p>
+            <div style="display:flex;gap:8px;justify-content:center;">
+              <button class="btn btn-sm btn-accent" id="rt-confirm-result">Confirmar</button>
+              <button class="btn btn-sm btn-danger" id="rt-dispute-result">Não concordo</button>
+            </div>
+          </div>`;
+        document.getElementById('rt-confirm-result').onclick = confirmResult;
+        document.getElementById('rt-dispute-result').onclick = disputeResult;
+      } else {
+        resultArea.innerHTML = `<p class="muted" style="text-align:center;">Propuseste: <strong>${winnerName}</strong> venceu, ${p.scoreA} — ${p.scoreB}. À espera de confirmação do outro capitão.</p>`;
+      }
+    }
     const pendingMsg = document.getElementById('rt-pending-msg');
-    if(g.pending){
-      const nm = g.pending.team === 'A' ? teamName(match.teamAId) : teamName(match.teamBId);
-      pendingMsg.textContent = `Ponto proposto para ${nm} — à espera de confirmação do outro capitão.`;
-    } else { pendingMsg.textContent = ''; }
+    if(g.disputed){
+      pendingMsg.textContent = 'Os capitães não concordaram — o organizador tem de validar o resultado abaixo.';
+      pendingMsg.style.color = 'var(--danger)';
+    } else { pendingMsg.textContent = ''; pendingMsg.style.color = ''; }
 
     document.getElementById('rt-server-current').textContent = match.serverInfo ? ('Atual: ' + match.serverInfo.value) : 'Ainda não definido.';
     document.getElementById('rt-server-input').style.display = isAdmin() ? 'block' : 'none';
@@ -551,11 +589,11 @@ function renderAll(){
     document.getElementById('rt-score-save').onclick = async function(){
       const a = document.getElementById('rt-score-a').value;
       const b = document.getElementById('rt-score-b').value;
-      await updateDoc(matchRef, { 'currentGame.scoreA': a===''?0:Number(a), 'currentGame.scoreB': b===''?0:Number(b) });
+      await updateDoc(matchRef, { 'currentGame.scoreA': a===''?0:Number(a), 'currentGame.scoreB': b===''?0:Number(b), 'currentGame.resultProposal': null, 'currentGame.disputed': false });
     };
     document.getElementById('rt-admin-force-finish').onclick = function(){
       if(!confirm('Forçar o fim deste jogo com a pontuação atual?')) return;
-      finalizeGame();
+      updateDoc(matchRef, { 'currentGame.resultProposal': null, 'currentGame.disputed': false }).then(()=> finalizeGame());
     };
   }
 }
