@@ -53,16 +53,6 @@
   </div>
 
   <div class="form-group">
-    <label>Tipo de bracket</label>
-    <div class="pill-group" id="pill-bracket">
-      <div class="pill" data-v="single">Eliminação simples</div>
-      <div class="pill" data-v="double">Eliminação dupla</div>
-      <div class="pill" data-v="round-robin">Todos contra todos</div>
-    </div>
-    <p class="form-hint" id="bracket-explain"></p>
-  </div>
-
-  <div class="form-group">
     <label>Visibilidade</label>
     <div class="pill-group" id="pill-visibility">
       <div class="pill" data-v="public">Pública</div>
@@ -70,28 +60,14 @@
     </div>
   </div>
 
-  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
-    <input type="checkbox" id="t-participo" style="width:auto;margin-top:4px;"/>
-    <label for="t-participo" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Eu, organizador, também vou jogar.</label>
-  </div>
-
-  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
-    <input type="checkbox" id="t-useplayernames" style="width:auto;margin-top:4px;"/>
-    <label for="t-useplayernames" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Usar o nickname do jogador como nome da equipa (útil em 1v1).</label>
-  </div>
-
   <div class="form-group">
-    <label>Mapas do torneio (opcional — só é preciso se ativares o banimento de mapas)</label>
-    <div class="maps-input">
-      <input type="text" id="map-input" placeholder="Nome do mapa e Enter"/>
-      <button type="button" class="btn btn-outline btn-sm" id="map-add">Adicionar</button>
+    <label>Tipo de bracket</label>
+    <div class="pill-group" id="pill-bracket">
+      <div class="pill" data-v="single">Eliminação simples</div>
+      <div class="pill" data-v="double">Eliminação dupla</div>
+      <div class="pill" data-v="round-robin">Todos contra todos</div>
     </div>
-    <div class="pill-group" id="maps-list"></div>
-  </div>
-
-  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
-    <input type="checkbox" id="t-banmaps" checked style="width:auto;margin-top:4px;"/>
-    <label for="t-banmaps" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Ativar banimento de mapas no lobby.</label>
+    <p class="form-hint" id="bracket-explain"></p>
   </div>
 
   <div class="form-group">
@@ -111,10 +87,43 @@
     <p class="form-hint">Assim que uma equipa chegar a este valor, a partida termina sozinha.</p>
   </div>
 
+  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+    <input type="checkbox" id="t-useplayernames" style="width:auto;margin-top:4px;"/>
+    <label for="t-useplayernames" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Usar o nickname do jogador como nome da equipa (útil em 1v1).</label>
+  </div>
+
+  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+    <input type="checkbox" id="t-participo" style="width:auto;margin-top:4px;"/>
+    <label for="t-participo" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Eu, organizador, também vou jogar.</label>
+  </div>
+
+  <div class="form-group">
+    <label>Como as pessoas podem entrar</label>
+    <div class="pill-group" id="pill-joinmode">
+      <div class="pill" data-v="both">Sozinho ou com o clã</div>
+      <div class="pill" data-v="solo">Só sozinho</div>
+      <div class="pill" data-v="clan">Só com o clã</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Mapas do torneio (opcional — só é preciso se ativares o banimento de mapas)</label>
+    <div class="maps-input">
+      <input type="text" id="map-input" placeholder="Nome do mapa e Enter"/>
+      <button type="button" class="btn btn-outline btn-sm" id="map-add">Adicionar</button>
+    </div>
+    <div class="pill-group" id="maps-list"></div>
+  </div>
+
+  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
+    <input type="checkbox" id="t-banmaps" checked style="width:auto;margin-top:4px;"/>
+    <label for="t-banmaps" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Ativar banimento de mapas no lobby.</label>
+  </div>
+
   <div class="form-group">
     <label>Como decidir quem começa</label>
     <div class="pill-group" id="pill-coin">
-      <div class="pill" data-v="coin">Moeda ao ar</div>
+      <div class="pill" data-v="coin">Aleatório</div>
       <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
     </div>
   </div>
@@ -135,11 +144,10 @@
 
   <div class="form-group">
     <label>Agendamento (opcional)</label>
-    <p class="form-hint" style="margin-bottom:10px;">Define quando as inscrições abrem, fecham, e quando o torneio começa. Fica visível aos jogadores na página do torneio.</p>
+    <p class="form-hint" style="margin-bottom:10px;">Define quando as inscrições abrem e quando fecham (com hora). Fica visível aos jogadores na página do torneio.</p>
     <div style="display:flex;gap:14px;flex-wrap:wrap;">
       <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Abertura das inscrições</label><input type="datetime-local" id="t-reg-open" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
       <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Fecho das inscrições</label><input type="datetime-local" id="t-reg-close" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
-      <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Início do torneio</label><input type="datetime-local" id="t-start" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
     </div>
   </div>
 
@@ -167,6 +175,7 @@ bindPills('pill-visibility','public');
 bindPills('pill-coin','coin');
 bindPills('pill-bestof','1');
 bindPills('pill-layout','one-side');
+bindPills('pill-joinmode','both');
 function selected(id){ var s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
 
 document.querySelectorAll('#pill-bestof .pill').forEach(function(p){
@@ -315,7 +324,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const organizerClubId = orgOption ? orgOption.clubId : null;
   const regOpensAt = document.getElementById('t-reg-open').value || null;
   const regClosesAt = document.getElementById('t-reg-close').value || null;
-  const startsAt = document.getElementById('t-start').value || null;
+  const joinMode = selected('pill-joinmode');
 
   if(!name){ showError('Dá um nome ao torneio.'); return; }
   if(!game){ showError('Indica o jogo do torneio.'); return; }
@@ -334,7 +343,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
       assignMode, draftMode, coinMethod, bestOf, pointsToWin, mapBanEnabled, maps,
       creatorUid: currentUser.uid, creatorParticipates, moderatorUids: [],
       organizerDisplayName, organizerClubId,
-      regOpensAt, regClosesAt, startsAt,
+      regOpensAt, regClosesAt, joinMode,
       usePlayerNames,
       status: 'inscricoes', draftTurn: 0,
       createdAt: serverTimestamp()

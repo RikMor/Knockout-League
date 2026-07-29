@@ -33,7 +33,14 @@
   <div id="c-form">
     <div class="form-group"><label>Nome</label><input type="text" id="c-nome" placeholder="O teu nome"/></div>
     <div class="form-group"><label>Email</label><input type="email" id="c-email" placeholder="email@exemplo.com"/></div>
-    <div class="form-group"><label>Mensagem</label><textarea id="c-msg" rows="6" placeholder="Escreve a tua mensagem aqui..." style="width:100%;padding:12px 14px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font-family:'Inter';font-size:0.95rem;resize:vertical;"></textarea></div>
+    <div class="form-group">
+      <label>Idioma da mensagem / Message language</label>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="radio" name="c-lang" id="c-lang-pt" value="pt" checked style="width:auto;"/> Português</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="radio" name="c-lang" id="c-lang-en" value="en" style="width:auto;"/> English</label>
+      </div>
+    </div>
+    <div class="form-group"><label id="c-msg-label">Mensagem</label><textarea id="c-msg" rows="6" placeholder="Escreve a tua mensagem aqui..." style="width:100%;padding:12px 14px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font-family:'Inter';font-size:0.95rem;resize:vertical;"></textarea></div>
     <button type="button" class="btn btn-accent" id="c-submit" style="width:100%;">Enviar mensagem</button>
   </div>
 </div>
@@ -46,24 +53,44 @@ import { db, collection, addDoc, serverTimestamp } from './firebase.js';
 
 function showError(msg){ const el = document.getElementById('c-error'); el.textContent = msg; el.style.display = 'block'; }
 
+const texts = {
+  pt: { label: 'Mensagem', placeholder: 'Escreve a tua mensagem aqui...', sending: 'A enviar...', submit: 'Enviar mensagem',
+    ok: 'Mensagem enviada. Obrigado — respondemos assim que possível.',
+    errNome: 'Escreve o teu nome.', errEmail: 'Escreve o teu email.', errMsg: 'Escreve a tua mensagem.', errSend: 'Erro ao enviar: ' },
+  en: { label: 'Message', placeholder: 'Write your message here...', sending: 'Sending...', submit: 'Send message',
+    ok: 'Message sent. Thanks — we\'ll get back to you as soon as possible.',
+    errNome: 'Please enter your name.', errEmail: 'Please enter your email.', errMsg: 'Please write your message.', errSend: 'Error sending: ' }
+};
+function currentLang(){ return document.getElementById('c-lang-en').checked ? 'en' : 'pt'; }
+function applyLang(){
+  const t = texts[currentLang()];
+  document.getElementById('c-msg-label').textContent = t.label;
+  document.getElementById('c-msg').placeholder = t.placeholder;
+  document.getElementById('c-submit').textContent = t.submit;
+}
+document.querySelectorAll('input[name="c-lang"]').forEach(r => r.addEventListener('change', applyLang));
+
 document.getElementById('c-submit').addEventListener('click', async function(){
   document.getElementById('c-error').style.display = 'none';
+  const lang = currentLang();
+  const t = texts[lang];
   const nome = document.getElementById('c-nome').value.trim();
   const email = document.getElementById('c-email').value.trim();
   const msg = document.getElementById('c-msg').value.trim();
-  if(!nome){ showError('Escreve o teu nome.'); return; }
-  if(!email){ showError('Escreve o teu email.'); return; }
-  if(!msg){ showError('Escreve a tua mensagem.'); return; }
+  if(!nome){ showError(t.errNome); return; }
+  if(!email){ showError(t.errEmail); return; }
+  if(!msg){ showError(t.errMsg); return; }
 
   const btn = document.getElementById('c-submit');
-  btn.disabled = true; btn.textContent = 'A enviar...';
+  btn.disabled = true; btn.textContent = t.sending;
   try{
-    await addDoc(collection(db,'contactos'), { nome, email, mensagem: msg, createdAt: serverTimestamp() });
+    await addDoc(collection(db,'contactos'), { nome, email, mensagem: msg, idioma: lang, createdAt: serverTimestamp() });
     document.getElementById('c-form').style.display = 'none';
+    document.getElementById('c-ok').textContent = t.ok;
     document.getElementById('c-ok').style.display = 'block';
   }catch(err){
-    showError('Erro ao enviar: ' + err.message);
-    btn.disabled = false; btn.textContent = 'Enviar mensagem';
+    showError(t.errSend + err.message);
+    btn.disabled = false; btn.textContent = t.submit;
   }
 });
 </script>

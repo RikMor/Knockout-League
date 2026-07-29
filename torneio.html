@@ -66,7 +66,6 @@
   <!-- EQUIPAS -->
   <div class="tab-panel active" id="panel-equipas">
     <div id="join-box" class="card" style="margin-bottom:24px;display:none;"></div>
-    <div id="self-team-box" style="margin-bottom:24px;display:none;"></div>
     <div id="draft-banner"></div>
     <div id="draft-start-box"></div>
 
@@ -107,8 +106,10 @@
       <button class="btn btn-gold btn-sm" id="regen-bracket-btn">Regenerar bracket com todas as equipas atuais</button>
       <p class="muted" id="regen-bracket-warn" style="font-size:0.8rem;margin-top:8px;"></p>
     </div>
-    <div id="positions-editor-box" style="display:none;margin-bottom:32px;"></div>
-    <div id="bracket-box"><p class="muted">A bracket ainda não foi gerada.</p></div>
+    <div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;">
+      <div id="positions-editor-box" style="display:none;flex:0 0 300px;max-width:320px;"></div>
+      <div id="bracket-box" style="flex:1;min-width:0;"><p class="muted">A bracket ainda não foi gerada.</p></div>
+    </div>
   </div>
 
   <!-- MODERADORES -->
@@ -172,14 +173,22 @@
       <div style="display:flex;gap:14px;flex-wrap:wrap;">
         <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Abertura das inscrições</label><input type="datetime-local" id="cfg-reg-open" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
         <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Fecho das inscrições</label><input type="datetime-local" id="cfg-reg-close" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
-        <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Início do torneio</label><input type="datetime-local" id="cfg-start" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Como as pessoas podem entrar</label>
+      <div class="pill-group" id="cfg-pill-joinmode">
+        <div class="pill" data-v="both">Sozinho ou com o clã</div>
+        <div class="pill" data-v="solo">Só sozinho</div>
+        <div class="pill" data-v="clan">Só com o clã</div>
       </div>
     </div>
 
     <div class="form-group">
       <label>Como decidir quem começa (partidas futuras)</label>
       <div class="pill-group" id="cfg-pill-coin">
-        <div class="pill" data-v="coin">Moeda ao ar</div>
+        <div class="pill" data-v="coin">Aleatório</div>
         <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
       </div>
     </div>
@@ -405,12 +414,10 @@ function fmtDT(v){
 function renderScheduleLine(){
   const open = fmtDT(tournament.regOpensAt);
   const close = fmtDT(tournament.regClosesAt);
-  const start = fmtDT(tournament.startsAt);
-  if(!open && !close && !start) return '';
+  if(!open && !close) return '';
   const parts = [];
   if(open) parts.push('Inscrições abrem: <strong>'+open+'</strong>');
   if(close) parts.push('Inscrições fecham: <strong>'+close+'</strong>');
-  if(start) parts.push('Início: <strong>'+start+'</strong>');
   return '<div class="muted" style="margin-top:12px;font-size:0.82rem;display:flex;gap:18px;flex-wrap:wrap;">'+parts.map(p=>'<span>🗓 '+p+'</span>').join('')+'</div>';
 }
 function renderHeader(){
@@ -453,6 +460,7 @@ bindCfgPills('cfg-pill-assign');
 bindCfgPills('cfg-pill-draft');
 bindCfgPills('cfg-pill-bracket-type');
 bindCfgPills('cfg-pill-bestof');
+bindCfgPills('cfg-pill-joinmode');
 document.querySelectorAll('#cfg-pill-bestof .pill').forEach(function(p){
   p.addEventListener('click', function(){
     document.getElementById('cfg-bestof-custom').style.display = (p.dataset.v === 'custom') ? 'block' : 'none';
@@ -482,7 +490,7 @@ function renderConfig(){
   document.getElementById('cfg-useplayernames').checked = !!tournament.usePlayerNames;
   document.getElementById('cfg-reg-open').value = tournament.regOpensAt || '';
   document.getElementById('cfg-reg-close').value = tournament.regClosesAt || '';
-  document.getElementById('cfg-start').value = tournament.startsAt || '';
+  cfgSetSelected('cfg-pill-joinmode', tournament.joinMode || 'both');
   document.getElementById('cfg-banmaps').checked = !!tournament.mapBanEnabled;
   document.getElementById('cfg-end-btn').style.display = isAdmin() ? 'inline-flex' : 'none';
   document.getElementById('cfg-bracket-type-hint').textContent = bracketGenerated() ? '(já gerada — muda com cuidado e usa "Regenerar bracket" na aba Bracket)' : '';
@@ -512,7 +520,7 @@ document.getElementById('cfg-save-btn').addEventListener('click', async function
     usePlayerNames: document.getElementById('cfg-useplayernames').checked,
     regOpensAt: document.getElementById('cfg-reg-open').value || null,
     regClosesAt: document.getElementById('cfg-reg-close').value || null,
-    startsAt: document.getElementById('cfg-start').value || null,
+    joinMode: cfgSelected('cfg-pill-joinmode'),
     mapBanEnabled: document.getElementById('cfg-banmaps').checked
   });
   msg.style.color = 'var(--win)'; msg.style.borderColor = 'var(--win)';
@@ -594,7 +602,6 @@ function renderAll(){
   if(!tournament) return;
   renderHeader();
   renderJoinBox();
-  renderSelfTeamBox();
   renderAdminControls();
   renderPool();
   renderTeams();
@@ -617,12 +624,40 @@ function renderJoinBox(){
   }
   if(myPoolEntry()){ box.style.display='none'; return; }
   box.style.display='block';
-  box.innerHTML = '<button class="btn btn-accent" id="join-tournament-btn">Entrar neste torneio</button>';
-  document.getElementById('join-tournament-btn').addEventListener('click', async function(){
-    const nick = currentUserData?.nickname || currentUser.displayName || 'Jogador';
-    const tag = currentUserData?.tag || '';
-    await addDoc(playersCol, { uid: currentUser.uid, name: nick, tag, source: 'platform', isCaptain: false, teamId: null });
-  });
+  const joinMode = tournament.joinMode || 'both';
+  const showSolo = joinMode !== 'clan';
+  const showClan = joinMode !== 'solo' && tournament.teamSize > 1;
+  let html = '';
+  if(showSolo) html += '<button class="btn btn-accent" id="join-solo-btn">Entrar no torneio sozinho</button> ';
+  if(showClan) html += '<button class="btn btn-outline" id="join-clan-btn">Entrar no torneio com o clã</button>';
+  box.innerHTML = html || '<p class="muted">As inscrições não estão disponíveis para este torneio.</p>';
+
+  if(showSolo){
+    document.getElementById('join-solo-btn').addEventListener('click', async function(){
+      const nick = currentUserData?.nickname || currentUser.displayName || 'Jogador';
+      const tag = currentUserData?.tag || '';
+      await addDoc(playersCol, { uid: currentUser.uid, name: nick, tag, source: 'platform', isCaptain: false, teamId: null });
+    });
+  }
+  if(showClan){
+    document.getElementById('join-clan-btn').addEventListener('click', async function(){
+      if(teams.length >= tournament.maxTeams){ alert('Já não há vagas para mais equipas neste torneio.'); return; }
+      const clan = await myOwnedClan();
+      if(!clan){ alert('Não lideras nenhum clã. Cria um em "O meu clã" ou entra sozinho.'); return; }
+      const nick = currentUserData?.nickname || currentUser.displayName || 'Jogador';
+      const tag = currentUserData?.tag || '';
+      const pRef = await addDoc(playersCol, { uid: currentUser.uid, name: nick, tag, source: 'platform', isCaptain: false, teamId: null });
+      const mine = { id: pRef.id, uid: currentUser.uid, name: nick };
+      const membersSnap = await getDocs(collection(db,'clans',clan.id,'members'));
+      const clanMembers = membersSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(clanMembers.length + 1 > tournament.teamSize){
+        openClanSelectModal(clan, clanMembers, mine);
+      } else {
+        if(!confirm('Isto vai criar uma equipa com todos os membros do clã "' + clan.name + '". Continuar?')) return;
+        await createClanTeam(clan, clanMembers, mine);
+      }
+    });
+  }
 }
 
 function playerLabel(p){
@@ -641,47 +676,6 @@ async function myOwnedClan(){
     if(!captainSnap.empty) return { id: captainSnap.docs[0].id, ...captainSnap.docs[0].data() };
     return null;
   }catch(e){ return null; }
-}
-
-async function renderSelfTeamBox(){
-  const box = document.getElementById('self-team-box');
-  if(tournament.status !== 'inscricoes'){ box.style.display='none'; return; }
-  const mine = myPoolEntry();
-  if(!mine || mine.teamId){ box.style.display='none'; return; }
-  if(teams.length >= tournament.maxTeams){ box.style.display='none'; return; }
-  box.style.display='block';
-  box.innerHTML = '<button class="btn btn-outline btn-sm" id="self-create-team-btn">Criar a minha equipa</button> ' +
-    '<button class="btn btn-outline btn-sm" id="self-join-clan-btn" style="display:none;">Juntar o meu clã</button> ' +
-    '<span class="muted" style="font-size:0.82rem;">Forma uma equipa já pronta (ou usa o teu clã) e convida outros jogadores do pool a juntarem-se.</span>';
-  document.getElementById('self-create-team-btn').addEventListener('click', async function(){
-    let name;
-    if(tournament.usePlayerNames){
-      name = mine.name;
-    } else {
-      name = prompt('Nome da tua equipa:');
-      if(!name) return;
-    }
-    const teamRef = await addDoc(teamsCol, { name, captainPlayerId: null, players: [], seed: teams.length + 1 });
-    await updateDoc(doc(playersCol, mine.id), { teamId: teamRef.id, isCaptain: true });
-    await updateDoc(teamRef, { captainPlayerId: mine.id, players: [mine.id] });
-  });
-
-  const clan = await myOwnedClan();
-  if(clan){
-    const clanBtn = document.getElementById('self-join-clan-btn');
-    clanBtn.style.display = 'inline-flex';
-    clanBtn.textContent = 'Juntar o clã "' + clan.name + '"';
-    clanBtn.addEventListener('click', async function(){
-      const membersSnap = await getDocs(collection(db,'clans',clan.id,'members'));
-      const clanMembers = membersSnap.docs.map(d=>({id:d.id, ...d.data()}));
-      if(clanMembers.length + 1 > tournament.teamSize){
-        openClanSelectModal(clan, clanMembers, mine);
-      } else {
-        if(!confirm('Isto vai criar uma equipa com todos os membros do clã "' + clan.name + '". Continuar?')) return;
-        await createClanTeam(clan, clanMembers, mine);
-      }
-    });
-  }
 }
 
 async function createClanTeam(clan, chosenMembers, mine){
@@ -1242,7 +1236,13 @@ async function declareWinnerInternal(matchId, winnerId, planRef){
 }
 
 // ── BRACKET RENDER ──────────────────────────────────────────────
-function teamName(id){ const t = teams.find(x=>x.id===id); return t ? t.name : (id ? '—' : 'A definir'); }
+function teamName(id, m){
+  const t = teams.find(x=>x.id===id);
+  if(t) return t.name;
+  if(id) return '—';
+  if(m && m.status === 'terminado') return 'Bye (passagem automática)';
+  return 'A definir';
+}
 
 function matchCardHtml(m){
   const aWin = m.winnerId && m.winnerId===m.teamAId;
@@ -1250,8 +1250,8 @@ function matchCardHtml(m){
   const playable = m.teamAId && m.teamBId && m.status !== 'terminado';
   const showScore = m.bestOf > 1 || m.gamesWonA > 0 || m.gamesWonB > 0;
   return `<div class="match-card" data-match="${m.id}" style="cursor:pointer;">
-    <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId)}${showScore ? '<span class="score">'+(m.gamesWonA||0)+'</span>' : ''}</div>
-    <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId)}${showScore ? '<span class="score">'+(m.gamesWonB||0)+'</span>' : ''}</div>
+    <div class="match-team ${aWin?'winner':''}">${teamName(m.teamAId,m)}${showScore ? '<span class="score">'+(m.gamesWonA||0)+'</span>' : ''}</div>
+    <div class="match-team ${bWin?'winner':''}">${teamName(m.teamBId,m)}${showScore ? '<span class="score">'+(m.gamesWonB||0)+'</span>' : ''}</div>
     <div class="match-meta">${playable ? '🔓 Abrir lobby →' : m.status}</div>
   </div>`;
 }
@@ -1388,7 +1388,7 @@ function renderBracket(){
     // conteúdo fora do ecrã) — invertemos a ORDEM dos elementos no próprio HTML
     const leftHtml = '<div class="bracket">' + leftCols.join('') + '</div>';
     const rightHtml = '<div class="bracket">' + rightCols.slice().reverse().join('') + '</div>';
-    box.innerHTML = `<div style="display:flex;align-items:center;gap:24px;overflow-x:auto;padding:20px 4px 40px;">${leftHtml}<div style="flex-shrink:0;text-align:center;"><div class="round-label">Final</div>${centerHtml}</div>${rightHtml}</div>`;
+    box.innerHTML = `<div class="bracket-scroll" style="display:flex;align-items:center;gap:24px;overflow-x:auto;padding:20px 4px 40px;">${leftHtml}<div style="flex-shrink:0;text-align:center;"><div class="round-label">Final</div>${centerHtml}</div>${rightHtml}</div>`;
   } else {
     let html = '<div class="bracket">';
     roundNums.forEach(rn => {
@@ -1517,7 +1517,7 @@ function renderOrphanTeams(){
   if(!isAdmin()) return;
   const placeable = placeableTeams();
   if(placeable.length === 0) return;
-  box.innerHTML = '<div class="ticket" data-tag="Posições na bracket">' +
+  box.innerHTML = '<div class="ticket" data-tag="Equipas por colocar na bracket">' +
     placeable.map(t => {
       const slot = currentSlotOf(t.id);
       const status = slot ? ('Ronda ' + (matches.find(m=>m.id===slot.matchId).round + 1) + (slot.terminado ? ' (já decidida — não se pode mover)' : '')) : 'Fora da bracket';
@@ -1576,7 +1576,7 @@ function renderMatchModal(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-sm btn-outline" data-fb="manualA">${teamName(m.teamAId)} começa</button>
         <button class="btn btn-sm btn-outline" data-fb="manualB">${teamName(m.teamBId)} começa</button>
-        <button class="btn btn-sm btn-outline" data-fb="coin">Lançar moeda</button>
+        <button class="btn btn-sm btn-outline" data-fb="coin">Aleatório</button>
         <button class="btn btn-sm btn-outline" data-fb="rps">Pedra, papel, tesoura</button>
       </div>`;
     fbArea.querySelectorAll('[data-fb]').forEach(btn=>{
@@ -1585,7 +1585,7 @@ function renderMatchModal(){
         let winnerTeam, method;
         if(mode === 'manualA'){ winnerTeam = m.teamAId; method = 'escolha do organizador'; }
         else if(mode === 'manualB'){ winnerTeam = m.teamBId; method = 'escolha do organizador'; }
-        else if(mode === 'coin'){ winnerTeam = Math.random()<0.5 ? m.teamAId : m.teamBId; method = 'moeda ao ar'; }
+        else if(mode === 'coin'){ winnerTeam = Math.random()<0.5 ? m.teamAId : m.teamBId; method = 'aleatório'; }
         else { winnerTeam = Math.random()<0.5 ? m.teamAId : m.teamBId; method = 'pedra, papel, tesoura'; }
         await updateDoc(doc(matchesCol, m.id), { firstBanTeamId: winnerTeam, firstBanMethod: method });
       });
@@ -1626,7 +1626,7 @@ function renderMatchModal(){
 
   // moeda / dado / pedra-papel-tesoura
   const coinArea = document.getElementById('mm-coin-area');
-  const coinLabels = { dice: 'Lançar dado', rps: 'Jogar pedra, papel, tesoura', coin: 'Lançar moeda' };
+  const coinLabels = { dice: 'Lançar dado', rps: 'Jogar pedra, papel, tesoura', coin: 'Sortear aleatoriamente' };
   if(m.coinResult){
     const icon = tournament.coinMethod==='dice' ? `<div class="die">${m.coinResult.value}</div>` :
                  tournament.coinMethod==='rps' ? `<div class="coin">${m.coinResult.jogada||'🎲'}</div>` :

@@ -133,3 +133,4 @@
 4. Copia a config para `firebase.js`
 5. Cola as regras (ajustadas) de `firestore.rules`
 6. O teu primeiro admin: regista-te normalmente e depois muda `role` para `"admin"` no teu documento em `users/` na consola do Firestore
+7. Publica o índice necessário para "Os meus torneios" → "A jogar" (consulta `collectionGroup` em `players` filtrada por `uid`): com o Firebase CLI instalado, corre `firebase deploy --only firestore:indexes` (usa o `firestore.indexes.json` incluído). Sem este passo essa aba mostra "a preparar..." e nunca carrega — o link de criação manual também aparece na consola do Firebase na primeira vez que a query falha.

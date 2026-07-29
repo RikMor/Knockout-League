@@ -102,7 +102,12 @@ onAuthStateChanged(auth, async function(user){
       }));
       el.innerHTML = cards.join('') || '<p class="muted">Ainda não entraste em nenhum torneio.</p>';
     }
-  }catch(e){ document.getElementById('list-jogar').innerHTML = '<p class="muted">Erro ao carregar. ('+e.message+')</p>'; }
+  }catch(e){
+    const isIndexError = /index/i.test(e.message) || e.code === 'failed-precondition';
+    document.getElementById('list-jogar').innerHTML = isIndexError
+      ? '<p class="muted">Estamos a preparar a lista dos teus torneios pela primeira vez — isto pode demorar uns minutos. Tenta recarregar a página daqui a pouco.</p>'
+      : '<p class="muted">Erro ao carregar. ('+e.message+')</p>';
+  }
 
   // A organizar/moderar
   try{

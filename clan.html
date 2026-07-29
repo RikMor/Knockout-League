@@ -69,7 +69,7 @@
 
 <script src="shared.js"></script>
 <script type="module">
-import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp, arrayRemove } from './firebase.js';
+import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp, arrayRemove, arrayUnion } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 let currentUser = null;
@@ -108,6 +108,15 @@ async function loadOwnedClan(){
       ownedClan = { id: snap.docs[0].id, ...snap.docs[0].data() };
     }
     isOwner = ownedClan.ownerUid === currentUser.uid;
+    if(!ownedClan.ownerNickname){
+      try{
+        const ownerSnap = await getDoc(doc(db,'users',ownedClan.ownerUid));
+        if(ownerSnap.exists()){
+          ownedClan.ownerNickname = ownerSnap.data().nickname || 'Jogador';
+          if(isOwner) await updateDoc(doc(db,'clans',ownedClan.id), { ownerNickname: ownedClan.ownerNickname }).catch(()=>{});
+        }
+      }catch(e){}
+    }
     document.getElementById('create-box').style.display = 'none';
     document.getElementById('owned-box').style.display = 'block';
     document.getElementById('owned-clan-name').textContent = ownedClan.name + (isOwner ? '' : ' (visitando)');
@@ -132,12 +141,12 @@ async function loadMembers(){
   const snap = await getDocs(collection(db,'clans',ownedClan.id,'members'));
   members = snap.docs.map(d=>({id:d.id, ...d.data()}));
   const el = document.getElementById('members-list');
-  const leaderRow = `<div class="member-row"><span>${ownedClan.ownerNickname || 'Tu'}</span><span class="badge-role">Líder</span></div>`;
+  const leaderRow = `<div class="member-row"><span>${ownedClan.ownerNickname || 'Jogador'}</span><span class="badge-role">Líder</span></div>`;
   if(members.length === 0){ el.innerHTML = leaderRow + '<p class="muted" style="margin-top:10px;">Sem mais membros ainda.</p>'; return; }
   el.innerHTML = leaderRow + members.map(m => {
     const roleTag = ownedClan.captainUid === m.uid ? '<span class="badge-role">Capitão</span>' : '';
     const editControls = isOwner
-      ? `${roleSelectHtml(m)}<button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>`
+      ? `${roleSelectHtml(m)}<button class="btn btn-sm btn-outline" data-leader="${m.id}">Tornar Líder</button><button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>`
       : '';
     return `<div class="member-row">
       <span>${m.nickname}${roleTag}</span>
@@ -156,6 +165,24 @@ async function loadMembers(){
       await deleteDoc(doc(db,'clans',ownedClan.id,'members',btn.dataset.rm));
       if(m) await updateDoc(doc(db,'users',m.uid), { clanIds: arrayRemove(ownedClan.id) }).catch(()=>{});
       loadOwnedClan();
+    });
+  });
+  el.querySelectorAll('[data-leader]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      const m = members.find(x=>x.id===btn.dataset.leader);
+      if(!m) return;
+      if(!confirm('Tornar "'+m.nickname+'" o novo líder do clã? Vais passar a ser um membro comum.')) return;
+      try{
+        const oldOwnerUid = ownedClan.ownerUid;
+        const oldOwnerNickname = ownedClan.ownerNickname || (currentUserData && currentUserData.nickname) || 'Membro';
+        await addDoc(collection(db,'clans',ownedClan.id,'members'), { uid: oldOwnerUid, nickname: oldOwnerNickname });
+        await deleteDoc(doc(db,'clans',ownedClan.id,'members',m.id));
+        const upd = { ownerUid: m.uid, ownerNickname: m.nickname };
+        if(ownedClan.captainUid === m.uid) upd.captainUid = null;
+        await updateDoc(doc(db,'clans',ownedClan.id), upd);
+        await updateDoc(doc(db,'users',oldOwnerUid), { clanIds: arrayUnion(ownedClan.id) }).catch(()=>{});
+        window.location.href = 'clan.html?id=' + ownedClan.id;
+      }catch(e){ alert('Erro ao transferir liderança: ' + e.message); }
     });
   });
   el.querySelectorAll('[data-role]').forEach(sel=>{

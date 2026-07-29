@@ -32,7 +32,9 @@ O primeiro admin define-se manualmente no Firestore (muda `role` para `"admin"` 
   draftMode: "random" | "captains" | "organizer",  // quando há >2 capitães
   maps: [ "Mirage", "Inferno", ... ],    // definidos pelo criador
   mapBanEnabled: bool,
-  coinMethod: "coin" | "dice",
+  coinMethod: "coin" | "rps",       // "coin" = aleatório; rps = pedra/papel/tesoura
+  joinMode: "both" | "solo" | "clan",   // como as pessoas podem entrar no torneio
+  regOpensAt, regClosesAt,          // datetime-local strings, opcionais
   status: "inscricoes" | "draft" | "em-curso" | "terminado",
   createdAt
 }

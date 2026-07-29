@@ -154,7 +154,10 @@ section { padding: 64px 0; }
 .page-head { padding: 56px 0 32px; border-bottom: 2px solid var(--ink); margin-bottom: 40px; }
 
 /* BRACKET */
-.bracket { display: flex; gap: 46px; overflow-x: auto; padding: 20px 4px 40px; }
+.bracket { display: flex; gap: 46px; overflow-x: auto; padding: 20px 4px 40px; scrollbar-width: thin; }
+.bracket::-webkit-scrollbar, .bracket-scroll::-webkit-scrollbar { height: 8px; }
+.bracket::-webkit-scrollbar-thumb, .bracket-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.bracket-scroll { scrollbar-width: thin; }
 .bracket-round { display: flex; flex-direction: column; justify-content: space-around; gap: 22px; min-width: 240px; }
 .round-label {
   font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 2px;

@@ -306,7 +306,7 @@ async function decideFirstBan(){
     // tratado à parte, via escolhas dos dois lados — ver renderFirstBan
   } else {
     const winnerTeam = Math.random()<0.5 ? match.teamAId : match.teamBId;
-    await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'moeda ao ar' });
+    await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'aleatório' });
   }
 }
 
@@ -383,7 +383,7 @@ async function finalizeGame(gameOverride){
 
 function renderFirstBan(g, manage, finished, ready){
   const fbArea = document.getElementById('rt-firstban-area');
-  const coinLabels = { dice: 'Lançar dado', coin: 'Lançar moeda' };
+  const coinLabels = { dice: 'Lançar dado', coin: 'Sortear aleatoriamente' };
 
   if(g.firstBanTeamId){
     fbArea.innerHTML = `<p style="text-align:center;font-weight:700;">${teamName(g.firstBanTeamId)} começa</p><p class="muted" style="text-align:center;font-size:0.8rem;">${g.firstBanMethod||''}</p>`;

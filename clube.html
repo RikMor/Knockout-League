@@ -113,6 +113,15 @@ async function loadOwnedClub(){
       ownedClub = { id: snap.docs[0].id, ...snap.docs[0].data() };
     }
     isOwner = ownedClub.ownerUid === currentUser.uid;
+    if(!ownedClub.ownerNickname){
+      try{
+        const ownerSnap = await getDoc(doc(db,'users',ownedClub.ownerUid));
+        if(ownerSnap.exists()){
+          ownedClub.ownerNickname = ownerSnap.data().nickname || 'Jogador';
+          if(isOwner) await updateDoc(doc(db,'clubs',ownedClub.id), { ownerNickname: ownedClub.ownerNickname }).catch(()=>{});
+        }
+      }catch(e){}
+    }
     document.getElementById('create-box').style.display = 'none';
     document.getElementById('owned-box').style.display = 'block';
     document.getElementById('owned-club-name').textContent = ownedClub.name + (isOwner ? '' : ' (visitando)');
@@ -136,12 +145,12 @@ async function loadMembers(){
   const snap = await getDocs(collection(db,'clubs',ownedClub.id,'members'));
   members = snap.docs.map(d=>({id:d.id, ...d.data()}));
   const el = document.getElementById('members-list');
-  const leaderRow = `<div class="member-row"><span>${ownedClub.ownerNickname || 'Tu'}</span><span class="badge-perm" style="border-color:var(--gold);color:var(--gold);">Líder</span></div>`;
+  const leaderRow = `<div class="member-row"><span>${ownedClub.ownerNickname || 'Jogador'}</span><span class="badge-perm" style="border-color:var(--gold);color:var(--gold);">Líder</span></div>`;
   if(members.length === 0){ el.innerHTML = leaderRow + '<p class="muted" style="margin-top:10px;">Sem mais membros ainda.</p>'; return; }
   el.innerHTML = leaderRow + members.map(m => {
     const perms = memberPerms(m);
     const isMembroOnly = perms.length === 0;
-    const editControls = isOwner ? `<button class="btn btn-sm btn-outline" data-save="${m.id}">Guardar</button><button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>` : '';
+    const editControls = isOwner ? `<button class="btn btn-sm btn-outline" data-save="${m.id}">Guardar</button><button class="btn btn-sm btn-outline" data-leader="${m.id}">Tornar Líder</button><button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>` : '';
     return `<div class="member-row">
       <span>${m.nickname}</span>
       <span style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
@@ -163,6 +172,26 @@ async function loadMembers(){
         await updateDoc(doc(db,'clubs',ownedClub.id), { moderatorUids: arrayRemove(m.uid), organizerUids: arrayRemove(m.uid) }).catch(()=>{});
       }
       loadMembers();
+    });
+  });
+
+  el.querySelectorAll('[data-leader]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      const m = members.find(x=>x.id===btn.dataset.leader);
+      if(!m) return;
+      if(!confirm('Tornar "'+m.nickname+'" o novo líder do clube? Vais passar a ser um membro comum.')) return;
+      try{
+        const oldOwnerUid = ownedClub.ownerUid;
+        const oldOwnerNickname = ownedClub.ownerNickname || (currentUserData && currentUserData.nickname) || 'Membro';
+        await addDoc(collection(db,'clubs',ownedClub.id,'members'), { uid: oldOwnerUid, nickname: oldOwnerNickname, permissions: [] });
+        await deleteDoc(doc(db,'clubs',ownedClub.id,'members',m.id));
+        await updateDoc(doc(db,'clubs',ownedClub.id), {
+          ownerUid: m.uid, ownerNickname: m.nickname,
+          moderatorUids: arrayRemove(m.uid), organizerUids: arrayRemove(m.uid)
+        });
+        await updateDoc(doc(db,'users',oldOwnerUid), { clubIds: arrayUnion(ownedClub.id) }).catch(()=>{});
+        window.location.href = 'clube.html?id=' + ownedClub.id;
+      }catch(e){ alert('Erro ao transferir liderança: ' + e.message); }
     });
   });
 
