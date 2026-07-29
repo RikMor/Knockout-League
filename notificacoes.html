@@ -105,8 +105,13 @@ async function acceptInvite(notifId){
   const nickname = currentUserData?.nickname || currentUser.displayName || 'Jogador';
   try{
     if(n.type === 'club_invite'){
-      await addDoc(collection(db,'clubs',n.refId,'members'), { uid: currentUser.uid, nickname, permissions: n.permissions || [] });
+      const perms = n.permissions || [];
+      await addDoc(collection(db,'clubs',n.refId,'members'), { uid: currentUser.uid, nickname, permissions: perms });
       await updateDoc(doc(db,'users',currentUser.uid), { clubIds: arrayUnion(n.refId) });
+      const clubUpd = {};
+      if(perms.includes('moderador')) clubUpd.moderatorUids = arrayUnion(currentUser.uid);
+      if(perms.includes('organizador')) clubUpd.organizerUids = arrayUnion(currentUser.uid);
+      if(Object.keys(clubUpd).length) await updateDoc(doc(db,'clubs',n.refId), clubUpd).catch(()=>{});
     } else if(n.type === 'clan_invite'){
       await addDoc(collection(db,'clans',n.refId,'members'), { uid: currentUser.uid, nickname });
       await updateDoc(doc(db,'users',currentUser.uid), { clanIds: arrayUnion(n.refId) });

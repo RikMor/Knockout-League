@@ -74,7 +74,7 @@
 
 <script src="shared.js"></script>
 <script type="module">
-import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp, arrayRemove } from './firebase.js';
+import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp, arrayRemove, arrayUnion } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 let currentUser = null;
@@ -158,7 +158,10 @@ async function loadMembers(){
       if(!confirm('Remover este membro do clube?')) return;
       const m = members.find(x=>x.id===btn.dataset.rm);
       await deleteDoc(doc(db,'clubs',ownedClub.id,'members',btn.dataset.rm));
-      if(m) await updateDoc(doc(db,'users',m.uid), { clubIds: arrayRemove(ownedClub.id) }).catch(()=>{});
+      if(m){
+        await updateDoc(doc(db,'users',m.uid), { clubIds: arrayRemove(ownedClub.id) }).catch(()=>{});
+        await updateDoc(doc(db,'clubs',ownedClub.id), { moderatorUids: arrayRemove(m.uid), organizerUids: arrayRemove(m.uid) }).catch(()=>{});
+      }
       loadMembers();
     });
   });
@@ -179,9 +182,16 @@ async function loadMembers(){
   el.querySelectorAll('[data-save]').forEach(btn=>{
     btn.addEventListener('click', async function(){
       const memberId = btn.dataset.save;
+      const m = members.find(x=>x.id===memberId);
       const row = [...el.querySelectorAll('[data-editperm="'+memberId+'"]')];
       const newPerms = row.filter(x=>x.checked && x.dataset.permval !== 'membro').map(x=>x.dataset.permval);
       await updateDoc(doc(db,'clubs',ownedClub.id,'members',memberId), { permissions: newPerms, permission: null });
+      if(m && m.uid){
+        const clubUpd = {};
+        clubUpd.moderatorUids = newPerms.includes('moderador') ? arrayUnion(m.uid) : arrayRemove(m.uid);
+        clubUpd.organizerUids = newPerms.includes('organizador') ? arrayUnion(m.uid) : arrayRemove(m.uid);
+        await updateDoc(doc(db,'clubs',ownedClub.id), clubUpd);
+      }
       btn.textContent = 'Guardado ✓';
       setTimeout(()=>{ btn.textContent = 'Guardar'; }, 1500);
     });

@@ -188,18 +188,11 @@ let clubAdminAccess = false;
 async function computeClubAccess(){
   clubAdminAccess = false;
   if(currentUser && tournament && tournament.organizerClubId){
-    const clubId = tournament.organizerClubId;
     try{
-      const clubSnap = await getDoc(doc(db,'clubs',clubId));
-      if(clubSnap.exists() && clubSnap.data().ownerUid === currentUser.uid){
-        clubAdminAccess = true;
-      } else {
-        const memSnap = await getDocs(query(collection(db,'clubs',clubId,'members'), where('uid','==',currentUser.uid)));
-        if(!memSnap.empty){
-          const m = memSnap.docs[0].data();
-          const perms = Array.isArray(m.permissions) ? m.permissions : (m.permission ? [m.permission] : []);
-          if(perms.includes('moderador')) clubAdminAccess = true;
-        }
+      const clubSnap = await getDoc(doc(db,'clubs',tournament.organizerClubId));
+      if(clubSnap.exists()){
+        const c = clubSnap.data();
+        if(c.ownerUid === currentUser.uid || (c.moderatorUids||[]).includes(currentUser.uid)) clubAdminAccess = true;
       }
     }catch(e){}
   }
