@@ -154,17 +154,19 @@ section { padding: 64px 0; }
 .page-head { padding: 56px 0 32px; border-bottom: 2px solid var(--ink); margin-bottom: 40px; }
 
 /* BRACKET */
-.bracket { display: flex; gap: 46px; overflow-x: auto; padding: 20px 4px 40px; scrollbar-width: thin; }
+.bracket { display: flex; gap: 46px; overflow-x: auto; padding: 20px 4px 40px; scrollbar-width: thin; position: relative; }
 .bracket::-webkit-scrollbar, .bracket-scroll::-webkit-scrollbar { height: 8px; }
 .bracket::-webkit-scrollbar-thumb, .bracket-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
-.bracket-scroll { scrollbar-width: thin; }
-.bracket-round { display: flex; flex-direction: column; justify-content: space-around; gap: 22px; min-width: 240px; }
+.bracket-scroll { scrollbar-width: thin; position: relative; }
+.bracket-round { display: flex; flex-direction: column; justify-content: space-around; gap: 22px; min-width: 240px; position: relative; z-index: 1; }
+.bracket-lines { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; overflow: visible; }
+.bracket-lines path { fill: none; stroke: var(--line); stroke-width: 1.5; }
 .round-label {
   font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 2px;
   text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
 }
 .match-card {
-  position: relative; border: 1px solid var(--ink); background: var(--surface); cursor: pointer;
+  position: relative; z-index: 1; border: 1px solid var(--ink); background: var(--surface); cursor: pointer;
   transition: box-shadow .12s;
 }
 .match-card:hover { box-shadow: 4px 4px 0 var(--ink); }

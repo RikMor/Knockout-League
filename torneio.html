@@ -799,17 +799,28 @@ function renderAdminControls(){
   document.getElementById('maps-admin').style.display = isAdmin() && !bracketGenerated() ? 'block' : 'none';
   document.getElementById('roulette-btn').style.display = (isAdmin() && tournament.assignMode === 'roulette') ? 'inline-flex' : 'none';
   document.getElementById('rps-btn').style.display = (isAdmin() && tournament.assignMode === 'rps') ? 'inline-flex' : 'none';
+  const genBtn = document.getElementById('gen-bracket-btn');
+  genBtn.textContent = (tournament.draftMode === 'captains' && tournament.draftPhase && !bracketGenerated())
+    ? 'Gerar bracket'
+    : 'Começar torneio';
 }
 
 function bracketGenerated(){ return matches.length > 0; }
 
 function unassignedPlayers(){ return players.filter(p => !p.teamId); }
 
+function isMyDraftTurn(){
+  if(tournament.draftMode !== 'captains' || !tournament.draftPhase || !tournament.draftStarted || bracketGenerated()) return false;
+  const idx = myCaptainTeamIndex();
+  return idx !== -1 && idx === (tournament.draftTurn || 0);
+}
+
 function renderPool(){
   const box = document.getElementById('pool-box');
   const pool = unassignedPlayers();
   if(pool.length === 0){ box.innerHTML = '<p class="muted">Sem jogadores por atribuir.</p>'; return; }
   box.innerHTML = '';
+  const myTurn = isMyDraftTurn();
   pool.forEach(function(p){
     const row = document.createElement('div');
     row.className = 'pool-row';
@@ -820,6 +831,8 @@ function renderPool(){
         <button class="btn btn-sm btn-outline" data-cap="${p.id}">Tornar capitão</button>
         <select data-assign="${p.id}"><option value="">Atribuir a...</option>${teamOpts}</select>
         <button class="btn btn-sm btn-danger" data-kickpool="${p.id}">Remover</button>`;
+    } else if(myTurn){
+      controls = `<button class="btn btn-sm btn-accent" data-mypick="${p.id}">Escolher</button>`;
     }
     row.innerHTML = `<span>${playerLabel(p)} ${p.source==='manual' ? '<span class="muted">(externo)</span>' : ''}</span><span style="display:flex;gap:8px;align-items:center;">${controls}</span>`;
     box.appendChild(row);
@@ -837,6 +850,15 @@ function renderPool(){
         const p = players.find(x=>x.id===btn.dataset.kickpool);
         await deleteDoc(doc(playersCol, btn.dataset.kickpool));
         if(p) await unmarkParticipant(p.uid);
+      });
+    });
+  } else if(myTurn){
+    box.querySelectorAll('[data-mypick]').forEach(btn=>{
+      btn.addEventListener('click', async function(){
+        const idx = myCaptainTeamIndex();
+        const myTeam = teams[idx];
+        if(!myTeam) return;
+        await assignPlayerToTeam(btn.dataset.mypick, myTeam.id);
       });
     });
   }
@@ -877,7 +899,7 @@ async function advanceDraftTurn(){
 
 function renderDraftBanner(){
   const el = document.getElementById('draft-banner');
-  if(tournament.draftMode !== 'captains' || bracketGenerated() || teams.length < 2 || !tournament.draftStarted){ el.innerHTML=''; return; }
+  if(tournament.draftMode !== 'captains' || bracketGenerated() || teams.length < 2 || !tournament.draftPhase || !tournament.draftStarted){ el.innerHTML=''; return; }
   const turnTeam = teams[tournament.draftTurn || 0];
   if(!turnTeam) { el.innerHTML=''; return; }
   const cap = players.find(p=>p.id===turnTeam.captainPlayerId);
@@ -914,7 +936,7 @@ async function chooseDraftRps(choice){
 
 function renderDraftStartBox(){
   const el = document.getElementById('draft-start-box');
-  if(tournament.draftMode !== 'captains' || bracketGenerated() || teams.length < 2){ el.innerHTML=''; return; }
+  if(tournament.draftMode !== 'captains' || bracketGenerated() || teams.length < 2 || !tournament.draftPhase){ el.innerHTML=''; return; }
   const allHaveCaptains = teams.every(t => t.captainPlayerId);
   if(!allHaveCaptains || tournament.draftStarted){ el.innerHTML=''; return; }
 
@@ -1189,6 +1211,21 @@ function seedPositions(size){
 
 document.getElementById('gen-bracket-btn').addEventListener('click', async function(){
   if(bracketGenerated()){ alert('Este torneio já começou.'); return; }
+
+  if(tournament.draftMode === 'captains' && !tournament.draftPhase){
+    if(teams.length < 2 || !teams.every(t => t.captainPlayerId)){
+      alert('Define pelo menos 2 equipas, cada uma com capitão, antes de começar o torneio.');
+      return;
+    }
+    if(unassignedPlayers().length === 0){
+      alert('Não há jogadores no pool para os capitães escolherem.');
+      return;
+    }
+    await updateDoc(tRef, { draftPhase: true });
+    document.querySelector('.tab-btn[data-tab="equipas"]').click();
+    alert('Os capitães já podem escolher os jogadores do pool. Quando o pool estiver vazio, clica novamente em "Começar torneio" para gerar a bracket.');
+    return;
+  }
 
   const result = await autoAssignRemainingPool();
   if(result.skipped && unassignedPlayers().length > 0){
@@ -1478,6 +1515,41 @@ function renderPositionsEditor(){
   }
 }
 
+function drawBracketConnectors(container){
+  if(!container) return;
+  const old = container.querySelector('svg.bracket-lines');
+  if(old) old.remove();
+  if(tournament.bracketType === 'round-robin') return;
+  const w = container.scrollWidth, h = container.scrollHeight;
+  if(!w || !h) return;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'bracket-lines');
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  container.insertBefore(svg, container.firstChild);
+  const contRect = container.getBoundingClientRect();
+  let paths = '';
+  matches.forEach(m => {
+    if(!m.nextMatchId) return;
+    const srcEl = container.querySelector('[data-match="'+m.id+'"]');
+    const tgtEl = container.querySelector('[data-match="'+m.nextMatchId+'"]');
+    if(!srcEl || !tgtEl) return;
+    const sr = srcEl.getBoundingClientRect(), tr = tgtEl.getBoundingClientRect();
+    const sLeft = sr.left - contRect.left + container.scrollLeft;
+    const sTop = sr.top - contRect.top + container.scrollTop;
+    const tLeft = tr.left - contRect.left + container.scrollLeft;
+    const tTop = tr.top - contRect.top + container.scrollTop;
+    const sy = sTop + sr.height/2;
+    const ty = tTop + tr.height/2;
+    let x1, x2;
+    if(sLeft + sr.width <= tLeft){ x1 = sLeft + sr.width; x2 = tLeft; }
+    else { x1 = sLeft; x2 = tLeft + tr.width; }
+    const midx = (x1 + x2) / 2;
+    paths += `<path d="M ${x1} ${sy} H ${midx} V ${ty} H ${x2}"/>`;
+  });
+  svg.innerHTML = paths;
+}
+
 function renderBracket(){
   renderMyMatch();
   renderRegenBox();
@@ -1508,7 +1580,7 @@ function renderBracket(){
     // conteúdo fora do ecrã) — invertemos a ORDEM dos elementos no próprio HTML
     const leftHtml = '<div class="bracket">' + leftCols.join('') + '</div>';
     const rightHtml = '<div class="bracket">' + rightCols.slice().reverse().join('') + '</div>';
-    box.innerHTML = `<div class="bracket-scroll" style="display:flex;align-items:center;gap:24px;overflow-x:auto;padding:20px 4px 40px;">${leftHtml}<div style="flex-shrink:0;text-align:center;"><div class="round-label">Final</div>${centerHtml}</div>${rightHtml}</div>`;
+    box.innerHTML = `<div class="bracket-scroll" style="display:flex;align-items:center;gap:24px;overflow-x:auto;padding:20px 4px 40px;">${leftHtml}<div style="flex-shrink:0;text-align:center;position:relative;z-index:1;"><div class="round-label">Final</div>${centerHtml}</div>${rightHtml}</div>`;
   } else {
     let html = '<div class="bracket">';
     roundNums.forEach(rn => {
@@ -1523,6 +1595,18 @@ function renderBracket(){
   box.querySelectorAll('[data-match]').forEach(el=>{
     el.addEventListener('click', ()=> window.location.href = 'sala-partida.html?t='+tId+'&m='+el.dataset.match);
   });
+
+  const linesContainer = twoSide ? box.querySelector('.bracket-scroll') : box.querySelector('.bracket');
+  requestAnimationFrame(function(){ drawBracketConnectors(linesContainer); });
+  if(!window._bracketResizeBound){
+    window._bracketResizeBound = true;
+    window.addEventListener('resize', function(){
+      clearTimeout(window._bracketResizeTimer);
+      window._bracketResizeTimer = setTimeout(function(){
+        drawBracketConnectors(document.querySelector('#bracket-box .bracket-scroll') || document.querySelector('#bracket-box .bracket'));
+      }, 150);
+    });
+  }
 }
 
 // ── MODAL DE LOBBY ──────────────────────────────────────────────

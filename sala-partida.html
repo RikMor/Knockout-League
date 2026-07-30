@@ -177,6 +177,7 @@ if(!tId || !mId){ document.getElementById('not-found').style.display = 'block'; 
 
 let currentUser = null, currentUserData = null;
 let tournament = null, teams = [], players = [], match = null;
+let autoFirstBanTriggered = false;
 
 const tRef = doc(db, 'tournaments', tId);
 const teamsCol = collection(db, 'tournaments', tId, 'teams');
@@ -386,6 +387,7 @@ function renderFirstBan(g, manage, finished, ready){
   const coinLabels = { dice: 'Lançar dado', coin: 'Sortear aleatoriamente' };
 
   if(g.firstBanTeamId){
+    autoFirstBanTriggered = false;
     fbArea.innerHTML = `<p style="text-align:center;font-weight:700;">${teamName(g.firstBanTeamId)} começa</p><p class="muted" style="text-align:center;font-size:0.8rem;">${g.firstBanMethod||''}</p>`;
     return;
   }
@@ -412,6 +414,13 @@ function renderFirstBan(g, manage, finished, ready){
       fbArea.querySelectorAll('[data-rps]').forEach(btn=>{
         btn.addEventListener('click', ()=> chooseRps(mySide, btn.dataset.rps));
       });
+    }
+  } else if(!tournament.coinMethod || tournament.coinMethod === 'coin'){
+    // método aleatório: decide-se automaticamente, sem precisar de clicar em nenhum botão
+    fbArea.innerHTML = '<p class="muted" style="text-align:center;">A sortear...</p>';
+    if(!autoFirstBanTriggered && (isAdmin() || myCaptainTeam() === 'A')){
+      autoFirstBanTriggered = true;
+      decideFirstBan();
     }
   } else {
     fbArea.innerHTML = `<div style="text-align:center;"><button class="btn btn-accent btn-sm" id="rt-decide-btn">${coinLabels[tournament.coinMethod] || 'Decidir'}</button></div>`;
