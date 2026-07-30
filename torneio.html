@@ -26,7 +26,7 @@
   .coin-result, .roulette-result { text-align: center; margin-top: 16px; font-weight: 700; }
   .pos-editor { display: flex; gap: 20px; border: 1px solid var(--ink); padding: 18px; flex-wrap: wrap; }
   .pos-editor-rounds { display: flex; flex-direction: column; gap: 6px; min-width: 130px; }
-  .pos-editor-rounds button { padding: 9px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; font-family:'IBM Plex Mono'; font-size: 0.72rem; letter-spacing: 0.5px; text-transform: uppercase; }
+  .pos-editor-rounds button { padding: 9px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; font-family:'IBM Plex Mono'; font-size: 0.72rem; letter-spacing: 0.5px; text-transform: uppercase; width: 100%; box-sizing: border-box; }
   .pos-editor-rounds button.active { border-color: var(--accent); color: var(--accent); font-weight: 700; }
   .pos-editor-list { flex: 1; min-width: 240px; }
   .pos-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
@@ -34,6 +34,8 @@
   .pos-row .pos-num { font-family:'IBM Plex Mono'; font-size: 0.8rem; color: var(--muted); width: 22px; }
   .pos-row .pos-handle { cursor: grab; color: var(--muted); font-size: 1rem; }
   .pos-row.dragging { opacity: 0.4; }
+  .maps-input { display: flex; gap: 8px; margin-bottom: 10px; max-width: 420px; }
+  .maps-input input { flex: 1; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 </style>
 </head>
 <body>
@@ -101,7 +103,6 @@
   <!-- BRACKET -->
   <div class="tab-panel" id="panel-bracket">
     <div id="my-match-box" style="margin-bottom:24px;"></div>
-    <div id="orphan-teams-box" style="margin-bottom:24px;"></div>
     <div id="regen-bracket-box" style="margin-bottom:24px;display:none;">
       <button class="btn btn-gold btn-sm" id="regen-bracket-btn">Regenerar bracket com todas as equipas atuais</button>
       <p class="muted" id="regen-bracket-warn" style="font-size:0.8rem;margin-top:8px;"></p>
@@ -115,7 +116,7 @@
   <!-- MODERADORES -->
   <div class="tab-panel" id="panel-moderadores">
     <p class="muted" style="margin-bottom:18px;">Moderadores têm as mesmas permissões que tu nesta sala (equipas, mapas, bracket, resultados) — exceto gerir outros moderadores.</p>
-    <div style="display:flex;gap:8px;max-width:420px;margin-bottom:24px;">
+    <div id="mod-add-box" style="display:flex;gap:8px;max-width:420px;margin-bottom:24px;">
       <input type="text" id="mod-nick-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="flex:1;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
       <button class="btn btn-outline btn-sm" id="mod-add-btn">Adicionar</button>
     </div>
@@ -129,6 +130,29 @@
 
     <div class="form-group"><label>Nome do torneio</label><input type="text" id="cfg-name" style="width:100%;max-width:420px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
     <div class="form-group"><label>Jogo</label><input type="text" id="cfg-game" style="width:100%;max-width:420px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
+
+    <div class="form-group" id="cfg-teamsize-group">
+      <label>Formato <span class="muted" style="text-transform:none;" id="cfg-teamsize-hint"></span></label>
+      <div class="pill-group" id="cfg-pill-teamsize">
+        <div class="pill" data-v="1">1v1</div><div class="pill" data-v="2">2v2</div><div class="pill" data-v="3">3v3</div>
+        <div class="pill" data-v="4">4v4</div><div class="pill" data-v="5">5v5</div><div class="pill" data-v="6">6v6</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label id="cfg-maxteams-label">Número de equipas</label>
+      <input type="number" id="cfg-maxteams" min="2" max="64" style="max-width:160px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+      <p class="form-hint">Quantas equipas vão disputar o torneio.</p>
+    </div>
+
+    <div class="form-group">
+      <label>Mapas do torneio (opcional — só é preciso se ativares o banimento de mapas)</label>
+      <div class="maps-input">
+        <input type="text" id="cfg-map-input" placeholder="Nome do mapa e Enter"/>
+        <button type="button" class="btn btn-outline btn-sm" id="cfg-map-add">Adicionar</button>
+      </div>
+      <div class="pill-group" id="cfg-maps-list"></div>
+    </div>
 
     <div class="form-group">
       <label>Visibilidade</label>
@@ -344,14 +368,17 @@ function isCreator(){
   return currentUser && tournament && tournament.creatorUid === currentUser.uid;
 }
 let clubAdminAccess = false;
+let clubOwnerAccess = false;
 async function computeClubAccess(){
   clubAdminAccess = false;
+  clubOwnerAccess = false;
   if(currentUser && tournament && tournament.organizerClubId){
     try{
       const clubSnap = await getDoc(doc(db,'clubs',tournament.organizerClubId));
       if(clubSnap.exists()){
         const c = clubSnap.data();
-        if(c.ownerUid === currentUser.uid || (c.moderatorUids||[]).includes(currentUser.uid)) clubAdminAccess = true;
+        if(c.ownerUid === currentUser.uid){ clubAdminAccess = true; clubOwnerAccess = true; }
+        else if((c.moderatorUids||[]).includes(currentUser.uid)) clubAdminAccess = true;
       }
     }catch(e){}
   }
@@ -365,6 +392,9 @@ function isAdmin(){
   if(tournament && (tournament.moderatorUids||[]).includes(currentUser.uid)) return true;
   if(clubAdminAccess) return true;
   return false;
+}
+function canManageModerators(){
+  return isCreator() || clubOwnerAccess;
 }
 
 onAuthStateChanged(auth, async function(user){
@@ -453,6 +483,7 @@ function bindCfgPills(id, def){
   });
 }
 bindCfgPills('cfg-pill-visibility');
+bindCfgPills('cfg-pill-teamsize');
 bindCfgPills('cfg-pill-coin');
 bindCfgPills('cfg-pill-layout');
 bindCfgPills('cfg-pill-drawmode');
@@ -476,6 +507,9 @@ function renderConfig(){
   document.getElementById('cfg-name').value = tournament.name || '';
   document.getElementById('cfg-game').value = tournament.game || '';
   cfgSetSelected('cfg-pill-visibility', tournament.visibility || 'public');
+  cfgSetSelected('cfg-pill-teamsize', String(tournament.teamSize || 5));
+  document.getElementById('cfg-maxteams').value = tournament.maxTeams || '';
+  document.getElementById('cfg-teamsize-hint').textContent = bracketGenerated() ? '(já há equipas/bracket — muda com cuidado, pode desalinhar equipas já formadas)' : '';
   cfgSetSelected('cfg-pill-coin', tournament.coinMethod || 'coin');
   cfgSetSelected('cfg-pill-layout', tournament.bracketLayout || 'one-side');
   cfgSetSelected('cfg-pill-drawmode', tournament.bracketDrawMode || 'random');
@@ -505,10 +539,14 @@ document.getElementById('cfg-save-btn').addEventListener('click', async function
   const boSel = cfgSelected('cfg-pill-bestof');
   const bestOf = boSel === 'custom' ? parseInt(document.getElementById('cfg-bestof-custom').value, 10) : parseInt(boSel, 10);
   const pointsToWin = document.getElementById('cfg-pointstowin').value ? parseInt(document.getElementById('cfg-pointstowin').value, 10) : null;
+  const teamSize = parseInt(cfgSelected('cfg-pill-teamsize'), 10);
+  const maxTeams = parseInt(document.getElementById('cfg-maxteams').value, 10);
   if(!bestOf || bestOf < 1 || bestOf % 2 === 0){ msg.textContent = 'O "melhor de quantas partidas" tem de ser ímpar.'; msg.style.display = 'block'; return; }
   if(!pointsToWin){ msg.textContent = 'Define os pontos para vencer cada partida.'; msg.style.display = 'block'; return; }
+  if(!maxTeams || maxTeams < 2){ msg.textContent = 'Define um número de equipas válido (mínimo 2).'; msg.style.display = 'block'; return; }
   await updateDoc(tRef, {
     name, game,
+    teamSize, maxTeams,
     visibility: cfgSelected('cfg-pill-visibility'),
     coinMethod: cfgSelected('cfg-pill-coin'),
     bracketLayout: cfgSelected('cfg-pill-layout'),
@@ -551,6 +589,7 @@ document.getElementById('cfg-end-btn').addEventListener('click', async function(
 let moderatorProfiles = {}; // uid -> {nickname}
 async function renderModerators(){
   const box = document.getElementById('mod-list');
+  document.getElementById('mod-add-box').style.display = canManageModerators() ? 'flex' : 'none';
   const uids = tournament.moderatorUids || [];
   if(uids.length === 0){ box.innerHTML = '<p class="muted">Ainda não há moderadores.</p>'; return; }
   const rows = [];
@@ -559,7 +598,7 @@ async function renderModerators(){
       try{ const s = await getDoc(doc(db,'users',uid)); moderatorProfiles[uid] = s.exists() ? s.data() : {nickname:'(desconhecido)'}; }
       catch(e){ moderatorProfiles[uid] = {nickname:'(desconhecido)'}; }
     }
-    rows.push(`<div class="pool-row"><span>${moderatorProfiles[uid].nickname||uid}</span>${isCreator() ? '<button class="btn btn-sm btn-danger" data-rmmod="'+uid+'">Remover</button>' : ''}</div>`);
+    rows.push(`<div class="pool-row"><span>${moderatorProfiles[uid].nickname||uid}</span>${canManageModerators() ? '<button class="btn btn-sm btn-danger" data-rmmod="'+uid+'">Remover</button>' : ''}</div>`);
   }
   box.innerHTML = rows.join('');
   box.querySelectorAll('[data-rmmod]').forEach(btn=>{
@@ -609,7 +648,7 @@ function renderAll(){
   renderDraftBanner();
   renderDraftStartBox();
   renderModerators();
-  document.getElementById('tab-moderadores-btn').style.display = isCreator() ? 'inline-block' : 'none';
+  document.getElementById('tab-moderadores-btn').style.display = isAdmin() ? 'inline-block' : 'none';
   document.getElementById('tab-config-btn').style.display = isAdmin() ? 'inline-block' : 'none';
   renderConfig();
 }
@@ -626,7 +665,7 @@ function renderJoinBox(){
   box.style.display='block';
   const joinMode = tournament.joinMode || 'both';
   const showSolo = joinMode !== 'clan';
-  const showClan = joinMode !== 'solo' && tournament.teamSize > 1;
+  const showClan = joinMode !== 'solo';
   let html = '';
   if(showSolo) html += '<button class="btn btn-accent" id="join-solo-btn">Entrar no torneio sozinho</button> ';
   if(showClan) html += '<button class="btn btn-outline" id="join-clan-btn">Entrar no torneio com o clã</button>';
@@ -1134,17 +1173,21 @@ document.getElementById('gen-bracket-btn').addEventListener('click', async funct
 
 // ── MAPAS ────────────────────────────────────────────────────────
 function renderMaps(){
-  const el = document.getElementById('maps-display');
-  el.innerHTML = (tournament.maps||[]).map(m => `<div class="pill">${m}${isAdmin() && !bracketGenerated() ? ' <span data-rm="'+m+'" style="cursor:pointer;color:var(--danger);margin-left:6px;">×</span>' : ''}</div>`).join('');
-  if(isAdmin()){
-    el.querySelectorAll('[data-rm]').forEach(function(x){
-      x.addEventListener('click', async function(e){
-        e.stopPropagation();
-        const newMaps = (tournament.maps||[]).filter(m=>m!==x.dataset.rm);
-        await updateDoc(tRef, { maps: newMaps });
+  const html = (tournament.maps||[]).map(m => `<div class="pill">${m}${isAdmin() && !bracketGenerated() ? ' <span data-rm="'+m+'" style="cursor:pointer;color:var(--danger);margin-left:6px;">×</span>' : ''}</div>`).join('');
+  ['maps-display','cfg-maps-list'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = html;
+    if(isAdmin()){
+      el.querySelectorAll('[data-rm]').forEach(function(x){
+        x.addEventListener('click', async function(e){
+          e.stopPropagation();
+          const newMaps = (tournament.maps||[]).filter(m=>m!==x.dataset.rm);
+          await updateDoc(tRef, { maps: newMaps });
+        });
       });
-    });
-  }
+    }
+  });
 }
 document.getElementById('map-add-btn').addEventListener('click', async function(){
   const input = document.getElementById('map-add-input');
@@ -1153,6 +1196,36 @@ document.getElementById('map-add-btn').addEventListener('click', async function(
   await updateDoc(tRef, { maps: [...(tournament.maps||[]), v] });
   input.value = '';
 });
+document.getElementById('cfg-map-add').addEventListener('click', async function(){
+  const input = document.getElementById('cfg-map-input');
+  const v = input.value.trim();
+  if(!v) return;
+  await updateDoc(tRef, { maps: [...(tournament.maps||[]), v] });
+  input.value = '';
+});
+document.getElementById('cfg-map-input').addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('cfg-map-add').click(); }
+});
+
+// distribui equipas pelos confrontos da 1ª ronda garantindo que cada "bye"
+// (posição vazia) fica sempre sozinho num confronto, nunca dois byes juntos —
+// isso evitava que sobrassem confrontos "A definir vs A definir" que nunca avançavam.
+function padWithByes(orderedIds, size){
+  const byes = size - orderedIds.length;
+  const matchCount = size / 2;
+  const slots = [];
+  let ti = 0;
+  for(let mi=0; mi<matchCount; mi++){
+    if(mi < byes){
+      slots.push(orderedIds[ti++]);
+      slots.push(null);
+    } else {
+      slots.push(orderedIds[ti++]);
+      slots.push(orderedIds[ti++]);
+    }
+  }
+  return slots;
+}
 
 // ── BRACKET GERAÇÃO ─────────────────────────────────────────────
 async function generateBracket(readyTeams){
@@ -1177,15 +1250,15 @@ async function generateBracket(readyTeams){
       slots = positions.map(seedNum => (bySeed[seedNum-1] ? bySeed[seedNum-1].id : null));
     } else if(tournament.bracketDrawMode === 'manual'){
       // ordena as equipas pela posição definida pelo organizador e coloca-as sequencialmente:
-      // posição 1 vs 2, 3 vs 4, 5 vs 6... exatamente como o organizador decidiu
-      const byPosition = [...readyTeams].sort((a,b) => (a.seed || 999) - (b.seed || 999));
-      slots = byPosition.map(t => t.id);
-      while(slots.length < size) slots.push(null);
+      // posição 1 vs 2, 3 vs 4, 5 vs 6... exatamente como o organizador decidiu.
+      // Se o número de equipas não for potência de 2, os "byes" são distribuídos
+      // um por confronto (nunca dois byes no mesmo confronto) para não deixar jogos vazios.
+      const byPosition = [...readyTeams].sort((a,b) => (a.seed || 999) - (b.seed || 999)).map(t => t.id);
+      slots = padWithByes(byPosition, size);
     } else {
-      // sorteio aleatório
+      // sorteio aleatório — mesma distribuição de byes um-por-confronto
       const shuffled = [...teamIds].sort(()=>Math.random()-0.5);
-      slots = shuffled.slice();
-      while(slots.length < size) slots.push(null);
+      slots = padWithByes(shuffled, size);
     }
     let rounds = [];
     let m0 = [];
@@ -1359,7 +1432,6 @@ function renderPositionsEditor(){
 
 function renderBracket(){
   renderMyMatch();
-  renderOrphanTeams();
   renderRegenBox();
   renderPositionsEditor();
   const box = document.getElementById('bracket-box');
@@ -1478,78 +1550,6 @@ document.getElementById('regen-bracket-btn').addEventListener('click', async fun
   for(const d of oldMatches.docs) await deleteDoc(d.ref);
   await generateBracket(readyTeams);
 });
-
-function currentSlotOf(teamId){
-  for(const m of matches){
-    if(m.teamAId === teamId) return { matchId: m.id, field: 'teamAId', terminado: m.status === 'terminado' };
-    if(m.teamBId === teamId) return { matchId: m.id, field: 'teamBId', terminado: m.status === 'terminado' };
-  }
-  return null;
-}
-
-function emptySlots(excludeTeamId){
-  const slots = [];
-  matches.forEach(m => {
-    if(m.status === 'terminado') return;
-    if(!m.teamAId || m.teamAId === excludeTeamId) slots.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round, occupied: !!m.teamAId });
-    if(!m.teamBId || m.teamBId === excludeTeamId) slots.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round, occupied: !!m.teamBId });
-  });
-  const free = slots.filter(s => !s.occupied);
-  if(free.length > 0) return free;
-  // sem vagas livres — permite substituir uma equipa já colocada num jogo ainda não decidido
-  const occupied = [];
-  matches.forEach(m => {
-    if(m.status === 'terminado') return;
-    if(m.teamAId && m.teamAId !== excludeTeamId) occupied.push({ matchId: m.id, field: 'teamAId', opponent: m.teamBId, round: m.round, occupied: true, current: m.teamAId });
-    if(m.teamBId && m.teamBId !== excludeTeamId) occupied.push({ matchId: m.id, field: 'teamBId', opponent: m.teamAId, round: m.round, occupied: true, current: m.teamBId });
-  });
-  return occupied;
-}
-
-function placeableTeams(){
-  if(!bracketGenerated()) return [];
-  return teams.filter(t => (t.players||[]).length === tournament.teamSize);
-}
-
-function renderOrphanTeams(){
-  const box = document.getElementById('orphan-teams-box');
-  box.innerHTML = '';
-  if(!isAdmin()) return;
-  const placeable = placeableTeams();
-  if(placeable.length === 0) return;
-  box.innerHTML = '<div class="ticket" data-tag="Equipas por colocar na bracket">' +
-    placeable.map(t => {
-      const slot = currentSlotOf(t.id);
-      const status = slot ? ('Ronda ' + (matches.find(m=>m.id===slot.matchId).round + 1) + (slot.terminado ? ' (já decidida — não se pode mover)' : '')) : 'Fora da bracket';
-      const btn = (!slot || !slot.terminado) ? `<button class="btn btn-sm btn-outline" data-place="${t.id}">${slot ? 'Mover' : 'Colocar na bracket'}</button>` : '';
-      return `<div class="pool-row"><span>${t.name} <span class="muted">— ${status}</span></span>${btn}</div>`;
-    }).join('') +
-    '</div>';
-  box.querySelectorAll('[data-place]').forEach(btn=>{
-    btn.addEventListener('click', () => placeOrphanTeam(btn.dataset.place));
-  });
-}
-
-async function placeOrphanTeam(teamId){
-  const slots = emptySlots(teamId);
-  if(slots.length === 0){ alert('Não há nenhuma vaga livre nem nenhuma partida ainda por decidir onde a possas colocar.'); return; }
-  const list = slots.map((s,i) => {
-    const base = (i+1) + '. Ronda ' + (s.round+1) + ' — vs ' + teamName(s.opponent);
-    return s.occupied ? (base + ' (substitui ' + teamName(s.current) + ')') : base;
-  }).join('\n');
-  const anyOccupied = slots.some(s => s.occupied);
-  const header = anyOccupied ? 'Não há vagas livres — escolhe qual equipa substituir:' : 'Onde colocar esta equipa?';
-  const pick = prompt(header + '\n' + list + '\n\nEscreve o número:');
-  const idx = parseInt(pick, 10) - 1;
-  if(isNaN(idx) || !slots[idx]) return;
-  const slot = slots[idx];
-  if(slot.occupied && !confirm('Isto vai substituir ' + teamName(slot.current) + ' por esta equipa nesse jogo. A equipa substituída volta a ficar por colocar. Continuar?')) return;
-  const oldSlot = currentSlotOf(teamId);
-  if(oldSlot && !oldSlot.terminado && oldSlot.matchId !== slot.matchId){
-    await updateDoc(doc(matchesCol, oldSlot.matchId), { [oldSlot.field]: null });
-  }
-  await updateDoc(doc(matchesCol, slot.matchId), { [slot.field]: teamId });
-}
 
 function openMatchModal(matchId){
   activeMatchId = matchId;
