@@ -70,7 +70,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
 </script>
 
 <script type="module">
-import { auth, db, doc, getDoc, collection, collectionGroup, getDocs, query, where } from './firebase.js';
+import { auth, db, collection, getDocs, query, where } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 function cardHtml(t, id){
@@ -88,36 +88,34 @@ onAuthStateChanged(auth, async function(user){
   if(!user){ document.getElementById('not-logged').style.display = 'block'; return; }
   document.getElementById('content').style.display = 'block';
 
-  // A jogar: procura em todas as subcoleções "players" onde uid == user.uid
+  // A jogar: torneios onde o uid está na lista de participantes do próprio torneio
   try{
-    const q = query(collectionGroup(db, 'players'), where('uid','==', user.uid));
-    const snap = await getDocs(q);
-    const tournamentIds = [...new Set(snap.docs.map(d => d.ref.parent.parent.id))];
+    const snap = await getDocs(query(collection(db,'tournaments'), where('participantUids','array-contains', user.uid)));
     const el = document.getElementById('list-jogar');
-    if(tournamentIds.length === 0){ el.innerHTML = '<p class="muted">Ainda não entraste em nenhum torneio. <a href="torneios.html" style="color:var(--accent);">Explora os torneios abertos.</a></p>'; }
-    else{
-      const cards = await Promise.all(tournamentIds.map(async id=>{
-        const tSnap = await getDoc(doc(db,'tournaments', id));
-        return tSnap.exists() ? cardHtml(tSnap.data(), id) : '';
-      }));
-      el.innerHTML = cards.join('') || '<p class="muted">Ainda não entraste em nenhum torneio.</p>';
-    }
+    if(snap.empty){ el.innerHTML = '<p class="muted">Ainda não entraste em nenhum torneio. <a href="torneios.html" style="color:var(--accent);">Explora os torneios abertos.</a></p>'; }
+    else{ el.innerHTML = snap.docs.map(d => cardHtml(d.data(), d.id)).join(''); }
   }catch(e){
-    const isIndexError = /index/i.test(e.message) || e.code === 'failed-precondition';
-    document.getElementById('list-jogar').innerHTML = isIndexError
-      ? '<p class="muted">Estamos a preparar a lista dos teus torneios pela primeira vez — isto pode demorar uns minutos. Tenta recarregar a página daqui a pouco.</p>'
-      : '<p class="muted">Erro ao carregar. ('+e.message+')</p>';
+    document.getElementById('list-jogar').innerHTML = '<p class="muted">Erro ao carregar. ('+e.message+')</p>';
   }
 
-  // A organizar/moderar
+  // A organizar/moderar: sou criador, moderador direto, ou líder/moderador do clube organizador
   try{
-    const [creatorSnap, modSnap] = await Promise.all([
+    const [creatorSnap, modSnap, clubOwnerSnap, clubModSnap] = await Promise.all([
       getDocs(query(collection(db,'tournaments'), where('creatorUid','==', user.uid))),
-      getDocs(query(collection(db,'tournaments'), where('moderatorUids','array-contains', user.uid)))
+      getDocs(query(collection(db,'tournaments'), where('moderatorUids','array-contains', user.uid))),
+      getDocs(query(collection(db,'clubs'), where('ownerUid','==', user.uid))),
+      getDocs(query(collection(db,'clubs'), where('moderatorUids','array-contains', user.uid)))
     ]);
     const map = new Map();
     creatorSnap.docs.forEach(d=> map.set(d.id, d.data()));
     modSnap.docs.forEach(d=> map.set(d.id, d.data()));
+    const myClubIds = [...new Set([...clubOwnerSnap.docs, ...clubModSnap.docs].map(d => d.id))];
+    if(myClubIds.length > 0){
+      const byClub = await Promise.all(myClubIds.map(cid =>
+        getDocs(query(collection(db,'tournaments'), where('organizerClubId','==', cid)))
+      ));
+      byClub.forEach(snap => snap.docs.forEach(d => map.set(d.id, d.data())));
+    }
     const el = document.getElementById('list-organizar');
     if(map.size === 0){ el.innerHTML = '<p class="muted">Ainda não organizas nem moderas nenhum torneio. <a href="criar-torneio.html" style="color:var(--accent);">Cria um.</a></p>'; }
     else{ el.innerHTML = [...map.entries()].map(([id,t]) => cardHtml(t, id)).join(''); }

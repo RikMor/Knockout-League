@@ -34,6 +34,7 @@ O primeiro admin define-se manualmente no Firestore (muda `role` para `"admin"` 
   mapBanEnabled: bool,
   coinMethod: "coin" | "rps",       // "coin" = aleatório; rps = pedra/papel/tesoura
   joinMode: "both" | "solo" | "clan",   // como as pessoas podem entrar no torneio
+  participantUids: [uid, ...],      // todos os uids que já estiveram/estão inscritos (pool ou equipa) — usado por "Os meus torneios" → "A jogar", sem precisar de índice collectionGroup
   regOpensAt, regClosesAt,          // datetime-local strings, opcionais
   status: "inscricoes" | "draft" | "em-curso" | "terminado",
   createdAt

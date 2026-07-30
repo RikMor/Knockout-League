@@ -92,11 +92,6 @@
     <label for="t-useplayernames" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Usar o nickname do jogador como nome da equipa (útil em 1v1).</label>
   </div>
 
-  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
-    <input type="checkbox" id="t-participo" style="width:auto;margin-top:4px;"/>
-    <label for="t-participo" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Eu, organizador, também vou jogar.</label>
-  </div>
-
   <div class="form-group">
     <label>Como as pessoas podem entrar</label>
     <div class="pill-group" id="pill-joinmode">
@@ -116,7 +111,7 @@
   </div>
 
   <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
-    <input type="checkbox" id="t-banmaps" checked style="width:auto;margin-top:4px;"/>
+    <input type="checkbox" id="t-banmaps" style="width:auto;margin-top:4px;"/>
     <label for="t-banmaps" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Ativar banimento de mapas no lobby.</label>
   </div>
 
@@ -135,6 +130,33 @@
       <div class="pill" data-v="two-side">Dois lados (espelhada, converge ao centro)</div>
     </div>
     <p class="form-hint">"Dois lados" só se aplica a eliminação simples/dupla.</p>
+  </div>
+
+  <div class="form-group">
+    <label>Modo de sorteio da bracket</label>
+    <div class="pill-group" id="pill-drawmode">
+      <div class="pill" data-v="random">Aleatório</div>
+      <div class="pill" data-v="seed">Por seed (espalhado)</div>
+      <div class="pill" data-v="manual">Manual (eu escolho quem joga contra quem)</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Atribuição de jogadores às equipas</label>
+    <div class="pill-group" id="pill-assign">
+      <div class="pill" data-v="roulette">Roleta</div>
+      <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
+      <div class="pill" data-v="manual">Manual</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Quando houver mais de 2 capitães, quem escolhe os jogadores?</label>
+    <div class="pill-group" id="pill-draft">
+      <div class="pill" data-v="organizer">Eu decido (organizador)</div>
+      <div class="pill" data-v="captains">Os capitães escolhem</div>
+      <div class="pill" data-v="random">Aleatório</div>
+    </div>
   </div>
 
   <div class="form-group" id="organizer-as-group" style="display:none;">
@@ -175,6 +197,9 @@ bindPills('pill-visibility','public');
 bindPills('pill-coin','coin');
 bindPills('pill-bestof','1');
 bindPills('pill-layout','one-side');
+bindPills('pill-drawmode','random');
+bindPills('pill-assign','roulette');
+bindPills('pill-draft','organizer');
 bindPills('pill-joinmode','both');
 function selected(id){ var s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
 
@@ -305,10 +330,10 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const teamSize = parseInt(selected('pill-teamsize'), 10);
   const maxTeams = parseInt(document.getElementById('t-maxteams').value, 10);
   const bracketType = selected('pill-bracket');
-  const bracketDrawMode = 'random'; // ajustável mais tarde dentro do torneio
+  const bracketDrawMode = selected('pill-drawmode');
   const visibility = selected('pill-visibility');
-  const assignMode = 'roulette'; // ajustável mais tarde dentro do torneio
-  const draftMode = 'organizer'; // ajustável mais tarde dentro do torneio
+  const assignMode = selected('pill-assign');
+  const draftMode = selected('pill-draft');
   const coinMethod = selected('pill-coin');
   const bestOfSelected = selected('pill-bestof');
   const bestOf = bestOfSelected === 'custom' ? parseInt(document.getElementById('t-bestof-custom').value, 10) : parseInt(bestOfSelected, 10);
@@ -316,7 +341,6 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const pointsToWin = pointsToWinRaw ? parseInt(pointsToWinRaw, 10) : null;
   const bracketLayout = bracketType === 'round-robin' ? 'one-side' : selected('pill-layout');
   const mapBanEnabled = document.getElementById('t-banmaps').checked;
-  const creatorParticipates = document.getElementById('t-participo').checked;
   const usePlayerNames = document.getElementById('t-useplayernames').checked;
   const orgSelValue = document.getElementById('t-organizer-as').value || 'self';
   const orgOption = organizerOptions.find(o => o.value === orgSelValue) || organizerOptions[0];
@@ -341,10 +365,10 @@ document.getElementById('create-btn').addEventListener('click', async function()
       name, game, teamSize, maxTeams, bracketType, bracketDrawMode, bracketLayout, visibility,
       inviteCode: visibility === 'private' ? genCode() : null,
       assignMode, draftMode, coinMethod, bestOf, pointsToWin, mapBanEnabled, maps,
-      creatorUid: currentUser.uid, creatorParticipates, moderatorUids: [],
+      creatorUid: currentUser.uid, moderatorUids: [],
       organizerDisplayName, organizerClubId,
       regOpensAt, regClosesAt, joinMode,
-      usePlayerNames,
+      usePlayerNames, participantUids: [],
       status: 'inscricoes', draftTurn: 0,
       createdAt: serverTimestamp()
     });

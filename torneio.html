@@ -107,8 +107,8 @@
       <button class="btn btn-gold btn-sm" id="regen-bracket-btn">Regenerar bracket com todas as equipas atuais</button>
       <p class="muted" id="regen-bracket-warn" style="font-size:0.8rem;margin-top:8px;"></p>
     </div>
-    <div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;">
-      <div id="positions-editor-box" style="display:none;flex:0 0 300px;max-width:320px;"></div>
+    <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;width:100vw;margin-left:calc(-50vw + 50%);padding:0 12px;box-sizing:border-box;">
+      <div id="positions-editor-box" style="display:none;flex:0 0 280px;max-width:280px;"></div>
       <div id="bracket-box" style="flex:1;min-width:0;"><p class="muted">A bracket ainda não foi gerada.</p></div>
     </div>
   </div>
@@ -345,7 +345,7 @@ document.getElementById('match-modal-close').addEventListener('click', function(
 </script>
 
 <script type="module">
-import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, onSnapshot, query, where, orderBy } from './firebase.js';
+import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, onSnapshot, query, where, orderBy, arrayUnion, arrayRemove } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -360,6 +360,17 @@ let teams = [];      // teams subcollection docs
 let matches = [];    // matches subcollection docs
 
 const tRef = doc(db, 'tournaments', tId);
+
+// mantém a lista de participantes no próprio torneio (permite a "Os meus torneios" → "A jogar"
+// encontrar o torneio sem precisar de um índice especial de collectionGroup)
+async function markParticipant(uid){
+  if(!uid) return;
+  try{ await updateDoc(tRef, { participantUids: arrayUnion(uid) }); }catch(e){}
+}
+async function unmarkParticipant(uid){
+  if(!uid) return;
+  try{ await updateDoc(tRef, { participantUids: arrayRemove(uid) }); }catch(e){}
+}
 const playersCol = collection(db, 'tournaments', tId, 'players');
 const teamsCol = collection(db, 'tournaments', tId, 'teams');
 const matchesCol = collection(db, 'tournaments', tId, 'matches');
@@ -417,7 +428,6 @@ onSnapshot(tRef, function(snap){
 });
 onSnapshot(playersCol, function(snap){ players = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
 onSnapshot(teamsCol, function(snap){ teams = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
-let autoRedirected = false;
 onSnapshot(matchesCol, function(snap){
   matches = snap.docs.map(d=>({id:d.id,...d.data()}));
   renderBracket();
@@ -425,13 +435,14 @@ onSnapshot(matchesCol, function(snap){
 });
 
 function maybeAutoRedirect(){
-  if(autoRedirected || !currentUser || !tournament) return;
+  if(!currentUser || !tournament) return;
   if(tournament.status !== 'em-curso') return;
   const mine = matches.find(m => m.status !== 'terminado' && isInMatch(m));
-  if(mine){
-    autoRedirected = true;
-    window.location.href = 'sala-partida.html?t=' + tId + '&m=' + mine.id;
-  }
+  if(!mine) return;
+  const key = 'kl-redirected-' + mine.id;
+  if(sessionStorage.getItem(key)) return; // já foste redirecionado para esta partida — livre para navegar
+  sessionStorage.setItem(key, '1');
+  window.location.href = 'sala-partida.html?t=' + tId + '&m=' + mine.id;
 }
 
 let organizerNameCache = null;
@@ -653,6 +664,10 @@ function renderAll(){
   renderConfig();
 }
 
+function isUidInPool(uid){
+  return players.some(p => p.uid === uid);
+}
+
 function renderJoinBox(){
   const box = document.getElementById('join-box');
   if(tournament.status !== 'inscricoes'){ box.style.display='none'; return; }
@@ -673,27 +688,32 @@ function renderJoinBox(){
 
   if(showSolo){
     document.getElementById('join-solo-btn').addEventListener('click', async function(){
+      if(isUidInPool(currentUser.uid)){ alert('Já estás inscrito neste torneio.'); return; }
       const nick = currentUserData?.nickname || currentUser.displayName || 'Jogador';
       const tag = currentUserData?.tag || '';
       await addDoc(playersCol, { uid: currentUser.uid, name: nick, tag, source: 'platform', isCaptain: false, teamId: null });
+      await markParticipant(currentUser.uid);
     });
   }
   if(showClan){
     document.getElementById('join-clan-btn').addEventListener('click', async function(){
+      if(isUidInPool(currentUser.uid)){ alert('Já estás inscrito neste torneio.'); return; }
       if(teams.length >= tournament.maxTeams){ alert('Já não há vagas para mais equipas neste torneio.'); return; }
       const clan = await myOwnedClan();
-      if(!clan){ alert('Não lideras nenhum clã. Cria um em "O meu clã" ou entra sozinho.'); return; }
+      if(!clan){ alert('Não lideras nem és capitão de nenhum clã. Cria um em "O meu clã" ou entra sozinho.'); return; }
       const nick = currentUserData?.nickname || currentUser.displayName || 'Jogador';
-      const tag = currentUserData?.tag || '';
-      const pRef = await addDoc(playersCol, { uid: currentUser.uid, name: nick, tag, source: 'platform', isCaptain: false, teamId: null });
-      const mine = { id: pRef.id, uid: currentUser.uid, name: nick };
+      const mine = { uid: currentUser.uid, name: nick };
       const membersSnap = await getDocs(collection(db,'clans',clan.id,'members'));
-      const clanMembers = membersSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      let clanMembers = membersSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      const already = clanMembers.filter(m => isUidInPool(m.uid));
+      clanMembers = clanMembers.filter(m => !isUidInPool(m.uid));
+      const warn = already.length > 0 ? (' (' + already.length + ' membro' + (already.length===1?'':'s') + ' do clã já ' + (already.length===1?'está':'estão') + ' inscrito' + (already.length===1?'':'s') + ' neste torneio e não ' + (already.length===1?'aparece':'aparecem') + ' na lista)') : '';
       if(clanMembers.length + 1 > tournament.teamSize){
-        openClanSelectModal(clan, clanMembers, mine);
+        openClanSelectModal(clan, clanMembers, mine, warn);
       } else {
-        if(!confirm('Isto vai criar uma equipa com todos os membros do clã "' + clan.name + '". Continuar?')) return;
-        await createClanTeam(clan, clanMembers, mine);
+        if(!confirm('Isto vai criar uma equipa com todos os membros disponíveis do clã "' + clan.name + '"' + warn + '. Continuar?')) return;
+        try{ await createClanTeam(clan, clanMembers, mine); }
+        catch(e){ alert('Erro ao criar a equipa: ' + e.message); }
       }
     });
   }
@@ -718,28 +738,36 @@ async function myOwnedClan(){
 }
 
 async function createClanTeam(clan, chosenMembers, mine){
+  if(isUidInPool(mine.uid)) throw new Error('Já estás inscrito neste torneio.');
   const teamRef = await addDoc(teamsCol, { name: clan.name, captainPlayerId: null, players: [], seed: teams.length + 1 });
-  const playerEntries = [{ playerId: mine.id, uid: currentUser.uid }];
-  await updateDoc(doc(playersCol, mine.id), { teamId: teamRef.id, isCaptain: false });
+  const mineRef = await addDoc(playersCol, { uid: mine.uid, name: mine.name, source: 'platform', isCaptain: false, teamId: teamRef.id });
+  await markParticipant(mine.uid);
+  const playerEntries = [{ playerId: mineRef.id, uid: mine.uid }];
   for(const m of chosenMembers){
-    if(m.uid === currentUser.uid) continue; // já tratado acima
+    if(m.uid === mine.uid || isUidInPool(m.uid)) continue;
     const pRef = await addDoc(playersCol, { uid: m.uid, name: m.nickname, source: 'platform', isCaptain: false, teamId: teamRef.id });
+    await markParticipant(m.uid);
     playerEntries.push({ playerId: pRef.id, uid: m.uid });
   }
-  const captainEntry = playerEntries.find(e => e.uid === currentUser.uid) || playerEntries[0];
+  const captainEntry = playerEntries.find(e => e.uid === mine.uid) || playerEntries[0];
   await updateDoc(doc(playersCol, captainEntry.playerId), { isCaptain: true });
   await updateDoc(teamRef, { players: playerEntries.map(e=>e.playerId), captainPlayerId: captainEntry.playerId });
 }
 
-function openClanSelectModal(clan, clanMembers, mine){
+function openClanSelectModal(clan, clanMembers, mine, warn){
   const wanted = tournament.teamSize - 1; // já contando contigo
   document.getElementById('cs-title').textContent = 'Escolhe ' + wanted + ' membro' + (wanted===1?'':'s') + ' de "' + clan.name + '"';
   const box = document.getElementById('cs-members');
-  document.getElementById('cs-error').style.display = 'none';
-  box.innerHTML = clanMembers.map(m => `
-    <label style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-family:'Inter';font-size:0.9rem;text-transform:none;color:var(--ink);">
-      <input type="checkbox" data-clanmember="${m.id}" style="width:auto;"/> ${m.nickname}
-    </label>`).join('');
+  const errEl = document.getElementById('cs-error');
+  errEl.style.display = 'none';
+  if(clanMembers.length === 0){
+    box.innerHTML = '<p class="muted">Não há mais nenhum membro do clã disponível' + (warn||'') + '.</p>';
+  } else {
+    box.innerHTML = (warn ? '<p class="muted" style="margin-bottom:10px;">'+warn+'</p>' : '') + clanMembers.map(m => `
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-family:'Inter';font-size:0.9rem;text-transform:none;color:var(--ink);">
+        <input type="checkbox" data-clanmember="${m.id}" style="width:auto;"/> ${m.nickname}
+      </label>`).join('');
+  }
   document.getElementById('clan-select-modal').classList.add('open');
 
   const confirmBtn = document.getElementById('cs-confirm');
@@ -747,15 +775,19 @@ function openClanSelectModal(clan, clanMembers, mine){
   confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
   newConfirmBtn.addEventListener('click', async function(){
     const checked = [...box.querySelectorAll('[data-clanmember]:checked')];
-    const err = document.getElementById('cs-error');
     if(checked.length !== wanted){
-      err.textContent = 'Escolhe exatamente ' + wanted + ' membro' + (wanted===1?'':'s') + '.';
-      err.style.display = 'block';
+      errEl.textContent = 'Escolhe exatamente ' + wanted + ' membro' + (wanted===1?'':'s') + '.';
+      errEl.style.display = 'block';
       return;
     }
     const chosen = checked.map(cb => clanMembers.find(m => m.id === cb.dataset.clanmember)).filter(Boolean);
-    document.getElementById('clan-select-modal').classList.remove('open');
-    await createClanTeam(clan, chosen, mine);
+    try{
+      await createClanTeam(clan, chosen, mine);
+      document.getElementById('clan-select-modal').classList.remove('open');
+    }catch(e){
+      errEl.textContent = 'Erro: ' + e.message;
+      errEl.style.display = 'block';
+    }
   });
 }
 document.getElementById('clan-select-close').addEventListener('click', function(){
@@ -802,22 +834,27 @@ function renderPool(){
     box.querySelectorAll('[data-kickpool]').forEach(btn=>{
       btn.addEventListener('click', async function(){
         if(!confirm('Remover este jogador do torneio?')) return;
+        const p = players.find(x=>x.id===btn.dataset.kickpool);
         await deleteDoc(doc(playersCol, btn.dataset.kickpool));
+        if(p) await unmarkParticipant(p.uid);
       });
     });
   }
 }
 
 async function makeCaptain(playerId){
-  // pede a que equipa fica associado como capitão
-  if(teams.length === 0){ alert('Cria uma equipa primeiro.'); return; }
-  const names = teams.map((t,i)=> (i+1)+'. '+t.name).join('\n');
-  const pick = prompt('A que equipa é capitão?\n'+names+'\n\nEscreve o número:');
-  const idx = parseInt(pick,10) - 1;
-  if(isNaN(idx) || !teams[idx]) return;
-  const team = teams[idx];
-  await updateDoc(doc(playersCol, playerId), { isCaptain: true, teamId: team.id });
-  await updateDoc(doc(teamsCol, team.id), { captainPlayerId: playerId, players: [...(team.players||[]), playerId] });
+  const p = players.find(x=>x.id===playerId);
+  if(!p) return;
+  if(teams.length >= tournament.maxTeams){ alert('Já não há vagas para mais equipas neste torneio.'); return; }
+  let name;
+  if(tournament.usePlayerNames){
+    name = p.name;
+  } else {
+    name = prompt('Nome da equipa de "' + p.name + '":', p.name);
+    if(!name) return;
+  }
+  const teamRef = await addDoc(teamsCol, { name, captainPlayerId: playerId, players: [playerId], seed: teams.length + 1 });
+  await updateDoc(doc(playersCol, playerId), { isCaptain: true, teamId: teamRef.id });
 }
 
 async function assignPlayerToTeam(playerId, teamId){
@@ -840,7 +877,7 @@ async function advanceDraftTurn(){
 
 function renderDraftBanner(){
   const el = document.getElementById('draft-banner');
-  if(tournament.draftMode !== 'captains' || bracketGenerated() || teams.length < 3){ el.innerHTML=''; return; }
+  if(tournament.draftMode !== 'captains' || bracketGenerated() || teams.length < 2 || !tournament.draftStarted){ el.innerHTML=''; return; }
   const turnTeam = teams[tournament.draftTurn || 0];
   if(!turnTeam) { el.innerHTML=''; return; }
   const cap = players.find(p=>p.id===turnTeam.captainPlayerId);
@@ -1064,6 +1101,7 @@ document.getElementById('add-registered-btn').addEventListener('click', async fu
     const uid = found.id;
     if(players.some(p => p.uid === uid)){ alert('Esse jogador já está neste torneio.'); return; }
     await addDoc(playersCol, { uid, name: found.data().nickname, source: 'platform', isCaptain: false, teamId: null });
+    await markParticipant(uid);
   }catch(e){ alert('Erro: ' + e.message); }
 });
 
@@ -1090,7 +1128,7 @@ document.getElementById('rps-btn').addEventListener('click', async function(){
 });
 
 async function autoAssignRemainingPool(){
-  if(tournament.assignMode === 'manual') return { skipped: true };
+  if(tournament.assignMode === 'manual' || tournament.draftMode === 'captains') return { skipped: true };
   let pool = unassignedPlayers().slice().sort(()=>Math.random()-0.5);
   if(pool.length === 0) return { skipped: false };
 
@@ -1154,7 +1192,9 @@ document.getElementById('gen-bracket-btn').addEventListener('click', async funct
 
   const result = await autoAssignRemainingPool();
   if(result.skipped && unassignedPlayers().length > 0){
-    alert('A atribuição é manual — atribui todos os jogadores do pool a uma equipa antes de começar.');
+    alert(tournament.draftMode === 'captains'
+      ? 'Ainda há jogadores no pool por escolher. Os capitães têm de escolher todos os jogadores do pool antes de começar (ver o separador Equipas).'
+      : 'A atribuição é manual — atribui todos os jogadores do pool a uma equipa antes de começar.');
     return;
   }
 
@@ -1276,6 +1316,19 @@ async function generateBracket(readyTeams){
         m.nextSlot = i%2===0 ? 'A' : 'B';
       });
     }
+    // "Bye" = confronto da 1ª ronda com só uma equipa (a outra vaga não existe).
+    // Em vez de criar um jogo falso "Equipa X vs Bye", a equipa avança logo
+    // diretamente para a ronda seguinte — assim a Ronda 1 só mostra os confrontos reais.
+    if(rounds.length > 1){
+      rounds[0] = rounds[0].filter(m => {
+        const isBye = (m.teamAId && !m.teamBId) || (!m.teamAId && m.teamBId);
+        if(!isBye) return true;
+        const winnerId = m.teamAId || m.teamBId;
+        const target = rounds[1].find(t => t.id === m.nextMatchId);
+        if(target) target[m.nextSlot === 'A' ? 'teamAId' : 'teamBId'] = winnerId;
+        return false;
+      });
+    }
     plan = rounds.flat();
   }
 
@@ -1291,11 +1344,6 @@ async function generateBracket(readyTeams){
       serverInfo: null, status: 'por-jogar',
       nextMatchId: m.nextMatchId || null, nextSlot: m.nextSlot || null
     });
-  }
-  // resolve byes automaticamente
-  for(const m of plan){
-    if(m.teamAId && !m.teamBId) await declareWinnerInternal(m.id, m.teamAId, plan);
-    if(m.teamBId && !m.teamAId) await declareWinnerInternal(m.id, m.teamBId, plan);
   }
 }
 
