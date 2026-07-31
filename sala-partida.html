@@ -136,6 +136,11 @@
     <div class="room-col right" id="rt-players-b"></div>
   </div>
 
+  <div class="room-section" id="rt-help-section" style="display:none;text-align:center;">
+    <button class="btn btn-outline btn-sm" id="rt-call-staff">📣 Chamar moderador / organizador</button>
+    <p class="muted" id="rt-call-staff-msg" style="margin-top:10px;font-size:0.82rem;min-height:1.2em;"></p>
+  </div>
+
   <div class="room-section" id="rt-chat-section" style="display:none;">
     <h3>Chat da partida</h3>
     <div id="rt-chat-messages" style="max-height:320px;overflow-y:auto;border:1px solid var(--line);padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;"></div>
@@ -187,18 +192,29 @@ const matchRef = doc(db, 'tournaments', tId, 'matches', mId);
 const chatCol = collection(db, 'tournaments', tId, 'matches', mId, 'chat');
 
 let clubAdminAccess = false;
+let clubStaffUids = [];
 async function computeClubAccess(){
   clubAdminAccess = false;
+  clubStaffUids = [];
   if(currentUser && tournament && tournament.organizerClubId){
     try{
       const clubSnap = await getDoc(doc(db,'clubs',tournament.organizerClubId));
       if(clubSnap.exists()){
         const c = clubSnap.data();
         if(c.ownerUid === currentUser.uid || (c.moderatorUids||[]).includes(currentUser.uid)) clubAdminAccess = true;
+        clubStaffUids = [c.ownerUid, ...(c.moderatorUids||[])].filter(Boolean);
       }
     }catch(e){}
   }
   renderAll();
+}
+function getStaffUids(){
+  const uids = new Set();
+  if(tournament.creatorUid) uids.add(tournament.creatorUid);
+  (tournament.moderatorUids||[]).forEach(u=>uids.add(u));
+  clubStaffUids.forEach(u=>uids.add(u));
+  if(currentUser) uids.delete(currentUser.uid);
+  return [...uids];
 }
 function isAdmin(){
   if(!currentUser || !tournament) return false;
@@ -279,6 +295,33 @@ async function sendChatMessage(){
 }
 document.getElementById('rt-chat-send').addEventListener('click', sendChatMessage);
 document.getElementById('rt-chat-input').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); sendChatMessage(); } });
+
+async function callStaff(){
+  if(!currentUser || !tournament || !match) return;
+  const msgEl = document.getElementById('rt-call-staff-msg');
+  const btn = document.getElementById('rt-call-staff');
+  const uids = getStaffUids();
+  if(uids.length === 0){ msgEl.textContent = 'Este torneio ainda não tem organizador ou moderador definido.'; return; }
+  btn.disabled = true;
+  const nickname = currentUserData?.nickname || (currentUser.isAnonymous ? 'Convidado' : (currentUser.displayName || 'Jogador'));
+  try{
+    await Promise.all(uids.map(uid => addDoc(collection(db,'notifications'), {
+      toUid: uid,
+      type: 'match_help',
+      refId: tId,
+      refName: tournament.name || 'Torneio',
+      matchId: mId,
+      fromNickname: nickname,
+      status: 'pending',
+      createdAt: serverTimestamp()
+    })));
+    msgEl.textContent = 'Chamado enviado — o moderador/organizador foi notificado.';
+  }catch(e){
+    msgEl.textContent = 'Erro ao chamar: ' + e.message;
+  }
+  setTimeout(()=>{ btn.disabled = false; }, 60000);
+}
+document.getElementById('rt-call-staff').addEventListener('click', callStaff);
 
 function playerLabel(p){
   const botTag = p.source === 'bot' ? ' 🤖' : '';
@@ -449,6 +492,9 @@ function renderAll(){
   const manage = canManage();
   const finished = match.status === 'terminado';
   const ready = match.teamAId && match.teamBId;
+
+  const helpSection = document.getElementById('rt-help-section');
+  helpSection.style.display = (currentUser && isInMatch() && !finished) ? 'block' : 'none';
 
   renderFirstBan(g, manage, finished, ready);
 

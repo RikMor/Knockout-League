@@ -79,16 +79,19 @@ function render(){
   if(notifs.length === 0){ box.innerHTML = '<p class="muted">Sem notificações.</p>'; return; }
   box.innerHTML = notifs.map(n => {
     const isInvite = (n.type === 'club_invite' || n.type === 'clan_invite') && n.status === 'pending';
+    const isMatchHelp = n.type === 'match_help';
     const kind = n.type === 'club_invite' ? 'clube' : 'clã';
     const permsLine = n.permissions ? (' — pode: ' + n.permissions.map(p => p==='organizador'?'criar torneios':'moderar').join(', ')) : '';
     return `<div class="notif-item">
       <div>
-        <div class="notif-title">Convite para o ${kind} "${n.refName}"</div>
-        <div class="notif-sub">${permsLine || ''}</div>
+        <div class="notif-title">${isMatchHelp ? ((n.fromNickname||'Um jogador') + ' está a chamar-te numa sala de partida') : ('Convite para o ' + kind + ' "' + n.refName + '"')}</div>
+        <div class="notif-sub">${isMatchHelp ? ('Torneio: ' + n.refName) : (permsLine || '')}</div>
       </div>
       ${isInvite
         ? `<div style="display:flex;gap:8px;"><button class="btn btn-accent btn-sm" data-accept="${n.id}">Aceitar</button><button class="btn btn-outline btn-sm" data-decline="${n.id}">Recusar</button></div>`
-        : `<span class="notif-status">${n.status === 'accepted' ? 'Aceite' : (n.status === 'declined' ? 'Recusado' : n.status)}</span>`}
+        : isMatchHelp
+          ? `<div style="display:flex;gap:8px;"><a href="sala-partida.html?t=${n.refId}&m=${n.matchId}"><button class="btn btn-accent btn-sm">Ver sala</button></a><button class="btn btn-outline btn-sm" data-dismiss="${n.id}">Dispensar</button></div>`
+          : `<span class="notif-status">${n.status === 'accepted' ? 'Aceite' : (n.status === 'declined' ? 'Recusado' : n.status)}</span>`}
     </div>`;
   }).join('');
 
@@ -98,6 +101,16 @@ function render(){
   box.querySelectorAll('[data-decline]').forEach(btn=>{
     btn.addEventListener('click', () => declineInvite(btn.dataset.decline));
   });
+  box.querySelectorAll('[data-dismiss]').forEach(btn=>{
+    btn.addEventListener('click', () => dismissNotif(btn.dataset.dismiss));
+  });
+}
+
+async function dismissNotif(notifId){
+  try{
+    await deleteDoc(doc(db,'notifications',notifId));
+    await loadNotifs();
+  }catch(e){ alert('Erro: ' + e.message); }
 }
 
 async function acceptInvite(notifId){

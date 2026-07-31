@@ -100,10 +100,14 @@ function setupNotifToast(uid){
 }
 
 function showNotifToast(notif){
-  const kind = notif.type === 'club_invite' ? 'clube' : (notif.type === 'clan_invite' ? 'clã' : '');
   const el = document.createElement('a');
   el.href = 'notificacoes.html';
-  el.textContent = '🔔 Novo convite para o ' + kind + ' "' + notif.refName + '" — ver notificações';
+  if(notif.type === 'match_help'){
+    el.textContent = '📣 ' + (notif.fromNickname || 'Um jogador') + ' está a chamar-te numa sala de partida — ver notificações';
+  } else {
+    const kind = notif.type === 'club_invite' ? 'clube' : (notif.type === 'clan_invite' ? 'clã' : '');
+    el.textContent = '🔔 Novo convite para o ' + kind + ' "' + notif.refName + '" — ver notificações';
+  }
   el.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--ink);color:var(--bg);padding:14px 20px;font-family:Inter,sans-serif;font-size:0.85rem;font-weight:600;text-decoration:none;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.3);max-width:320px;';
   document.body.appendChild(el);
   setTimeout(function(){ el.remove(); }, 8000);
