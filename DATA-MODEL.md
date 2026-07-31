@@ -74,6 +74,16 @@ Pool de jogadores antes (ou fora) de terem equipa.
 }
 ```
 
+### `config/site`
+Documento único (singleton) que controla o modo de manutenção do site inteiro, gerido a partir de admin.html.
+```
+{
+  maintenanceMode: bool,       // true = site inteiro bloqueado (exceto para admins com sessão iniciada)
+  maintenanceMessage: string   // opcional, mostrado aos visitantes no ecrã de manutenção
+}
+```
+Lido por `manutencao.js`, importado em todas as páginas do site exceto `admin.html`. Precisa de regra no `firestore.rules`: leitura pública (`allow read: if true`), escrita só para quem tiver `role == "admin"` em `users/{uid}`.
+
 ## Fluxo resumido
 1. Criador cria o torneio (`criar-torneio.html`) → escolhe jogo, formato NvN, tipo de bracket, mapas, visibilidade, modo de atribuição.
 2. Jogadores entram na sala (pública ou por código privado) → entram no pool de jogadores.

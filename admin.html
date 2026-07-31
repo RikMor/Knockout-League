@@ -137,6 +137,7 @@
     <div class="nav-item" data-page="clubes"><span class="icon">🏛️</span><span>Clubes</span></div>
     <div class="nav-item" data-page="clas"><span class="icon">⚔️</span><span>Clãs</span></div>
     <div class="nav-item" data-page="contactos"><span class="icon">✉️</span><span>Contactos</span><span class="nav-badge-count" id="contact-badge" style="display:none;"></span></div>
+    <div class="nav-item" data-page="manutencao"><span class="icon">🛠️</span><span>Manutenção</span><span class="nav-badge-count" id="maint-badge" style="display:none;background:var(--danger);">ON</span></div>
     <div class="sidebar-logout" id="logout-btn"><span class="icon">⏻</span><span>Sair</span></div>
   </div>
 
@@ -226,6 +227,22 @@
         </table>
       </div>
     </div>
+
+    <!-- MANUTENÇÃO -->
+    <div class="page" id="page-manutencao">
+      <div class="page-header"><h1>Manutenção</h1><p>Enquanto o modo de manutenção estiver ativo, todo o site fica bloqueado com uma página de aviso — só tu (com sessão de admin) continuas a conseguir navegar normalmente.</p></div>
+      <div class="table-wrap" style="padding:28px;">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
+          <span id="maint-status-badge" class="badge badge-player" style="font-size:0.75rem;padding:6px 14px;">A carregar...</span>
+          <button class="btn-sm" id="maint-toggle-btn" style="padding:10px 20px;font-size:0.78rem;">—</button>
+        </div>
+        <div class="detail-item">
+          <label>Mensagem mostrada aos visitantes (opcional)</label>
+          <textarea id="maint-message" rows="3" placeholder="Estamos a fazer alguns ajustes. Volta a tentar dentro de momentos." style="width:100%;padding:12px 14px;background:var(--card);border:1px solid var(--border);color:var(--text);font-family:'Inter';font-size:0.9rem;resize:vertical;margin-top:6px;"></textarea>
+        </div>
+        <button class="btn-sm btn-view" id="maint-save-msg-btn" style="margin-top:14px;">Guardar mensagem</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -242,7 +259,7 @@
 </div>
 
 <script type="module">
-import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, getDocs, query, orderBy, onSnapshot } from './firebase.js';
+import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, orderBy, onSnapshot } from './firebase.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 let allUsers = [], allTournaments = [], allContacts = [], allClubs = [], allClans = [];
@@ -306,7 +323,37 @@ async function loadAll(){
     }));
     filterClans();
   });
+  onSnapshot(doc(db,'config','site'), snap=>{
+    siteConfig = snap.exists() ? snap.data() : {};
+    renderMaintenance();
+  });
 }
+
+// MANUTENÇÃO
+let siteConfig = {};
+function renderMaintenance(){
+  const on = !!siteConfig.maintenanceMode;
+  const badge = document.getElementById('maint-status-badge');
+  const toggleBtn = document.getElementById('maint-toggle-btn');
+  const sidebarBadge = document.getElementById('maint-badge');
+  badge.textContent = on ? 'MANUTENÇÃO ATIVA' : 'Site normal';
+  badge.className = 'badge ' + (on ? 'badge-admin' : 'badge-public');
+  toggleBtn.textContent = on ? 'Terminar manutenção' : 'Colocar o site em manutenção';
+  toggleBtn.className = 'btn-sm ' + (on ? 'btn-view' : 'btn-del');
+  sidebarBadge.style.display = on ? 'inline-block' : 'none';
+  if(document.activeElement !== document.getElementById('maint-message')){
+    document.getElementById('maint-message').value = siteConfig.maintenanceMessage || '';
+  }
+}
+document.getElementById('maint-toggle-btn').addEventListener('click', async function(){
+  const turningOn = !siteConfig.maintenanceMode;
+  if(turningOn && !confirm('Isto bloqueia o site inteiro para todas as pessoas (exceto admins com sessão iniciada). Continuar?')) return;
+  await setDoc(doc(db,'config','site'), { maintenanceMode: turningOn }, { merge: true });
+});
+document.getElementById('maint-save-msg-btn').addEventListener('click', async function(){
+  await setDoc(doc(db,'config','site'), { maintenanceMessage: document.getElementById('maint-message').value.trim() }, { merge: true });
+  alert('Mensagem guardada.');
+});
 
 // NAV
 document.querySelectorAll('.nav-item[data-page]').forEach(item=>{

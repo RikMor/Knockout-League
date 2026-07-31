@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
+<script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Torneio — Knockout League</title>
 <link rel="stylesheet" href="shared.css?v=2"/>
@@ -141,7 +142,7 @@
 
     <div class="form-group">
       <label id="cfg-maxteams-label">Número de equipas</label>
-      <input type="number" id="cfg-maxteams" min="2" max="64" style="max-width:160px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+      <input type="number" id="cfg-maxteams" min="2" style="max-width:160px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
       <p class="form-hint">Quantas equipas vão disputar o torneio.</p>
     </div>
 
@@ -337,6 +338,14 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    // A bracket é medida/desenhada com o painel escondido (largura/altura 0) quando
+    // renderBracket() corre antes desta aba estar ativa — por isso as ligações não
+    // apareciam. Ao abrir a aba, o painel já está visível, por isso redesenhamos aqui.
+    if(btn.dataset.tab === 'bracket' && typeof drawBracketConnectors === 'function'){
+      requestAnimationFrame(function(){
+        drawBracketConnectors(document.querySelector('#bracket-box .bracket-scroll') || document.querySelector('#bracket-box .bracket'));
+      });
+    }
   });
 });
 document.getElementById('match-modal-close').addEventListener('click', function(){
@@ -858,7 +867,15 @@ function renderPool(){
         const idx = myCaptainTeamIndex();
         const myTeam = teams[idx];
         if(!myTeam) return;
-        await assignPlayerToTeam(btn.dataset.mypick, myTeam.id);
+        btn.disabled = true;
+        btn.textContent = 'A escolher...';
+        try{
+          await assignPlayerToTeam(btn.dataset.mypick, myTeam.id);
+        }catch(e){
+          alert('Não foi possível escolher este jogador: ' + e.message + '\n\nIsto costuma acontecer quando as regras do Firestore (firestore.rules) ainda não permitem que o capitão escreva na equipa/pool — confirma se as regras foram publicadas (firebase deploy --only firestore:rules).');
+          btn.disabled = false;
+          btn.textContent = 'Escolher';
+        }
       });
     });
   }
@@ -1549,6 +1566,7 @@ function drawBracketConnectors(container){
   });
   svg.innerHTML = paths;
 }
+window.drawBracketConnectors = drawBracketConnectors;
 
 function renderBracket(){
   renderMyMatch();
