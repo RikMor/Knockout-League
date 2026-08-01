@@ -151,9 +151,9 @@
       <div class="form-group">
         <label id="cfg-maxteams-label" data-i18n="criar.field.maxteams">Número de equipas</label>
         <input type="number" id="cfg-maxteams" min="2" class="field-sm"/>
-        <p class="form-hint" data-i18n="criar.field.maxteams.hint">Quantas equipas vão disputar o torneio.</p>
+        <p class="form-hint" id="cfg-maxteams-hint" data-i18n="criar.field.maxteams.hint">Quantas equipas vão disputar o torneio.</p>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="cfg-maxplayers-group">
         <label data-i18n="criar.field.maxplayers">Número de jogadores a entrar no torneio (opcional)</label>
         <input type="number" id="cfg-maxplayers" min="2" placeholder="Ex: 32" class="field-sm"/>
         <p class="form-hint" data-i18n="criar.field.maxplayers.hint">Limite de pessoas que podem entrar na pool de jogadores. Deixa vazio para não ter limite.</p>
@@ -521,6 +521,31 @@ function renderHeader(){
 }
 
 // ── CONFIGURAÇÕES DA SALA ──────────────────────────────────────────
+function cfgUpdateMaxTeamsLabel(){
+  const size = parseInt(cfgSelected('cfg-pill-teamsize'), 10);
+  const label = document.getElementById('cfg-maxteams-label');
+  const hint = document.getElementById('cfg-maxteams-hint');
+  const maxPlayersGroup = document.getElementById('cfg-maxplayers-group');
+  if(size === 1){
+    label.textContent = T('criar.field.maxplayers1v1','Número de jogadores');
+    hint.textContent = T('criar.field.maxplayers1v1.hint','Em 1v1 cada jogador é a sua própria equipa — quantos jogadores vão entrar na bracket. É um limite máximo, não precisas de saber o número exato à partida.');
+    maxPlayersGroup.style.display = 'none';
+  } else {
+    label.textContent = T('criar.field.maxteams','Número de equipas');
+    hint.textContent = T('criar.field.maxteams.hintN','Quantas equipas vão aparecer na bracket. É um limite máximo.');
+    maxPlayersGroup.style.display = 'block';
+  }
+}
+document.querySelectorAll('#cfg-pill-teamsize .pill').forEach(function(p){
+  p.addEventListener('click', cfgUpdateMaxTeamsLabel);
+});
+document.getElementById('cfg-maxteams').addEventListener('blur', function(){
+  if(!this.value || parseInt(this.value,10) < 2) this.value = tournament.maxTeams || 8;
+});
+document.getElementById('cfg-maxplayers').addEventListener('blur', function(){
+  if(this.value && parseInt(this.value,10) < 2) this.value = '';
+});
+
 function bindCfgPills(id, def){
   const el = document.getElementById(id);
   if(el.dataset.bound) return;
@@ -557,6 +582,7 @@ function renderConfig(){
   cfgSetSelected('cfg-pill-teamsize', String(tournament.teamSize || 5));
   document.getElementById('cfg-maxteams').value = tournament.maxTeams || '';
   document.getElementById('cfg-maxplayers').value = tournament.maxPlayers || '';
+  cfgUpdateMaxTeamsLabel();
   document.getElementById('cfg-teamsize-hint').textContent = bracketGenerated() ? T('t.cfg.teamsizeHint','(já há equipas/bracket — muda com cuidado, pode desalinhar equipas já formadas)') : '';
   cfgSetSelected('cfg-pill-coin', tournament.coinMethod || 'coin');
   cfgSetSelected('cfg-pill-layout', tournament.bracketLayout || 'one-side');
@@ -590,7 +616,7 @@ document.getElementById('cfg-save-btn').addEventListener('click', async function
   const teamSize = parseInt(cfgSelected('cfg-pill-teamsize'), 10);
   const maxTeams = parseInt(document.getElementById('cfg-maxteams').value, 10);
   const maxPlayersRaw = document.getElementById('cfg-maxplayers').value;
-  const maxPlayers = maxPlayersRaw ? parseInt(maxPlayersRaw, 10) : null;
+  const maxPlayers = (teamSize === 1 || !maxPlayersRaw) ? null : parseInt(maxPlayersRaw, 10);
   if(!bestOf || bestOf < 1 || bestOf % 2 === 0){ msg.textContent = T('t.cfg.errBestOf','O "melhor de quantas partidas" tem de ser ímpar.'); msg.style.display = 'block'; return; }
   if(!pointsToWin){ msg.textContent = T('t.cfg.errPoints','Define os pontos para vencer cada partida.'); msg.style.display = 'block'; return; }
   if(!maxTeams || maxTeams < 2){ msg.textContent = T('t.cfg.errMaxTeams','Define um número de equipas válido (mínimo 2).'); msg.style.display = 'block'; return; }

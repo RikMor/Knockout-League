@@ -56,9 +56,9 @@
     <div class="form-group">
       <label id="maxteams-label" data-i18n="criar.field.maxteams">Número de equipas</label>
       <input type="number" id="t-maxteams" min="2" value="8" class="field-sm"/>
-      <p class="form-hint" id="maxteams-hint" data-i18n="criar.field.maxteams.hint">Quantas equipas vão disputar o torneio.</p>
+      <p class="form-hint" id="maxteams-hint" data-i18n="criar.field.maxteams.hint">Quantas equipas vão disputar o torneio. É um limite máximo — a bracket ajusta-se a quantas realmente aparecerem, não precisas de saber o número exato à partida.</p>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="maxplayers-group">
       <label data-i18n="criar.field.maxplayers">Número de jogadores a entrar no torneio (opcional)</label>
       <input type="number" id="t-maxplayers" min="2" placeholder="Ex: 32" class="field-sm"/>
       <p class="form-hint" data-i18n="criar.field.maxplayers.hint">Limite de pessoas que podem entrar na pool de jogadores. Deixa vazio para não ter limite.</p>
@@ -244,18 +244,29 @@ function updateMaxTeamsLabel(){
   var size = parseInt(selected('pill-teamsize'), 10);
   var label = document.getElementById('maxteams-label');
   var hint = document.getElementById('maxteams-hint');
+  var maxPlayersGroup = document.getElementById('maxplayers-group');
   if(size === 1){
     label.textContent = 'Número de jogadores';
-    hint.textContent = 'Em 1v1 cada jogador é a sua própria equipa — quantos jogadores vão entrar na bracket.';
+    hint.textContent = 'Em 1v1 cada jogador é a sua própria equipa — quantos jogadores vão entrar na bracket. É um limite máximo, não precisas de saber o número exato à partida.';
+    // em 1v1 este campo já É o número de jogadores — o campo de baixo ficaria duplicado
+    maxPlayersGroup.style.display = 'none';
   } else {
     label.textContent = 'Número de equipas';
-    hint.textContent = 'Quantas equipas vão aparecer na bracket, cada uma com ' + size + ' jogadores (o "' + size + 'v' + size + '" acima define o tamanho de cada equipa).';
+    hint.textContent = 'Quantas equipas vão aparecer na bracket, cada uma com ' + size + ' jogadores (o "' + size + 'v' + size + '" acima define o tamanho de cada equipa). É um limite máximo.';
+    maxPlayersGroup.style.display = 'block';
   }
 }
 document.querySelectorAll('#pill-teamsize .pill').forEach(function(p){
   p.addEventListener('click', updateMaxTeamsLabel);
 });
 updateMaxTeamsLabel();
+// nunca deixa o campo ficar vazio ou abaixo do mínimo (ex: ao usar as setas do input)
+document.getElementById('t-maxteams').addEventListener('blur', function(){
+  if(!this.value || parseInt(this.value,10) < 2) this.value = 8;
+});
+document.getElementById('t-maxplayers').addEventListener('blur', function(){
+  if(this.value && parseInt(this.value,10) < 2) this.value = '';
+});
 
 // Explicação do tipo de bracket
 var bracketExplanations = {
@@ -422,7 +433,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const teamSize = parseInt(selected('pill-teamsize'), 10);
   const maxTeams = parseInt(document.getElementById('t-maxteams').value, 10);
   const maxPlayersRaw = document.getElementById('t-maxplayers').value;
-  const maxPlayers = maxPlayersRaw ? parseInt(maxPlayersRaw, 10) : null;
+  const maxPlayers = (teamSize === 1 || !maxPlayersRaw) ? null : parseInt(maxPlayersRaw, 10);
   const bracketType = selected('pill-bracket');
   const bracketDrawMode = selected('pill-drawmode');
   const visibility = selected('pill-visibility');
