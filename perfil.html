@@ -4,7 +4,7 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>O meu perfil — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<link rel="stylesheet" href="shared.css?v=3"/>
 <style>
   .perfil-wrap { max-width: 760px; margin: 0 auto; padding: 56px 5vw 100px; }
   .perfil-head { display: flex; align-items: center; gap: 22px; padding-bottom: 30px; border-bottom: 2px solid var(--ink); margin-bottom: 30px; flex-wrap: wrap; }
@@ -17,7 +17,6 @@
   .stat-value.win { color: var(--win); } .stat-value.loss { color: var(--danger); } .stat-value.mvp { color: var(--gold); }
   .stat-label { font-family: 'IBM Plex Mono'; font-size: 0.62rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
   .not-logged { text-align: center; padding: 100px 20px; }
-  .guest-banner { border: 1px solid var(--gold); background: rgba(232,185,59,0.1); padding: 12px 18px; margin-bottom: 24px; font-size: 0.85rem; }
   .my-tournaments a { display: block; padding: 12px 0; border-bottom: 1px solid var(--line); text-decoration: none; color: var(--ink); font-weight: 600; }
   @media(max-width:600px){ .stats-grid{grid-template-columns:repeat(2,1fr);} }
   .perfil-edit-btn { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:1px solid var(--ink); text-decoration:none; color:var(--ink); font-size:0.9rem; }
@@ -36,57 +35,53 @@
   <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
   <button class="nav-mobile-toggle">☰</button>
   <ul class="nav-links">
-    <li><a href="index.html">Início</a></li>
-    <li><a href="torneios.html">Torneios</a></li>
-    <li><a href="criar-torneio.html">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+    <li><a href="index.html" data-i18n="nav.home">Início</a></li>
+    <li><a href="torneios.html" data-i18n="nav.tournaments">Torneios</a></li>
+    <li><a href="criar-torneio.html" data-i18n="nav.create">Criar torneio</a></li>
+    <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="contacto.html" data-i18n="nav.contact">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html" data-i18n="nav.login">Entrar</a></li>
   </ul>
 </nav>
 
 <div class="perfil-wrap">
   <div class="not-logged" id="not-logged" style="display:none;">
-    <div class="eyebrow">Perfil</div>
-    <h2 style="margin:12px 0 20px;">Acesso restrito</h2>
-    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para ver o teu perfil.</p>
-    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+    <div class="eyebrow" data-i18n="perfil.eyebrow">Perfil</div>
+    <h2 style="margin:12px 0 20px;" data-i18n="def.restricted.title">Acesso restrito</h2>
+    <p class="muted" style="margin-bottom:24px;" data-i18n="perfil.restricted.text">Tens de iniciar sessão para ver o teu perfil.</p>
+    <a href="login.html"><button class="btn btn-accent" data-i18n="nav.login">Entrar</button></a>
   </div>
 
   <div id="perfil-content" style="display:none;">
-    <div class="guest-banner" id="guest-banner" style="display:none;">
-      Conta temporária — esta sessão desaparece ao fechar o browser. <a href="login.html" style="color:var(--accent);font-weight:700;">Cria uma conta</a> para guardar o teu progresso.
-    </div>
-
     <div class="perfil-head">
       <img class="perfil-avatar" id="ph-avatar" src="" alt="Avatar"/>
       <div style="flex:1;">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <div class="perfil-nick" id="ph-nick">—</div>
-          <a href="definicoes.html" title="Editar perfil" class="perfil-edit-btn">✎</a>
+          <a href="definicoes.html" title="Editar perfil" data-i18n-title="perfil.editTitle" class="perfil-edit-btn">✎</a>
         </div>
         <div class="muted" id="ph-name"></div>
         <div class="perfil-since" id="ph-since"></div>
         <div class="perfil-tag-row" id="ph-tag-row" style="display:none;">
           <span class="mono" id="ph-tag-value">#••••</span>
-          <button type="button" class="perfil-icon-btn" id="ph-tag-eye" title="Mostrar código">👁</button>
-          <button type="button" class="perfil-icon-btn" id="ph-tag-copy" title="Copiar nickname#código">⧉</button>
-          <span class="perfil-copy-msg" id="ph-copy-msg">Copiado!</span>
+          <button type="button" class="perfil-icon-btn" id="ph-tag-eye" title="Mostrar código" data-i18n-title="perfil.tag.show">👁</button>
+          <button type="button" class="perfil-icon-btn" id="ph-tag-copy" title="Copiar nickname#código" data-i18n-title="perfil.tag.copy">⧉</button>
+          <span class="perfil-copy-msg" id="ph-copy-msg" data-i18n="perfil.tag.copied">Copiado!</span>
         </div>
       </div>
     </div>
 
-    <div class="eyebrow">Estatísticas</div>
+    <div class="eyebrow" data-i18n="perfil.stats">Estatísticas</div>
     <div class="stats-grid" style="margin-top:14px;">
-      <div class="stat-box"><div class="stat-value" id="stat-torneios">0</div><div class="stat-label">Torneios</div></div>
-      <div class="stat-box"><div class="stat-value win" id="stat-vitorias">0</div><div class="stat-label">Vitórias</div></div>
-      <div class="stat-box"><div class="stat-value loss" id="stat-derrotas">0</div><div class="stat-label">Derrotas</div></div>
-      <div class="stat-box"><div class="stat-value mvp" id="stat-mvp">0</div><div class="stat-label">MVP</div></div>
+      <div class="stat-box"><div class="stat-value" id="stat-torneios">0</div><div class="stat-label" data-i18n="perfil.stat.tournaments">Torneios</div></div>
+      <div class="stat-box"><div class="stat-value win" id="stat-vitorias">0</div><div class="stat-label" data-i18n="perfil.stat.wins">Vitórias</div></div>
+      <div class="stat-box"><div class="stat-value loss" id="stat-derrotas">0</div><div class="stat-label" data-i18n="perfil.stat.losses">Derrotas</div></div>
+      <div class="stat-box"><div class="stat-value mvp" id="stat-mvp">0</div><div class="stat-label" data-i18n="perfil.stat.mvp">MVP</div></div>
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <a href="clube.html" class="btn btn-outline">O meu clube</a>
-      <a href="clan.html" class="btn btn-outline">O meu clã</a>
+      <a href="clube.html" class="btn btn-outline" data-i18n="nav.myClub">O meu clube</a>
+      <a href="clan.html" class="btn btn-outline" data-i18n="nav.myClan">O meu clã</a>
     </div>
   </div>
 </div>
@@ -94,15 +89,15 @@
 <footer><span>© 2026 Knockout League</span></footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script type="module">
 import { auth, db, doc } from './firebase.js';
 import { getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
+function tr(k, fallback){ return (window.KL_T && window.KL_T(k)) || fallback; }
 onAuthStateChanged(auth, async function(user){
   if(!user){ document.getElementById('not-logged').style.display='block'; return; }
-
-  if(user.isAnonymous){ document.getElementById('guest-banner').style.display='block'; }
 
   let snap;
   try{ snap = await getDoc(doc(db,'users',user.uid)); }
@@ -127,7 +122,7 @@ onAuthStateChanged(auth, async function(user){
       revealed = !revealed;
       tagValue.classList.toggle('revealed', revealed);
       eyeBtn.textContent = revealed ? '🙈' : '👁';
-      eyeBtn.title = revealed ? 'Ocultar código' : 'Mostrar código';
+      eyeBtn.title = revealed ? tr('perfil.tag.hide','Ocultar código') : tr('perfil.tag.show','Mostrar código');
     });
     copyBtn.addEventListener('click', function(){
       const text = nick + '#' + u.tag;
@@ -145,7 +140,8 @@ onAuthStateChanged(auth, async function(user){
   }
 
   const avatar = u.avatarUrl || ('https://api.dicebear.com/8.x/pixel-art/svg?seed=' + encodeURIComponent(nick));
-  const since = u.createdAt ? 'membro desde ' + new Date(u.createdAt).toLocaleDateString('pt-PT',{year:'numeric',month:'long'}) : '';
+  const isEn = window.KL_LANG === 'en';
+  const since = u.createdAt ? tr('perfil.memberSince','membro desde ') + new Date(u.createdAt).toLocaleDateString(isEn ? 'en-US' : 'pt-PT',{year:'numeric',month:'long'}) : '';
   const stats = u.stats || {torneios:0,vitorias:0,derrotas:0,mvp:0};
 
   document.getElementById('ph-avatar').src = avatar;

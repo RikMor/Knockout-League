@@ -3,20 +3,18 @@ import { auth, db, doc, collection, query, where, getDocs, onSnapshot } from './
 import { getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
-// Nota: a limpeza de contas convidado é feita de forma "preguiçosa" (lazy) —
-// ver login.html — em vez de apagar no pagehide, que disparava também ao navegar
-// dentro do próprio site e apagava a conta a meio da visita.
+function t(key, fallback){ return (window.KL_T && window.KL_T(key)) || fallback; }
 
 onAuthStateChanged(auth, async function (user) {
   const area = document.getElementById('nav-user-area');
   if (!area) return;
 
   if (!user) {
-    area.innerHTML = '<a href="login.html">Entrar</a>';
+    area.innerHTML = '<a href="login.html">' + t('nav.login','Entrar') + '</a>';
     return;
   }
 
-  let nick = user.isAnonymous ? 'Convidado' : (user.displayName || 'Jogador');
+  let nick = user.displayName || 'Jogador';
   let avatarUrl = 'https://api.dicebear.com/8.x/pixel-art/svg?seed=' + encodeURIComponent(nick);
   let isAdmin = false;
   let tag = '';
@@ -54,14 +52,14 @@ onAuthStateChanged(auth, async function (user) {
         '<span>' + nick + (pendingCount > 0 ? '<span style="background:var(--accent);color:#fff;border-radius:9px;padding:1px 7px;font-size:0.7rem;margin-left:6px;">' + pendingCount + '</span>' : '') + '</span>' +
       '</button>' +
       '<div class="nav-user-menu">' +
-        '<a href="perfil.html">O meu perfil</a>' +
-        '<a href="notificacoes.html">Notificações' + (pendingCount > 0 ? ' (' + pendingCount + ')' : '') + '</a>' +
-        '<a href="os-meus-torneios.html">Os meus torneios</a>' +
-        '<a href="clube.html">O meu clube</a>' +
-        '<a href="clan.html">O meu clã</a>' +
-        '<a href="definicoes.html">Definições</a>' +
-        (isAdmin ? '<a href="admin.html">Painel de admin</a>' : '') +
-        '<button id="nav-logout-btn">Terminar sessão</button>' +
+        '<a href="perfil.html">' + t('nav.profile','O meu perfil') + '</a>' +
+        '<a href="notificacoes.html">' + t('nav.notifications','Notificações') + (pendingCount > 0 ? ' (' + pendingCount + ')' : '') + '</a>' +
+        '<a href="os-meus-torneios.html">' + t('nav.myTournaments','Os meus torneios') + '</a>' +
+        '<a href="clube.html">' + t('nav.myClub','O meu clube') + '</a>' +
+        '<a href="clan.html">' + t('nav.myClan','O meu clã') + '</a>' +
+        '<a href="definicoes.html">' + t('nav.settings','Definições') + '</a>' +
+        (isAdmin ? '<a href="admin.html">' + t('nav.adminPanel','Painel de admin') + '</a>' : '') +
+        '<button id="nav-logout-btn">' + t('nav.logout','Terminar sessão') + '</button>' +
       '</div>' +
     '</div>';
 
@@ -103,10 +101,11 @@ function showNotifToast(notif){
   const el = document.createElement('a');
   el.href = 'notificacoes.html';
   if(notif.type === 'match_help'){
-    el.textContent = '📣 ' + (notif.fromNickname || 'Um jogador') + ' está a chamar-te numa sala de partida — ver notificações';
+    el.textContent = '📣 ' + (notif.fromNickname || t('notif.aPlayer','Um jogador')) + t('notif.callingYou',' está a chamar-te numa sala de partida — ver notificações');
   } else {
-    const kind = notif.type === 'club_invite' ? 'clube' : (notif.type === 'clan_invite' ? 'clã' : '');
-    el.textContent = '🔔 Novo convite para o ' + kind + ' "' + notif.refName + '" — ver notificações';
+    const kindMap = { club_invite: t('notif.kindClub','clube'), clan_invite: t('notif.kindClan','clã') };
+    const kind = kindMap[notif.type] || '';
+    el.textContent = '🔔 ' + t('notif.newInvite','Novo convite para o') + ' ' + kind + ' "' + notif.refName + '" — ' + t('notif.seeNotifications','ver notificações');
   }
   el.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--ink);color:var(--bg);padding:14px 20px;font-family:Inter,sans-serif;font-size:0.85rem;font-weight:600;text-decoration:none;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.3);max-width:320px;';
   document.body.appendChild(el);

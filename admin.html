@@ -180,7 +180,7 @@
       <div class="table-wrap">
         <div class="toolbar">
           <input type="text" id="u-search" placeholder="Procurar por nickname ou email..."/>
-          <select id="u-filter-type"><option value="">Todos os tipos</option><option value="registered">Registados</option><option value="google">Google</option><option value="guest">Convidados</option></select>
+          <select id="u-filter-type"><option value="">Todos os tipos</option><option value="registered">Registados</option><option value="google">Google</option></select>
         </div>
         <table>
           <thead><tr><th>Nickname</th><th>Email</th><th>Tipo</th><th>Papel</th><th></th></tr></thead>
@@ -288,7 +288,7 @@ window.doLogin = async function(){
 document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
 onAuthStateChanged(auth, async function(user){
-  if(!user || user.isAnonymous){ document.getElementById('login-screen').style.display = 'flex'; document.getElementById('app').style.display = 'none'; return; }
+  if(!user){ document.getElementById('login-screen').style.display = 'flex'; document.getElementById('app').style.display = 'none'; return; }
   const snap = await getDoc(doc(db,'users',user.uid));
   if(!snap.exists() || snap.data().role !== 'admin'){ document.getElementById('login-screen').style.display = 'flex'; document.getElementById('app').style.display = 'none'; return; }
   document.getElementById('login-screen').style.display = 'none';
@@ -399,7 +399,7 @@ function renderUsers(list){
     <tr>
       <td>${u.nickname || '—'}</td>
       <td class="td-muted">${u.email || '—'}</td>
-      <td class="td-muted">${u.isGuest ? 'Convidado' : (u.provider === 'google' ? 'Google' : 'Email')}</td>
+      <td class="td-muted">${u.provider === 'google' ? 'Google' : 'Email'}</td>
       <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-player'}">${u.role || 'player'}</span></td>
       <td style="display:flex;gap:6px;">
         <button class="btn-sm btn-view" data-view="${u.id}">Ver perfil</button>
@@ -436,7 +436,7 @@ function filterUsers(){
   const type = document.getElementById('u-filter-type').value;
   renderUsers(allUsers.filter(u => {
     const matchesTerm = (u.nickname||'').toLowerCase().includes(term) || (u.email||'').toLowerCase().includes(term) || (u.tag||'').toLowerCase().includes(term);
-    const uType = u.isGuest ? 'guest' : (u.provider === 'google' ? 'google' : 'registered');
+    const uType = u.provider === 'google' ? 'google' : 'registered';
     const matchesType = !type || uType === type;
     return matchesTerm && matchesType;
   }));

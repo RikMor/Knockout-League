@@ -4,183 +4,202 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Criar torneio — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
-<style>
-  .maps-input { display: flex; gap: 8px; margin-bottom: 10px; }
-  .maps-input input { flex: 1; }
-  .map-tag { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--ink); padding: 7px 10px; font-size: 0.82rem; font-weight: 600; }
-  .map-tag button { background: none; border: none; cursor: pointer; color: var(--danger); font-weight: 700; }
-</style>
+<link rel="stylesheet" href="shared.css?v=3"/>
 </head>
 <body>
 <nav>
   <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
   <button class="nav-mobile-toggle">☰</button>
   <ul class="nav-links">
-    <li><a href="index.html">Início</a></li>
-    <li><a href="torneios.html">Torneios</a></li>
-    <li><a href="criar-torneio.html" class="active">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+    <li><a href="index.html" data-i18n="nav.home">Início</a></li>
+    <li><a href="torneios.html" data-i18n="nav.tournaments">Torneios</a></li>
+    <li><a href="criar-torneio.html" class="active" data-i18n="nav.create">Criar torneio</a></li>
+    <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="contacto.html" data-i18n="nav.contact">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html" data-i18n="nav.login">Entrar</a></li>
   </ul>
 </nav>
 
-<div class="wrap-narrow" style="padding-top:48px;padding-bottom:100px;">
-  <div class="eyebrow">Novo torneio</div>
-  <h2 style="margin:10px 0 30px;">Configura a sala</h2>
+<div class="wrap" style="max-width:760px;padding-top:48px;padding-bottom:100px;">
+  <div class="eyebrow" data-i18n="criar.eyebrow">Novo torneio</div>
+  <h2 style="margin:10px 0 8px;" data-i18n="criar.title">Configura a sala</h2>
+  <p class="muted" style="margin-bottom:30px;" data-i18n="criar.lead">Preenche as secções abaixo — dá para mudar quase tudo mais tarde nas configurações do torneio.</p>
   <div class="form-error" id="form-error"></div>
   <div id="need-login" class="card" style="margin-bottom:20px;">
     <p style="margin-bottom:14px;" id="need-login-text">A verificar sessão...</p>
-    <a href="login.html"><button class="btn btn-accent" style="width:100%;">Entrar para criar um torneio</button></a>
+    <a href="login.html"><button class="btn btn-accent" style="width:100%;" data-i18n="criar.needLoginBtn">Entrar para criar um torneio</button></a>
   </div>
 
   <div id="torneio-form" style="display:none;">
-  <div class="form-group"><label>Nome do torneio</label><input type="text" id="t-name" placeholder="Ex: Taça de Verão CS2"/></div>
-  <div class="form-group"><label>Jogo</label><input type="text" id="t-game" placeholder="Ex: Counter-Strike 2"/></div>
 
-  <div class="form-group">
-    <label>Formato</label>
-    <div class="pill-group" id="pill-teamsize">
-      <div class="pill" data-v="1">1v1</div><div class="pill" data-v="2">2v2</div><div class="pill" data-v="3">3v3</div>
-      <div class="pill" data-v="4">4v4</div><div class="pill" data-v="5">5v5</div><div class="pill" data-v="6">6v6</div>
+  <div class="form-section">
+    <div class="form-section-head">
+      <div class="form-section-num">01</div>
+      <div><div class="form-section-title" data-i18n="criar.s1.title">Informações básicas</div><div class="form-section-desc" data-i18n="criar.s1.desc">O nome e o jogo do torneio.</div></div>
+    </div>
+    <div class="form-group"><label data-i18n="criar.field.name">Nome do torneio</label><input type="text" id="t-name" placeholder="Ex: Taça de Verão CS2"/></div>
+    <div class="form-group"><label data-i18n="criar.field.game">Jogo</label><input type="text" id="t-game" placeholder="Ex: Counter-Strike 2"/></div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-head">
+      <div class="form-section-num">02</div>
+      <div><div class="form-section-title" data-i18n="criar.s2.title">Formato e bracket</div><div class="form-section-desc" data-i18n="criar.s2.desc">Como as equipas são formadas e como a bracket é gerada e mostrada.</div></div>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.format">Formato</label>
+      <div class="pill-group" id="pill-teamsize">
+        <div class="pill" data-v="1">1v1</div><div class="pill" data-v="2">2v2</div><div class="pill" data-v="3">3v3</div>
+        <div class="pill" data-v="4">4v4</div><div class="pill" data-v="5">5v5</div><div class="pill" data-v="6">6v6</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label id="maxteams-label" data-i18n="criar.field.maxteams">Número de equipas</label>
+      <input type="number" id="t-maxteams" min="2" value="8" class="field-sm"/>
+      <p class="form-hint" id="maxteams-hint" data-i18n="criar.field.maxteams.hint">Quantas equipas vão disputar o torneio.</p>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.bracketType">Tipo de bracket</label>
+      <div class="pill-group" id="pill-bracket">
+        <div class="pill" data-v="single" data-i18n="criar.bracket.single">Eliminação simples</div>
+        <div class="pill" data-v="double" data-i18n="criar.bracket.double">Eliminação dupla</div>
+        <div class="pill" data-v="round-robin" data-i18n="criar.bracket.roundRobin">Todos contra todos</div>
+      </div>
+      <p class="form-hint" id="bracket-explain"></p>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.layout">Como mostrar a bracket</label>
+      <div class="pill-group" id="pill-layout">
+        <div class="pill" data-v="one-side" data-i18n="criar.layout.one">Um lado (lista simples)</div>
+        <div class="pill" data-v="two-side" data-i18n="criar.layout.two">Dois lados (espelhada, converge ao centro)</div>
+      </div>
+      <p class="form-hint" data-i18n="criar.layout.hint">"Dois lados" só se aplica a eliminação simples/dupla.</p>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.drawmode">Modo de sorteio da bracket</label>
+      <div class="pill-group" id="pill-drawmode">
+        <div class="pill" data-v="random" data-i18n="criar.random">Aleatório</div>
+        <div class="pill" data-v="seed" data-i18n="criar.drawmode.seed">Por seed (espalhado)</div>
+        <div class="pill" data-v="manual" data-i18n="criar.drawmode.manual">Manual (eu escolho quem joga contra quem)</div>
+      </div>
     </div>
   </div>
 
-  <div class="form-group">
-    <label id="maxteams-label">Número de equipas</label>
-    <input type="number" id="t-maxteams" min="2" value="8"/>
-    <p class="form-hint" id="maxteams-hint">Quantas equipas vão disputar o torneio.</p>
-  </div>
-
-  <div class="form-group">
-    <label>Visibilidade</label>
-    <div class="pill-group" id="pill-visibility">
-      <div class="pill" data-v="public">Pública</div>
-      <div class="pill" data-v="private">Privada (código)</div>
+  <div class="form-section">
+    <div class="form-section-head">
+      <div class="form-section-num">03</div>
+      <div><div class="form-section-title" data-i18n="criar.s3.title">Regras da partida</div><div class="form-section-desc" data-i18n="criar.s3.desc">Como cada partida é jogada e decidida.</div></div>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.bestof">Melhor de quantas partidas</label>
+      <div class="pill-group" id="pill-bestof">
+        <div class="pill" data-v="1">BO1</div>
+        <div class="pill" data-v="3">BO3</div>
+        <div class="pill" data-v="5">BO5</div>
+        <div class="pill" data-v="custom" data-i18n="criar.custom">Personalizado</div>
+      </div>
+      <input type="number" id="t-bestof-custom" min="1" step="2" placeholder="Ex: 7 (tem de ser ímpar)" class="field-sm" style="display:none;margin-top:10px;"/>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.pointstowin">Pontos para vencer cada partida</label>
+      <input type="number" id="t-pointstowin" min="1" placeholder="Ex: 13" class="field-sm"/>
+      <p class="form-hint" data-i18n="criar.field.pointstowin.hint">Assim que uma equipa chegar a este valor, a partida termina sozinha.</p>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.coin">Como decidir quem começa</label>
+      <div class="pill-group" id="pill-coin">
+        <div class="pill" data-v="coin" data-i18n="criar.random">Aleatório</div>
+        <div class="pill" data-v="rps" data-i18n="criar.rps">Pedra, papel, tesoura</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.maps">Mapas do torneio (opcional — só é preciso se ativares o banimento de mapas)</label>
+      <div class="maps-input">
+        <input type="text" id="map-input" placeholder="Nome do mapa e Enter"/>
+        <button type="button" class="btn btn-outline btn-sm" id="map-add" data-i18n="criar.add">Adicionar</button>
+      </div>
+      <div class="pill-group" id="maps-list"></div>
+    </div>
+    <div class="checkbox-field">
+      <input type="checkbox" id="t-banmaps"/>
+      <label for="t-banmaps" data-i18n="criar.field.banmaps">Ativar banimento de mapas no lobby.</label>
     </div>
   </div>
 
-  <div class="form-group">
-    <label>Tipo de bracket</label>
-    <div class="pill-group" id="pill-bracket">
-      <div class="pill" data-v="single">Eliminação simples</div>
-      <div class="pill" data-v="double">Eliminação dupla</div>
-      <div class="pill" data-v="round-robin">Todos contra todos</div>
+  <div class="form-section">
+    <div class="form-section-head">
+      <div class="form-section-num">04</div>
+      <div><div class="form-section-title" data-i18n="criar.s4.title">Equipas e jogadores</div><div class="form-section-desc" data-i18n="criar.s4.desc">Como os jogadores ficam distribuídos pelas equipas.</div></div>
     </div>
-    <p class="form-hint" id="bracket-explain"></p>
-  </div>
-
-  <div class="form-group">
-    <label>Melhor de quantas partidas</label>
-    <div class="pill-group" id="pill-bestof">
-      <div class="pill" data-v="1">BO1</div>
-      <div class="pill" data-v="3">BO3</div>
-      <div class="pill" data-v="5">BO5</div>
-      <div class="pill" data-v="custom">Personalizado</div>
+    <div class="checkbox-field">
+      <input type="checkbox" id="t-useplayernames"/>
+      <label for="t-useplayernames" data-i18n="criar.field.useplayernames">Usar o nickname do jogador como nome da equipa (útil em 1v1).</label>
     </div>
-    <input type="number" id="t-bestof-custom" min="1" step="2" placeholder="Ex: 7 (tem de ser ímpar)" style="display:none;margin-top:10px;max-width:160px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
-  </div>
-
-  <div class="form-group">
-    <label>Pontos para vencer cada partida</label>
-    <input type="number" id="t-pointstowin" min="1" placeholder="Ex: 13"/>
-    <p class="form-hint">Assim que uma equipa chegar a este valor, a partida termina sozinha.</p>
-  </div>
-
-  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
-    <input type="checkbox" id="t-useplayernames" style="width:auto;margin-top:4px;"/>
-    <label for="t-useplayernames" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Usar o nickname do jogador como nome da equipa (útil em 1v1).</label>
-  </div>
-
-  <div class="form-group">
-    <label>Como as pessoas podem entrar</label>
-    <div class="pill-group" id="pill-joinmode">
-      <div class="pill" data-v="both">Sozinho ou com o clã</div>
-      <div class="pill" data-v="solo">Só sozinho</div>
-      <div class="pill" data-v="clan">Só com o clã</div>
+    <div class="form-group">
+      <label data-i18n="criar.field.assign">Atribuição de jogadores às equipas</label>
+      <div class="pill-group" id="pill-assign">
+        <div class="pill" data-v="roulette" data-i18n="criar.roulette">Roleta</div>
+        <div class="pill" data-v="rps" data-i18n="criar.rps">Pedra, papel, tesoura</div>
+        <div class="pill" data-v="manual" data-i18n="criar.manual">Manual</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.draft">Quando houver mais de 2 capitães, quem escolhe os jogadores?</label>
+      <div class="pill-group" id="pill-draft">
+        <div class="pill" data-v="organizer" data-i18n="criar.draft.organizer">Eu decido (organizador)</div>
+        <div class="pill" data-v="captains" data-i18n="criar.draft.captains">Os capitães escolhem</div>
+        <div class="pill" data-v="random" data-i18n="criar.random">Aleatório</div>
+      </div>
     </div>
   </div>
 
-  <div class="form-group">
-    <label>Mapas do torneio (opcional — só é preciso se ativares o banimento de mapas)</label>
-    <div class="maps-input">
-      <input type="text" id="map-input" placeholder="Nome do mapa e Enter"/>
-      <button type="button" class="btn btn-outline btn-sm" id="map-add">Adicionar</button>
+  <div class="form-section">
+    <div class="form-section-head">
+      <div class="form-section-num">05</div>
+      <div><div class="form-section-title" data-i18n="criar.s5.title">Acesso e inscrições</div><div class="form-section-desc" data-i18n="criar.s5.desc">Quem pode ver e entrar no torneio, e quando.</div></div>
     </div>
-    <div class="pill-group" id="maps-list"></div>
-  </div>
-
-  <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;">
-    <input type="checkbox" id="t-banmaps" style="width:auto;margin-top:4px;"/>
-    <label for="t-banmaps" style="margin:0;text-transform:none;font-family:'Inter';font-size:0.92rem;color:var(--ink);">Ativar banimento de mapas no lobby.</label>
-  </div>
-
-  <div class="form-group">
-    <label>Como decidir quem começa</label>
-    <div class="pill-group" id="pill-coin">
-      <div class="pill" data-v="coin">Aleatório</div>
-      <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
+    <div class="form-group">
+      <label data-i18n="criar.field.visibility">Visibilidade</label>
+      <div class="pill-group" id="pill-visibility">
+        <div class="pill" data-v="public" data-i18n="criar.visibility.public">Pública</div>
+        <div class="pill" data-v="private" data-i18n="criar.visibility.private">Privada (código)</div>
+      </div>
     </div>
-  </div>
-
-  <div class="form-group">
-    <label>Como mostrar a bracket</label>
-    <div class="pill-group" id="pill-layout">
-      <div class="pill" data-v="one-side">Um lado (lista simples)</div>
-      <div class="pill" data-v="two-side">Dois lados (espelhada, converge ao centro)</div>
+    <div class="form-group">
+      <label data-i18n="criar.field.joinmode">Como as pessoas podem entrar</label>
+      <div class="pill-group" id="pill-joinmode">
+        <div class="pill" data-v="both" data-i18n="criar.joinmode.both">Sozinho ou com o clã</div>
+        <div class="pill" data-v="solo" data-i18n="criar.joinmode.solo">Só sozinho</div>
+        <div class="pill" data-v="clan" data-i18n="criar.joinmode.clan">Só com o clã</div>
+      </div>
     </div>
-    <p class="form-hint">"Dois lados" só se aplica a eliminação simples/dupla.</p>
-  </div>
-
-  <div class="form-group">
-    <label>Modo de sorteio da bracket</label>
-    <div class="pill-group" id="pill-drawmode">
-      <div class="pill" data-v="random">Aleatório</div>
-      <div class="pill" data-v="seed">Por seed (espalhado)</div>
-      <div class="pill" data-v="manual">Manual (eu escolho quem joga contra quem)</div>
+    <div class="form-group" id="organizer-as-group" style="display:none;">
+      <label data-i18n="criar.field.organizerAs">Criar este torneio como</label>
+      <select id="t-organizer-as" class="field-md"></select>
     </div>
-  </div>
-
-  <div class="form-group">
-    <label>Atribuição de jogadores às equipas</label>
-    <div class="pill-group" id="pill-assign">
-      <div class="pill" data-v="roulette">Roleta</div>
-      <div class="pill" data-v="rps">Pedra, papel, tesoura</div>
-      <div class="pill" data-v="manual">Manual</div>
+    <div class="form-group" id="preset-select-group" style="display:none;">
+      <label data-i18n="criar.field.preset">Usar um preset do clube</label>
+      <select id="t-preset" class="field-md"></select>
+      <p class="form-hint" id="preset-applied-hint" style="display:none;" data-i18n="criar.preset.applied">Preset aplicado — ainda podes ajustar tudo abaixo.</p>
+    </div>
+    <div class="form-group">
+      <label data-i18n="criar.field.schedule">Agendamento (opcional)</label>
+      <p class="form-hint" style="margin-bottom:10px;" data-i18n="criar.field.schedule.hint">Define quando as inscrições abrem e quando fecham (com hora). Fica visível aos jogadores na página do torneio.</p>
+      <div class="form-row">
+        <div class="form-group"><label class="field-label-sm" data-i18n="criar.field.regOpen">Abertura das inscrições</label><input type="datetime-local" id="t-reg-open"/></div>
+        <div class="form-group"><label class="field-label-sm" data-i18n="criar.field.regClose">Fecho das inscrições</label><input type="datetime-local" id="t-reg-close"/></div>
+      </div>
     </div>
   </div>
 
-  <div class="form-group">
-    <label>Quando houver mais de 2 capitães, quem escolhe os jogadores?</label>
-    <div class="pill-group" id="pill-draft">
-      <div class="pill" data-v="organizer">Eu decido (organizador)</div>
-      <div class="pill" data-v="captains">Os capitães escolhem</div>
-      <div class="pill" data-v="random">Aleatório</div>
-    </div>
-  </div>
-
-  <div class="form-group" id="organizer-as-group" style="display:none;">
-    <label>Criar este torneio como</label>
-    <select id="t-organizer-as" style="width:100%;max-width:320px;padding:11px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"></select>
-  </div>
-
-  <div class="form-group">
-    <label>Agendamento (opcional)</label>
-    <p class="form-hint" style="margin-bottom:10px;">Define quando as inscrições abrem e quando fecham (com hora). Fica visível aos jogadores na página do torneio.</p>
-    <div style="display:flex;gap:14px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Abertura das inscrições</label><input type="datetime-local" id="t-reg-open" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
-      <div style="flex:1;min-width:200px;"><label style="font-size:0.72rem;">Fecho das inscrições</label><input type="datetime-local" id="t-reg-close" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/></div>
-    </div>
-  </div>
-
-  <button type="button" class="btn btn-accent" id="create-btn" style="width:100%;margin-top:10px;">Criar torneio</button>
+  <button type="button" class="btn btn-accent" id="create-btn" style="width:100%;margin-top:10px;" data-i18n="criar.submit">Criar torneio</button>
   </div>
 </div>
 
 <footer><span>© 2026 Knockout League</span></footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script>
 function bindPills(id, def){
   var el = document.getElementById(id);
@@ -191,6 +210,11 @@ function bindPills(id, def){
       p.classList.add('selected');
     });
   });
+}
+function setPill(groupId, value){
+  var el = document.getElementById(groupId);
+  if(!el) return;
+  el.querySelectorAll('.pill').forEach(function(p){ p.classList.toggle('selected', p.dataset.v === String(value)); });
 }
 bindPills('pill-teamsize','5');
 bindPills('pill-bracket','single');
@@ -234,8 +258,14 @@ var bracketExplanations = {
   'double': 'Quem perde uma vez desce para a bracket de perdedores e ainda pode ganhar o torneio; só é eliminado à segunda derrota.',
   'round-robin': 'Todas as equipas jogam entre si. Vence quem tiver mais vitórias no final — sem eliminação direta.'
 };
+var bracketExplanationsEN = {
+  'single': 'Lose once and you are out. The shortest path to a winner.',
+  'double': 'Lose once and you drop to the losers bracket, still able to win the tournament; you are only eliminated after a second loss.',
+  'round-robin': 'Every team plays every other team. The one with most wins at the end takes it — no direct elimination.'
+};
 function updateBracketExplain(){
-  document.getElementById('bracket-explain').textContent = bracketExplanations[selected('pill-bracket')] || '';
+  var dict = (window.KL_LANG === 'en') ? bracketExplanationsEN : bracketExplanations;
+  document.getElementById('bracket-explain').textContent = dict[selected('pill-bracket')] || '';
 }
 document.querySelectorAll('#pill-bracket .pill').forEach(function(p){
   p.addEventListener('click', updateBracketExplain);
@@ -277,7 +307,7 @@ let organizerOptions = []; // [{value:'self'|clubId, label, clubName}]
 onAuthStateChanged(auth, async function(user){
   currentUser = user;
   document.getElementById('need-login').style.display = user ? 'none' : 'block';
-  document.getElementById('need-login-text').textContent = 'Precisas de entrar (ou entrar como convidado) para criar um torneio.';
+  document.getElementById('need-login-text').textContent = (window.KL_T && window.KL_T('criar.needLogin')) || 'Precisas de entrar para criar um torneio.';
   document.getElementById('torneio-form').style.display = user ? 'block' : 'none';
   document.getElementById('create-btn').disabled = !user;
   if(user) await loadOrganizerOptions();
@@ -287,37 +317,92 @@ async function loadOrganizerOptions(){
   organizerOptions = [];
   let myNickname = 'Eu';
   let myClubIds = [];
-  if(!currentUser.isAnonymous){
-    try{
-      const s = await getDoc(doc(db,'users',currentUser.uid));
-      if(s.exists()){ myNickname = s.data().nickname || myNickname; myClubIds = s.data().clubIds || []; }
-    }catch(e){}
-  } else { myNickname = 'Convidado'; }
+  try{
+    const s = await getDoc(doc(db,'users',currentUser.uid));
+    if(s.exists()){ myNickname = s.data().nickname || myNickname; myClubIds = s.data().clubIds || []; }
+  }catch(e){}
   organizerOptions.push({ value: 'self', label: myNickname + ' (eu)', clubId: null, clubName: null });
 
-  if(!currentUser.isAnonymous){
-    try{
-      const owned = await getDocs(query(collection(db,'clubs'), where('ownerUid','==',currentUser.uid)));
-      owned.forEach(d => organizerOptions.push({ value: 'club:'+d.id, label: d.data().name + ' (clube)', clubId: d.id, clubName: d.data().name }));
+  try{
+    const owned = await getDocs(query(collection(db,'clubs'), where('ownerUid','==',currentUser.uid)));
+    owned.forEach(d => organizerOptions.push({ value: 'club:'+d.id, label: d.data().name + ' (clube)', clubId: d.id, clubName: d.data().name }));
 
-      for(const clubId of myClubIds){
-        if(owned.docs.some(o=>o.id===clubId)) continue; // já listado como dono
-        const memSnap = await getDocs(query(collection(db,'clubs',clubId,'members'), where('uid','==',currentUser.uid)));
-        if(memSnap.empty) continue;
-        const perms = memSnap.docs[0].data().permissions || [];
-        if(!perms.includes('organizador')) continue;
-        const clubSnap = await getDoc(doc(db,'clubs',clubId));
-        if(clubSnap.exists()) organizerOptions.push({ value: 'club:'+clubId, label: clubSnap.data().name + ' (clube)', clubId, clubName: clubSnap.data().name });
-      }
-    }catch(e){ /* falha silenciosa */ }
-  }
+    for(const clubId of myClubIds){
+      if(owned.docs.some(o=>o.id===clubId)) continue; // já listado como dono
+      const memSnap = await getDocs(query(collection(db,'clubs',clubId,'members'), where('uid','==',currentUser.uid)));
+      if(memSnap.empty) continue;
+      const perms = memSnap.docs[0].data().permissions || [];
+      if(!perms.includes('organizador')) continue;
+      const clubSnap = await getDoc(doc(db,'clubs',clubId));
+      if(clubSnap.exists()) organizerOptions.push({ value: 'club:'+clubId, label: clubSnap.data().name + ' (clube)', clubId, clubName: clubSnap.data().name });
+    }
+  }catch(e){ /* falha silenciosa */ }
 
   const group = document.getElementById('organizer-as-group');
   const sel = document.getElementById('t-organizer-as');
-  if(organizerOptions.length <= 1){ group.style.display = 'none'; return; }
+  if(organizerOptions.length <= 1){ group.style.display = 'none'; await updatePresetSelector(); return; }
   group.style.display = 'block';
   sel.innerHTML = organizerOptions.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  await updatePresetSelector();
 }
+
+let clubPresets = [];
+
+async function loadClubPresets(clubId){
+  clubPresets = [];
+  try{
+    const snap = await getDocs(collection(db,'clubs',clubId,'presets'));
+    clubPresets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }catch(e){ /* falha silenciosa */ }
+}
+
+function applyPreset(preset){
+  if(!preset) return;
+  document.getElementById('t-game').value = preset.game || '';
+  document.getElementById('t-maxteams').value = preset.maxTeams || 8;
+  document.getElementById('t-pointstowin').value = preset.pointsToWin || '';
+  document.getElementById('t-banmaps').checked = !!preset.mapBanEnabled;
+  document.getElementById('t-useplayernames').checked = !!preset.usePlayerNames;
+  maps = Array.isArray(preset.maps) ? preset.maps.slice() : [];
+  renderMaps();
+  setPill('pill-teamsize', preset.teamSize);
+  setPill('pill-bracket', preset.bracketType);
+  setPill('pill-layout', preset.bracketLayout);
+  setPill('pill-drawmode', preset.bracketDrawMode);
+  setPill('pill-coin', preset.coinMethod);
+  setPill('pill-assign', preset.assignMode);
+  setPill('pill-draft', preset.draftMode);
+  setPill('pill-visibility', preset.visibility);
+  setPill('pill-joinmode', preset.joinMode);
+  const bestOfPill = [1,3,5].includes(preset.bestOf) ? String(preset.bestOf) : 'custom';
+  setPill('pill-bestof', bestOfPill);
+  document.getElementById('t-bestof-custom').style.display = bestOfPill === 'custom' ? 'block' : 'none';
+  if(bestOfPill === 'custom') document.getElementById('t-bestof-custom').value = preset.bestOf || '';
+  updateMaxTeamsLabel();
+  updateBracketExplain();
+  document.getElementById('preset-applied-hint').style.display = 'block';
+}
+
+async function updatePresetSelector(){
+  const sel = document.getElementById('t-organizer-as');
+  const value = sel ? sel.value : 'self';
+  const presetGroup = document.getElementById('preset-select-group');
+  const presetSel = document.getElementById('t-preset');
+  document.getElementById('preset-applied-hint').style.display = 'none';
+  if(!value || !value.startsWith('club:')){ presetGroup.style.display = 'none'; presetSel.innerHTML = ''; return; }
+  const clubId = value.slice('club:'.length);
+  await loadClubPresets(clubId);
+  if(clubPresets.length === 0){ presetGroup.style.display = 'none'; presetSel.innerHTML = ''; return; }
+  presetGroup.style.display = 'block';
+  const noneLabel = (window.KL_T && window.KL_T('criar.preset.none')) || 'Nenhum (personalizado)';
+  presetSel.innerHTML = '<option value="">' + noneLabel + '</option>' + clubPresets.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+}
+
+document.getElementById('t-organizer-as').addEventListener('change', updatePresetSelector);
+document.getElementById('t-preset').addEventListener('change', function(){
+  const p = clubPresets.find(x => x.id === this.value);
+  if(p) applyPreset(p);
+});
 
 function genCode(){
   return Math.random().toString(36).slice(2,8).toUpperCase();

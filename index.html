@@ -4,7 +4,7 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Knockout League — Organiza o teu torneio</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<link rel="stylesheet" href="shared.css?v=3"/>
 <style>
   .hero { padding: 80px 0 60px; border-bottom: 2px solid var(--ink); }
   .hero-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: end; }
@@ -23,82 +23,84 @@
   <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
   <button class="nav-mobile-toggle">☰</button>
   <ul class="nav-links">
-    <li><a href="index.html" class="active">Início</a></li>
-    <li><a href="torneios.html">Torneios</a></li>
-    <li><a href="criar-torneio.html">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+    <li><a href="index.html" class="active" data-i18n="nav.home">Início</a></li>
+    <li><a href="torneios.html" data-i18n="nav.tournaments">Torneios</a></li>
+    <li><a href="criar-torneio.html" data-i18n="nav.create">Criar torneio</a></li>
+    <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="contacto.html" data-i18n="nav.contact">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html" data-i18n="nav.login">Entrar</a></li>
   </ul>
 </nav>
 
 <section class="hero">
   <div class="wrap hero-grid">
     <div>
-      <div class="eyebrow">1v1 até 6v6</div>
-      <h1>A tua bracket.<br>As tuas regras.</h1>
-      <p class="lead">Organiza torneios eliminatórios para qualquer jogo: equipas por roleta ou por escolha dos capitães, mapas à tua medida, e um lobby onde tudo se resolve antes do primeiro round.</p>
+      <div class="eyebrow" data-i18n="index.eyebrow.hero">1v1 até 6v6</div>
+      <h1 data-i18n="index.hero.title">A tua bracket.<br>As tuas regras.</h1>
+      <p class="lead" data-i18n="index.hero.lead">Organiza torneios eliminatórios para qualquer jogo: equipas por roleta ou por escolha dos capitães, mapas à tua medida, e um lobby onde tudo se resolve antes do primeiro round.</p>
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <a href="criar-torneio.html" class="btn btn-accent">Criar um torneio</a>
-        <a href="torneios.html" class="btn btn-outline">Ver torneios abertos</a>
+        <a href="criar-torneio.html" class="btn btn-accent" data-i18n="index.hero.create">Criar um torneio</a>
+        <a href="torneios.html" class="btn btn-outline" data-i18n="index.hero.browse">Ver torneios abertos</a>
       </div>
     </div>
     <div class="grid" style="grid-template-columns:1fr 1fr;">
-      <div class="stat-ticket"><div class="n">1–6</div><div class="l">Jogadores por equipa</div></div>
-      <div class="stat-ticket"><div class="n">∞</div><div class="l">Jogos suportados</div></div>
-      <div class="stat-ticket"><div class="n">2</div><div class="l">Modos de sala</div></div>
-      <div class="stat-ticket"><div class="n">1</div><div class="l">Lobby por partida</div></div>
+      <div class="stat-ticket"><div class="n">1–6</div><div class="l" data-i18n="index.stat.playersLabel">Jogadores por equipa</div></div>
+      <div class="stat-ticket"><div class="n">∞</div><div class="l" data-i18n="index.stat.gamesLabel">Jogos suportados</div></div>
+      <div class="stat-ticket"><div class="n">2</div><div class="l" data-i18n="index.stat.roomsLabel">Modos de sala</div></div>
+      <div class="stat-ticket"><div class="n">1</div><div class="l" data-i18n="index.stat.lobbyLabel">Lobby por partida</div></div>
     </div>
   </div>
 </section>
 
 <section>
   <div class="wrap">
-    <div class="eyebrow">Como funciona</div>
-    <h2 style="margin:12px 0 10px;">Do registo ao vencedor</h2>
+    <div class="eyebrow" data-i18n="index.eyebrow.how">Como funciona</div>
+    <h2 style="margin:12px 0 10px;" data-i18n="index.how.title">Do registo ao vencedor</h2>
     <div style="max-width:700px;">
-      <div class="how-step"><div class="how-num">01</div><div><h3>Cria a sala</h3><p class="muted">Define o jogo, o formato (1v1 a 6v6), o tipo de bracket e os mapas. Escolhe se é pública ou privada.</p></div></div>
-      <div class="how-step"><div class="how-num">02</div><div><h3>Monta as equipas</h3><p class="muted">Jogadores da plataforma ou de fora dela entram no pool. Define capitães e atribui jogadores por roleta ou manualmente — com vários capitães, cada um pode escolher o seu jogador.</p></div></div>
-      <div class="how-step"><div class="how-num">03</div><div><h3>Gera a bracket</h3><p class="muted">A bracket é criada automaticamente a partir das equipas prontas.</p></div></div>
-      <div class="how-step"><div class="how-num">04</div><div><h3>Lobby de cada partida</h3><p class="muted">As equipas banem mapas, a moeda ou o dado decide quem começa, e o organizador partilha o servidor quando estiver tudo pronto.</p></div></div>
+      <div class="how-step"><div class="how-num">01</div><div><h3 data-i18n="index.how1.title">Cria a sala</h3><p class="muted" data-i18n="index.how1.text">Define o jogo, o formato (1v1 a 6v6), o tipo de bracket e os mapas. Escolhe se é pública ou privada.</p></div></div>
+      <div class="how-step"><div class="how-num">02</div><div><h3 data-i18n="index.how2.title">Monta as equipas</h3><p class="muted" data-i18n="index.how2.text">Jogadores da plataforma ou de fora dela entram no pool. Define capitães e atribui jogadores por roleta ou manualmente — com vários capitães, cada um pode escolher o seu jogador.</p></div></div>
+      <div class="how-step"><div class="how-num">03</div><div><h3 data-i18n="index.how3.title">Gera a bracket</h3><p class="muted" data-i18n="index.how3.text">A bracket é criada automaticamente a partir das equipas prontas.</p></div></div>
+      <div class="how-step"><div class="how-num">04</div><div><h3 data-i18n="index.how4.title">Lobby de cada partida</h3><p class="muted" data-i18n="index.how4.text">As equipas banem mapas, a moeda ou o dado decide quem começa, e o organizador partilha o servidor quando estiver tudo pronto.</p></div></div>
     </div>
   </div>
 </section>
 
 <section style="border-top:2px solid var(--ink);padding-top:48px;">
   <div class="wrap">
-    <div class="eyebrow">Agora a decorrer</div>
-    <h2 style="margin:12px 0 0;">Torneios públicos</h2>
-    <div class="t-list" id="t-list"><p class="muted">A carregar torneios...</p></div>
+    <div class="eyebrow" data-i18n="index.eyebrow.live">Agora a decorrer</div>
+    <h2 style="margin:12px 0 0;" data-i18n="index.live.title">Torneios públicos</h2>
+    <div class="t-list" id="t-list"><p class="muted" data-i18n="index.loading">A carregar torneios...</p></div>
   </div>
 </section>
 
 <footer>
   <span>© 2026 Knockout League</span>
-  <span>Porto, Portugal</span>
+  <span data-i18n="index.footer.location">Porto, Portugal</span>
 </footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script type="module">
 import { db, collection, query, where, onSnapshot } from './firebase.js';
 
 function loadPublic(){
   const el = document.getElementById('t-list');
+  const t = (k, fallback) => (window.KL_T && window.KL_T(k)) || fallback;
   try{
     const q = query(collection(db,'tournaments'), where('visibility','==','public'));
     onSnapshot(q, snap=>{
-      if(snap.empty){ el.innerHTML = '<p class="muted">Ainda não há torneios públicos. <a href="criar-torneio.html">Cria o primeiro.</a></p>'; return; }
+      if(snap.empty){ el.innerHTML = `<p class="muted">${t('index.empty','Ainda não há torneios públicos. <a href="criar-torneio.html">Cria o primeiro.</a>')}</p>`; return; }
       el.innerHTML = '';
       snap.forEach(d=>{
-        const t = d.data();
+        const t2 = d.data();
         const card = document.createElement('a');
         card.href = 'torneio.html?id=' + d.id;
         card.className = 't-card';
-        card.innerHTML = `<span class="badge badge-open">${t.status || 'inscrições'}</span><h3>${t.name}</h3><span class="muted">${t.game || ''} · ${t.teamSize}v${t.teamSize}</span>${t.organizerDisplayName ? '<span class="muted" style="display:block;font-size:0.78rem;margin-top:4px;">Organizado por '+t.organizerDisplayName+'</span>' : ''}<button class="btn btn-outline btn-sm" style="margin-top:10px;">Ver</button>`;
+        card.innerHTML = `<span class="badge badge-open">${t2.status || 'inscrições'}</span><h3>${t2.name}</h3><span class="muted">${t2.game || ''} · ${t2.teamSize}v${t2.teamSize}</span>${t2.organizerDisplayName ? '<span class="muted" style="display:block;font-size:0.78rem;margin-top:4px;">'+t('index.organizedBy','Organizado por ')+t2.organizerDisplayName+'</span>' : ''}<button class="btn btn-outline btn-sm" style="margin-top:10px;">${t('index.viewBtn','Ver')}</button>`;
         el.appendChild(card);
       });
-    }, ()=>{ el.innerHTML = '<p class="muted">Liga o teu projeto Firebase em firebase.js para ver torneios reais.</p>'; });
-  }catch(e){ el.innerHTML = '<p class="muted">Liga o teu projeto Firebase em firebase.js para ver torneios reais.</p>'; }
+    }, ()=>{ el.innerHTML = `<p class="muted">${t('index.fallback','Liga o teu projeto Firebase em firebase.js para ver torneios reais.')}</p>`; });
+  }catch(e){ el.innerHTML = `<p class="muted">${t('index.fallback','Liga o teu projeto Firebase em firebase.js para ver torneios reais.')}</p>`; }
 }
 loadPublic();
 </script>

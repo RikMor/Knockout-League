@@ -4,7 +4,7 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Sala da partida — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<link rel="stylesheet" href="shared.css?v=3"/>
 <style>
   .room-top { border-bottom: 2px solid var(--ink); padding: 22px 5vw; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
   .room-team-name { font-family: 'Anton'; font-size: 1.5rem; }
@@ -63,16 +63,16 @@
   <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
   <button class="nav-mobile-toggle">☰</button>
   <ul class="nav-links">
-    <li><a href="index.html">Início</a></li>
-    <li><a href="torneios.html">Torneios</a></li>
-    <li><a href="criar-torneio.html">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+    <li><a href="index.html" data-i18n="nav.home">Início</a></li>
+    <li><a href="torneios.html" data-i18n="nav.tournaments">Torneios</a></li>
+    <li><a href="criar-torneio.html" data-i18n="nav.create">Criar torneio</a></li>
+    <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="contacto.html" data-i18n="nav.contact">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html" data-i18n="nav.login">Entrar</a></li>
   </ul>
 </nav>
 
-<div id="not-found" class="not-found" style="display:none;"><p class="muted">Esta sala não existe ou o torneio foi eliminado.</p></div>
+<div id="not-found" class="not-found" style="display:none;"><p class="muted" data-i18n="sala.notFound">Esta sala não existe ou o torneio foi eliminado.</p></div>
 
 <div id="room" style="display:none;">
   <div class="room-top">
@@ -92,12 +92,12 @@
     <div class="room-center">
       <div id="rt-decide-phase">
         <div id="rt-firstban-section">
-          <h4>Quem começa (bane primeiro)</h4>
+          <h4 data-i18n="sala.whoStarts">Quem começa (bane primeiro)</h4>
           <div id="rt-firstban-area"></div>
         </div>
 
         <div id="rt-maps-section" style="display:none;margin-top:26px;">
-          <h4>Banir mapas <span id="rt-ban-turn"></span></h4>
+          <h4><span data-i18n="sala.banMaps">Banir mapas</span> <span id="rt-ban-turn"></span></h4>
           <div id="rt-maps"></div>
         </div>
       </div>
@@ -105,7 +105,7 @@
       <div id="rt-play-phase" style="display:none;">
         <p class="muted" id="rt-map-picked" style="text-align:center;font-size:0.85rem;margin-bottom:20px;"></p>
 
-        <h4>Resultado da partida</h4>
+        <h4 data-i18n="sala.matchResult">Resultado da partida</h4>
         <div style="display:flex;gap:18px;align-items:center;justify-content:center;margin-bottom:14px;flex-wrap:wrap;">
           <div style="text-align:center;">
             <div style="font-family:'Anton';font-size:2rem;" id="rt-cur-score-a">0</div>
@@ -120,13 +120,13 @@
         <div id="rt-result-area" style="max-width:360px;margin:0 auto 20px;"></div>
         <p class="muted" id="rt-pending-msg" style="text-align:center;min-height:1.2em;font-size:0.82rem;margin-bottom:20px;"></p>
 
-        <h4>Servidor / forma de entrar no jogo</h4>
+        <h4 data-i18n="sala.server">Servidor / forma de entrar no jogo</h4>
         <input type="text" id="rt-server-input" placeholder="Ex: IP 123.45.6.7:27015, senha knockout" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:0.85rem;"/>
-        <button class="btn btn-sm btn-outline" id="rt-server-save" style="margin-top:8px;">Guardar</button>
+        <button class="btn btn-sm btn-outline" id="rt-server-save" style="margin-top:8px;" data-i18n="sala.save">Guardar</button>
         <p class="muted" id="rt-server-current" style="margin-top:10px;font-size:0.82rem;"></p>
 
         <div id="rt-winner-section" style="display:none;margin-top:24px;border-top:1px solid var(--line);padding-top:20px;text-align:center;">
-          <h4 id="rt-done-title">Confronto terminado</h4>
+          <h4 id="rt-done-title" data-i18n="sala.matchOver">Confronto terminado</h4>
           <p style="margin-bottom:14px;font-weight:700;" id="rt-done-summary"></p>
           <a id="rt-next-link" href="#"><button class="btn btn-accent btn-sm" id="rt-next-btn"></button></a>
         </div>
@@ -137,34 +137,34 @@
   </div>
 
   <div class="room-section" id="rt-help-section" style="display:none;text-align:center;">
-    <button class="btn btn-outline btn-sm" id="rt-call-staff">📣 Chamar moderador / organizador</button>
+    <button class="btn btn-outline btn-sm" id="rt-call-staff" data-i18n="sala.callStaff">📣 Chamar moderador / organizador</button>
     <p class="muted" id="rt-call-staff-msg" style="margin-top:10px;font-size:0.82rem;min-height:1.2em;"></p>
   </div>
 
   <div class="room-section" id="rt-chat-section" style="display:none;">
-    <h3>Chat da partida</h3>
+    <h3 data-i18n="sala.chat">Chat da partida</h3>
     <div id="rt-chat-messages" style="max-height:320px;overflow-y:auto;border:1px solid var(--line);padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;"></div>
     <div style="display:flex;gap:8px;">
-      <input type="text" id="rt-chat-input" placeholder="Escreve uma mensagem..." style="flex:1;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
-      <button class="btn btn-accent btn-sm" id="rt-chat-send">Enviar</button>
+      <input type="text" id="rt-chat-input" placeholder="Escreve uma mensagem..." data-i18n-ph="sala.chatPh" style="flex:1;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+      <button class="btn btn-accent btn-sm" id="rt-chat-send" data-i18n="sala.send">Enviar</button>
     </div>
   </div>
 
   <div class="room-section" id="rt-admin-section" style="display:none;background:rgba(232,90,54,0.04);">
-    <h3>Configurar sala (organizador)</h3>
-    <p class="muted" style="font-size:0.82rem;margin-bottom:12px;">Se algo correr mal — ou os capitães não concordarem no resultado — força aqui manualmente quem bane primeiro, ou corrige a pontuação e finaliza o jogo.</p>
+    <h3 data-i18n="sala.adminTitle">Configurar sala (organizador)</h3>
+    <p class="muted" style="font-size:0.82rem;margin-bottom:12px;" data-i18n="sala.adminIntro">Se algo correr mal — ou os capitães não concordarem no resultado — força aqui manualmente quem bane primeiro, ou corrige a pontuação e finaliza o jogo.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-      <button class="btn btn-sm btn-outline" data-adminfb="A">Forçar: <span id="rt-admin-team-a"></span> bane primeiro</button>
-      <button class="btn btn-sm btn-outline" data-adminfb="B">Forçar: <span id="rt-admin-team-b"></span> bane primeiro</button>
-      <button class="btn btn-sm btn-danger" id="rt-admin-fb-reset">Redefinir decisão</button>
+      <button class="btn btn-sm btn-outline" data-adminfb="A"><span data-i18n="sala.force">Forçar:</span> <span id="rt-admin-team-a"></span> <span data-i18n="sala.bansFirst">bane primeiro</span></button>
+      <button class="btn btn-sm btn-outline" data-adminfb="B"><span data-i18n="sala.force">Forçar:</span> <span id="rt-admin-team-b"></span> <span data-i18n="sala.bansFirst">bane primeiro</span></button>
+      <button class="btn btn-sm btn-danger" id="rt-admin-fb-reset" data-i18n="sala.resetDecision">Redefinir decisão</button>
     </div>
-    <p class="muted" style="font-size:0.78rem;margin-bottom:8px;">Corrigir pontuação manualmente:</p>
+    <p class="muted" style="font-size:0.78rem;margin-bottom:8px;" data-i18n="sala.fixScore">Corrigir pontuação manualmente:</p>
     <div style="display:flex;gap:10px;align-items:center;">
       <input type="number" id="rt-score-a" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
       <span class="muted">—</span>
       <input type="number" id="rt-score-b" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
-      <button class="btn btn-outline btn-sm" id="rt-score-save">Guardar</button>
-      <button class="btn btn-gold btn-sm" id="rt-admin-force-finish">Forçar fim do jogo</button>
+      <button class="btn btn-outline btn-sm" id="rt-score-save" data-i18n="sala.save">Guardar</button>
+      <button class="btn btn-gold btn-sm" id="rt-admin-force-finish" data-i18n="sala.forceFinish">Forçar fim do jogo</button>
     </div>
   </div>
 </div>
@@ -172,11 +172,13 @@
 <footer><span>© 2026 Knockout League</span></footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script type="module">
 import { auth, db, doc, getDoc, getDocs, updateDoc, collection, addDoc, query, where, orderBy, serverTimestamp, onSnapshot } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const params = new URLSearchParams(window.location.search);
+const T = (key, fb) => (window.KL_T && window.KL_T(key)) || fb;
 const tId = params.get('t');
 const mId = params.get('m');
 if(!tId || !mId){ document.getElementById('not-found').style.display = 'block'; }
@@ -225,7 +227,7 @@ function isAdmin(){
   return false;
 }
 function teamById(id){ return teams.find(t=>t.id===id); }
-function teamName(id){ const t = teamById(id); return t ? t.name : (id ? '—' : 'A definir'); }
+function teamName(id){ const t = teamById(id); return t ? t.name : (id ? '—' : T('sala.tbd','A definir')); }
 function myTeamId(){
   if(!currentUser || !match) return null;
   const teamA = teamById(match.teamAId), teamB = teamById(match.teamBId);
@@ -278,10 +280,10 @@ function renderChat(){
   box.innerHTML = chatMsgs.map(m => {
     const mine = currentUser && m.uid === currentUser.uid;
     return `<div style="align-self:${mine?'flex-end':'flex-start'};max-width:80%;">
-      <div class="muted" style="font-size:0.7rem;margin-bottom:2px;${mine?'text-align:right;':''}">${m.nickname}${m.isAdmin ? ' · organizador' : ''}</div>
+      <div class="muted" style="font-size:0.7rem;margin-bottom:2px;${mine?'text-align:right;':''}">${m.nickname}${m.isAdmin ? ' · '+T('sala.organizerTag','organizador') : ''}</div>
       <div style="background:${mine?'var(--accent)':'var(--surface)'};color:${mine?'#fff':'var(--ink)'};border:1px solid var(--line);padding:8px 12px;font-size:0.88rem;">${m.text}</div>
     </div>`;
-  }).join('') || '<p class="muted" style="text-align:center;">Sem mensagens ainda.</p>';
+  }).join('') || `<p class="muted" style="text-align:center;">${T('sala.noMessages','Sem mensagens ainda.')}</p>`;
   box.scrollTop = box.scrollHeight;
 }
 
@@ -289,7 +291,7 @@ async function sendChatMessage(){
   const input = document.getElementById('rt-chat-input');
   const text = input.value.trim();
   if(!text || !currentUser) return;
-  const nickname = currentUserData?.nickname || (currentUser.isAnonymous ? 'Convidado' : (currentUser.displayName || 'Jogador'));
+  const nickname = currentUserData?.nickname || currentUser.displayName || T('torneio.playerFallback','Jogador');
   await addDoc(chatCol, { uid: currentUser.uid, nickname, isAdmin: isAdmin(), text: text.slice(0,500), createdAt: serverTimestamp() });
   input.value = '';
 }
@@ -301,23 +303,23 @@ async function callStaff(){
   const msgEl = document.getElementById('rt-call-staff-msg');
   const btn = document.getElementById('rt-call-staff');
   const uids = getStaffUids();
-  if(uids.length === 0){ msgEl.textContent = 'Este torneio ainda não tem organizador ou moderador definido.'; return; }
+  if(uids.length === 0){ msgEl.textContent = T('sala.noStaff','Este torneio ainda não tem organizador ou moderador definido.'); return; }
   btn.disabled = true;
-  const nickname = currentUserData?.nickname || (currentUser.isAnonymous ? 'Convidado' : (currentUser.displayName || 'Jogador'));
+  const nickname = currentUserData?.nickname || currentUser.displayName || T('torneio.playerFallback','Jogador');
   try{
     await Promise.all(uids.map(uid => addDoc(collection(db,'notifications'), {
       toUid: uid,
       type: 'match_help',
       refId: tId,
-      refName: tournament.name || 'Torneio',
+      refName: tournament.name || T('sala.tournamentFallback','Torneio'),
       matchId: mId,
       fromNickname: nickname,
       status: 'pending',
       createdAt: serverTimestamp()
     })));
-    msgEl.textContent = 'Chamado enviado — o moderador/organizador foi notificado.';
+    msgEl.textContent = T('sala.staffCalled','Chamado enviado — o moderador/organizador foi notificado.');
   }catch(e){
-    msgEl.textContent = 'Erro ao chamar: ' + e.message;
+    msgEl.textContent = T('sala.staffCallError','Erro ao chamar: ') + e.message;
   }
   setTimeout(()=>{ btn.disabled = false; }, 60000);
 }
@@ -338,7 +340,7 @@ function renderTeamCol(elId, teamId){
       <img class="room-avatar" src="https://api.dicebear.com/8.x/pixel-art/svg?seed=${avatarSeed}"/>
       <div class="room-player-name">${p.isCaptain?'👑':''} ${playerLabel(p)}</div>
     </div>`;
-  }).join('') || '<p class="muted">Sem jogadores.</p>';
+  }).join('') || `<p class="muted">${T('sala.noPlayers','Sem jogadores.')}</p>`;
 }
 
 async function decideFirstBan(){
@@ -346,13 +348,25 @@ async function decideFirstBan(){
   if(tournament.coinMethod === 'dice'){
     const value = 1 + Math.floor(Math.random()*6);
     const winnerTeam = value % 2 === 0 ? match.teamAId : match.teamBId;
-    await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'dado (' + value + ')' });
+    await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'dice:' + value });
   } else if(tournament.coinMethod === 'rps'){
     // tratado à parte, via escolhas dos dois lados — ver renderFirstBan
   } else {
     const winnerTeam = Math.random()<0.5 ? match.teamAId : match.teamBId;
-    await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'aleatório' });
+    await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'random' });
   }
+}
+
+function firstBanMethodLabel(method){
+  if(!method) return '';
+  if(method.startsWith('dice:')) return T('sala.method.dice','dado (') + method.split(':')[1] + ')';
+  const map = {
+    'random': T('sala.method.random','aleatório'),
+    'rps': T('sala.method.rps','pedra, papel, tesoura'),
+    'manual': T('sala.method.manual','definido manualmente pelo organizador'),
+    'auto': T('sala.method.auto','prioridade automática (perdeu o jogo anterior)')
+  };
+  return map[method] || method;
 }
 
 const RPS_BEATS = { pedra: 'tesoura', tesoura: 'papel', papel: 'pedra' };
@@ -372,7 +386,7 @@ async function chooseRps(mySide, jogada){
       const winnerTeam = winnerSide === 'A' ? match.teamAId : match.teamBId;
       await updateDoc(matchRef, {
         'currentGame.firstBanTeamId': winnerTeam,
-        'currentGame.firstBanMethod': 'pedra, papel, tesoura'
+        'currentGame.firstBanMethod': 'rps'
       });
     } else {
       await updateDoc(matchRef, { 'currentGame.rpsChoiceA': null, 'currentGame.rpsChoiceB': null });
@@ -404,7 +418,7 @@ async function disputeResult(){
 async function finalizeGame(gameOverride){
   const g = gameOverride || match.currentGame;
   const scoreA = g.scoreA || 0, scoreB = g.scoreB || 0;
-  if(scoreA === scoreB){ if(!gameOverride) alert('A pontuação está empatada — corrige antes de finalizar.'); return; }
+  if(scoreA === scoreB){ if(!gameOverride) alert(T('sala.tiedScore','A pontuação está empatada — corrige antes de finalizar.')); return; }
   const gameWinner = scoreA > scoreB ? 'A' : 'B';
   const newGamesWonA = (match.gamesWonA||0) + (gameWinner==='A'?1:0);
   const newGamesWonB = (match.gamesWonB||0) + (gameWinner==='B'?1:0);
@@ -421,37 +435,37 @@ async function finalizeGame(gameOverride){
     const nextFirstBan = g.firstBanTeamId === match.teamAId ? match.teamBId : match.teamAId;
     await updateDoc(matchRef, {
       gamesWonA: newGamesWonA, gamesWonB: newGamesWonB,
-      currentGame: { index: (g.index||0)+1, firstBanTeamId: nextFirstBan, firstBanMethod: 'prioridade automática (perdeu o jogo anterior)', mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null, resultProposal: null, disputed: false }
+      currentGame: { index: (g.index||0)+1, firstBanTeamId: nextFirstBan, firstBanMethod: 'auto', mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null, resultProposal: null, disputed: false }
     });
   }
 }
 
 function renderFirstBan(g, manage, finished, ready){
   const fbArea = document.getElementById('rt-firstban-area');
-  const coinLabels = { dice: 'Lançar dado', coin: 'Sortear aleatoriamente' };
+  const coinLabels = { dice: T('sala.rollDice','Lançar dado'), coin: T('sala.randomDraw','Sortear aleatoriamente') };
 
   if(g.firstBanTeamId){
     autoFirstBanTriggered = false;
-    fbArea.innerHTML = `<p style="text-align:center;font-weight:700;">${teamName(g.firstBanTeamId)} começa</p><p class="muted" style="text-align:center;font-size:0.8rem;">${g.firstBanMethod||''}</p>`;
+    fbArea.innerHTML = `<p style="text-align:center;font-weight:700;">${teamName(g.firstBanTeamId)} ${T('sala.starts','começa')}</p><p class="muted" style="text-align:center;font-size:0.8rem;">${firstBanMethodLabel(g.firstBanMethod)}</p>`;
     return;
   }
-  if(!manage || finished || !ready){ fbArea.innerHTML = '<p class="muted" style="text-align:center;">Ainda por decidir.</p>'; return; }
+  if(!manage || finished || !ready){ fbArea.innerHTML = `<p class="muted" style="text-align:center;">${T('sala.notDecidedYet','Ainda por decidir.')}</p>`; return; }
 
   if(tournament.coinMethod === 'rps'){
     const mySide = myCaptainTeam();
     const myChoice = mySide === 'A' ? g.rpsChoiceA : (mySide === 'B' ? g.rpsChoiceB : null);
     const otherWaiting = (g.rpsChoiceA && !g.rpsChoiceB) || (!g.rpsChoiceA && g.rpsChoiceB);
-    let html = '<p class="muted" style="text-align:center;font-size:0.82rem;margin-bottom:8px;">Os capitães jogam pedra, papel, tesoura um contra o outro.</p>';
+    let html = `<p class="muted" style="text-align:center;font-size:0.82rem;margin-bottom:8px;">${T('sala.rpsIntro','Os capitães jogam pedra, papel, tesoura um contra o outro.')}</p>`;
     if(!mySide){
-      html += `<p class="muted" style="text-align:center;">${otherWaiting ? 'Um capitão já escolheu — à espera do outro...' : 'À espera dos dois capitães.'}</p>`;
+      html += `<p class="muted" style="text-align:center;">${otherWaiting ? T('sala.rpsOneWaiting','Um capitão já escolheu — à espera do outro...') : T('sala.rpsBothWaiting','À espera dos dois capitães.')}</p>`;
     } else if(myChoice){
-      html += `<p style="text-align:center;">A tua escolha: <strong>${myChoice}</strong> — à espera do outro capitão...</p>`;
+      html += `<p style="text-align:center;">${T('sala.rpsYourChoice','A tua escolha: ')}<strong>${myChoice}</strong> — ${T('sala.rpsWaitingOther','à espera do outro capitão...')}</p>`;
     } else {
       html += `<div class="rps-row">
         <button class="rps-btn" data-rps="pedra">🪨</button>
         <button class="rps-btn" data-rps="papel">📄</button>
         <button class="rps-btn" data-rps="tesoura">✂️</button>
-      </div><p class="muted" style="text-align:center;font-size:0.75rem;margin-top:6px;">Pedra / Papel / Tesoura</p>`;
+      </div><p class="muted" style="text-align:center;font-size:0.75rem;margin-top:6px;">${T('sala.rpsLabels','Pedra / Papel / Tesoura')}</p>`;
     }
     fbArea.innerHTML = html;
     if(mySide && !myChoice){
@@ -461,13 +475,13 @@ function renderFirstBan(g, manage, finished, ready){
     }
   } else if(!tournament.coinMethod || tournament.coinMethod === 'coin'){
     // método aleatório: decide-se automaticamente, sem precisar de clicar em nenhum botão
-    fbArea.innerHTML = '<p class="muted" style="text-align:center;">A sortear...</p>';
+    fbArea.innerHTML = `<p class="muted" style="text-align:center;">${T('sala.drawing','A sortear...')}</p>`;
     if(!autoFirstBanTriggered && (isAdmin() || myCaptainTeam() === 'A')){
       autoFirstBanTriggered = true;
       decideFirstBan();
     }
   } else {
-    fbArea.innerHTML = `<div style="text-align:center;"><button class="btn btn-accent btn-sm" id="rt-decide-btn">${coinLabels[tournament.coinMethod] || 'Decidir'}</button></div>`;
+    fbArea.innerHTML = `<div style="text-align:center;"><button class="btn btn-accent btn-sm" id="rt-decide-btn">${coinLabels[tournament.coinMethod] || T('sala.decide','Decidir')}</button></div>`;
     document.getElementById('rt-decide-btn').addEventListener('click', decideFirstBan);
   }
 }
@@ -480,9 +494,9 @@ function renderAll(){
   document.getElementById('rt-name-b').textContent = teamName(match.teamBId);
   document.getElementById('rt-format').textContent = tournament.teamSize + 'v' + tournament.teamSize + ' · ' + (tournament.game||'');
   const statusPill = document.getElementById('rt-status');
-  statusPill.textContent = match.status === 'terminado' ? 'Terminado' : (match.status === 'lobby' ? 'Lobby' : (match.teamAId && match.teamBId ? 'Por jogar' : 'À espera'));
+  statusPill.textContent = match.status === 'terminado' ? T('sala.status.done','Terminado') : (match.status === 'lobby' ? T('sala.status.lobby','Lobby') : (match.teamAId && match.teamBId ? T('sala.status.toPlay','Por jogar') : T('sala.status.waiting','À espera')));
   statusPill.className = 'room-status-pill' + (match.status==='terminado' ? ' done' : (match.teamAId && match.teamBId ? ' live' : ''));
-  document.getElementById('rt-bo-label').textContent = 'BO' + (match.bestOf||1) + ' · Jogo ' + ((g.index||0)+1);
+  document.getElementById('rt-bo-label').textContent = 'BO' + (match.bestOf||1) + ' · ' + T('sala.game','Jogo') + ' ' + ((g.index||0)+1);
   document.getElementById('rt-games-a').textContent = match.gamesWonA || 0;
   document.getElementById('rt-games-b').textContent = match.gamesWonB || 0;
 
@@ -506,7 +520,7 @@ function renderAll(){
     const turnTeamId = (g.mapsBanned||[]).length % 2 === 0 ? g.firstBanTeamId : (g.firstBanTeamId===match.teamAId?match.teamBId:match.teamAId);
     const myTeam = myTeamId();
     const canBan = manage && (isAdmin() || myTeam === turnTeamId) && !finished;
-    document.getElementById('rt-ban-turn').textContent = mapPhaseActive ? ('— vez de: ' + teamName(turnTeamId)) : '';
+    document.getElementById('rt-ban-turn').textContent = mapPhaseActive ? ('— ' + T('sala.turnOf','vez de: ') + teamName(turnTeamId)) : '';
     const mapsEl = document.getElementById('rt-maps');
     mapsEl.innerHTML = (tournament.maps||[]).map(map=>{
       const banned = (g.mapsBanned||[]).includes(map);
@@ -514,7 +528,7 @@ function renderAll(){
       const canClickThis = canBan && mapPhaseActive && !banned;
       return `<div class="map-row ${banned?'banned':''} ${isThePick?'picked':''}">
         <span class="map-row-name">${map}${isThePick?' ✓':''}</span>
-        ${canClickThis ? '<button class="map-ban-link" data-map="'+map+'">Banir</button>' : (banned ? '<span class="map-ban-link" disabled>Banido</span>' : '')}
+        ${canClickThis ? '<button class="map-ban-link" data-map="'+map+'">'+T('sala.ban','Banir')+'</button>' : (banned ? '<span class="map-ban-link" disabled>'+T('sala.banned','Banido')+'</span>' : '')}
       </div>`;
     }).join('');
     mapsEl.querySelectorAll('[data-map]').forEach(btn=>{
@@ -531,7 +545,7 @@ function renderAll(){
   document.getElementById('rt-play-phase').style.display = (g.firstBanTeamId && mapPhaseDone) ? 'block' : 'none';
 
   if(g.firstBanTeamId && mapPhaseDone){
-    document.getElementById('rt-map-picked').textContent = pickedMap ? ('Mapa: ' + pickedMap) : '';
+    document.getElementById('rt-map-picked').textContent = pickedMap ? (T('sala.map','Mapa: ') + pickedMap) : '';
     document.getElementById('rt-cur-score-a').textContent = g.scoreA || 0;
     document.getElementById('rt-cur-score-b').textContent = g.scoreB || 0;
     document.getElementById('rt-team-a-btn-name').textContent = teamName(match.teamAId);
@@ -545,15 +559,15 @@ function renderAll(){
       if(myCap && !finished){
         resultArea.innerHTML = `
           <div class="card" style="padding:16px;">
-            <p class="muted" style="font-size:0.8rem;margin-bottom:10px;">Terminar a partida — indica quem ganhou e o resultado final:</p>
+            <p class="muted" style="font-size:0.8rem;margin-bottom:10px;">${T('sala.finishMatch','Terminar a partida — indica quem ganhou e o resultado final:')}</p>
             <div style="display:flex;gap:10px;align-items:center;justify-content:center;margin-bottom:10px;">
               <input type="number" id="rt-propose-score-a" min="0" value="${g.scoreA||0}" style="width:64px;padding:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-align:center;"/>
               <span class="muted">—</span>
               <input type="number" id="rt-propose-score-b" min="0" value="${g.scoreB||0}" style="width:64px;padding:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-align:center;"/>
             </div>
             <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-              <button class="btn btn-sm btn-outline" id="rt-propose-a">${teamName(match.teamAId)} venceu</button>
-              <button class="btn btn-sm btn-outline" id="rt-propose-b">${teamName(match.teamBId)} venceu</button>
+              <button class="btn btn-sm btn-outline" id="rt-propose-a">${teamName(match.teamAId)} ${T('sala.won','venceu')}</button>
+              <button class="btn btn-sm btn-outline" id="rt-propose-b">${teamName(match.teamBId)} ${T('sala.won','venceu')}</button>
             </div>
           </div>`;
         document.getElementById('rt-propose-a').onclick = () => {
@@ -574,25 +588,25 @@ function renderAll(){
       if(myCap && p.proposedBy !== currentUser.uid){
         resultArea.innerHTML = `
           <div class="card" style="padding:16px;text-align:center;">
-            <p style="margin-bottom:12px;">O outro capitão propôs: <strong>${winnerName}</strong> venceu, ${p.scoreA} — ${p.scoreB}.</p>
+            <p style="margin-bottom:12px;">${T('sala.otherProposed','O outro capitão propôs: ')}<strong>${winnerName}</strong> ${T('sala.won','venceu')}, ${p.scoreA} — ${p.scoreB}.</p>
             <div style="display:flex;gap:8px;justify-content:center;">
-              <button class="btn btn-sm btn-accent" id="rt-confirm-result">Confirmar</button>
-              <button class="btn btn-sm btn-danger" id="rt-dispute-result">Não concordo</button>
+              <button class="btn btn-sm btn-accent" id="rt-confirm-result">${T('sala.confirm','Confirmar')}</button>
+              <button class="btn btn-sm btn-danger" id="rt-dispute-result">${T('sala.disagree','Não concordo')}</button>
             </div>
           </div>`;
         document.getElementById('rt-confirm-result').onclick = confirmResult;
         document.getElementById('rt-dispute-result').onclick = disputeResult;
       } else {
-        resultArea.innerHTML = `<p class="muted" style="text-align:center;">Propuseste: <strong>${winnerName}</strong> venceu, ${p.scoreA} — ${p.scoreB}. À espera de confirmação do outro capitão.</p>`;
+        resultArea.innerHTML = `<p class="muted" style="text-align:center;">${T('sala.youProposed','Propuseste: ')}<strong>${winnerName}</strong> ${T('sala.won','venceu')}, ${p.scoreA} — ${p.scoreB}. ${T('sala.waitingOtherCaptain','À espera de confirmação do outro capitão.')}</p>`;
       }
     }
     const pendingMsg = document.getElementById('rt-pending-msg');
     if(g.disputed){
-      pendingMsg.textContent = 'Os capitães não concordaram — o organizador tem de validar o resultado abaixo.';
+      pendingMsg.textContent = T('sala.disputed','Os capitães não concordaram — o organizador tem de validar o resultado abaixo.');
       pendingMsg.style.color = 'var(--danger)';
     } else { pendingMsg.textContent = ''; pendingMsg.style.color = ''; }
 
-    document.getElementById('rt-server-current').textContent = match.serverInfo ? ('Atual: ' + match.serverInfo.value) : 'Ainda não definido.';
+    document.getElementById('rt-server-current').textContent = match.serverInfo ? (T('sala.serverCurrent','Atual: ') + match.serverInfo.value) : T('sala.serverNotSet','Ainda não definido.');
     document.getElementById('rt-server-input').style.display = isAdmin() ? 'block' : 'none';
     document.getElementById('rt-server-save').style.display = isAdmin() ? 'inline-flex' : 'none';
     document.getElementById('rt-server-save').onclick = async function(){
@@ -607,14 +621,14 @@ function renderAll(){
   winSection.style.display = finished ? 'block' : 'none';
   if(finished){
     const wonName = teamName(match.winnerId);
-    document.getElementById('rt-done-summary').textContent = wonName + ' venceu este confronto (' + (match.gamesWonA||0) + ' — ' + (match.gamesWonB||0) + ')';
+    document.getElementById('rt-done-summary').textContent = wonName + ' ' + T('sala.wonMatchup','venceu este confronto') + ' (' + (match.gamesWonA||0) + ' — ' + (match.gamesWonB||0) + ')';
     const nextBtn = document.getElementById('rt-next-btn');
     const nextLink = document.getElementById('rt-next-link');
     if(match.nextMatchId){
-      nextBtn.textContent = 'Ir para a próxima sala';
+      nextBtn.textContent = T('sala.goToNextRoom','Ir para a próxima sala');
       nextLink.href = 'sala-partida.html?t=' + tId + '&m=' + match.nextMatchId;
     } else {
-      nextBtn.textContent = 'Voltar à bracket';
+      nextBtn.textContent = T('sala.backToBracket','Voltar à bracket');
       nextLink.href = 'torneio.html?id=' + tId;
     }
   }
@@ -627,7 +641,7 @@ function renderAll(){
     adminSection.querySelectorAll('[data-adminfb]').forEach(btn=>{
       btn.onclick = async function(){
         const winnerTeam = btn.dataset.adminfb === 'A' ? match.teamAId : match.teamBId;
-        await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'definido manualmente pelo organizador' });
+        await updateDoc(matchRef, { 'currentGame.firstBanTeamId': winnerTeam, 'currentGame.firstBanMethod': 'manual' });
       };
     });
     document.getElementById('rt-admin-fb-reset').onclick = async function(){
@@ -641,7 +655,7 @@ function renderAll(){
       await updateDoc(matchRef, { 'currentGame.scoreA': a===''?0:Number(a), 'currentGame.scoreB': b===''?0:Number(b), 'currentGame.resultProposal': null, 'currentGame.disputed': false });
     };
     document.getElementById('rt-admin-force-finish').onclick = function(){
-      if(!confirm('Forçar o fim deste jogo com a pontuação atual?')) return;
+      if(!confirm(T('sala.confirmForceFinish','Forçar o fim deste jogo com a pontuação atual?'))) return;
       updateDoc(matchRef, { 'currentGame.resultProposal': null, 'currentGame.disputed': false }).then(()=> finalizeGame());
     };
   }

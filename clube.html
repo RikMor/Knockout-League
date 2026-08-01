@@ -4,7 +4,7 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>O meu clube — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<link rel="stylesheet" href="shared.css?v=3"/>
 <style>
   .member-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); gap: 10px; flex-wrap: wrap; }
   .member-row:last-child { border-bottom: none; }
@@ -17,55 +17,173 @@
   <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
   <button class="nav-mobile-toggle">☰</button>
   <ul class="nav-links">
-    <li><a href="index.html">Início</a></li>
-    <li><a href="torneios.html">Torneios</a></li>
-    <li><a href="criar-torneio.html">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+    <li><a href="index.html" data-i18n="nav.home">Início</a></li>
+    <li><a href="torneios.html" data-i18n="nav.tournaments">Torneios</a></li>
+    <li><a href="criar-torneio.html" data-i18n="nav.create">Criar torneio</a></li>
+    <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="contacto.html" data-i18n="nav.contact">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html" data-i18n="nav.login">Entrar</a></li>
   </ul>
 </nav>
 
 <div class="wrap page-head">
-  <div class="eyebrow">Organização</div>
-  <h1>O meu clube</h1>
-  <p class="muted" style="margin-top:10px;">Um clube junta pessoas de confiança para te ajudarem a organizar e moderar torneios.</p>
+  <div class="eyebrow" data-i18n="clube.eyebrow">Organização</div>
+  <h1 data-i18n="nav.myClub">O meu clube</h1>
+  <p class="muted" style="margin-top:10px;" data-i18n="clube.intro">Um clube junta pessoas de confiança para te ajudarem a organizar e moderar torneios.</p>
 </div>
 
 <div class="wrap" style="padding-bottom:90px;">
   <div class="not-logged" id="not-logged" style="display:none;">
-    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para geres um clube.</p>
-    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+    <p class="muted" style="margin-bottom:24px;" data-i18n="clube.restricted.text">Tens de iniciar sessão para geres um clube.</p>
+    <a href="login.html"><button class="btn btn-accent" data-i18n="nav.login">Entrar</button></a>
   </div>
 
   <div id="content" style="display:none;">
     <div id="create-box" class="card" style="margin-bottom:30px;display:none;">
-      <h3 style="margin-bottom:12px;">Ainda não tens um clube</h3>
-      <div class="form-group"><label>Nome do clube</label><input type="text" id="club-name-input" placeholder="Ex: Os Insónias"/></div>
-      <button class="btn btn-accent" id="create-club-btn">Criar clube</button>
+      <h3 style="margin-bottom:12px;" data-i18n="clube.noClub.title">Ainda não tens um clube</h3>
+      <div class="form-group"><label data-i18n="clube.nameLabel">Nome do clube</label><input type="text" id="club-name-input" data-i18n-ph="clube.namePh" placeholder="Ex: Os Insónias"/></div>
+      <button class="btn btn-accent" id="create-club-btn" data-i18n="clube.create">Criar clube</button>
       <p class="form-error" id="create-club-error" style="margin-top:12px;"></p>
     </div>
 
     <div id="owned-box" style="display:none;margin-bottom:40px;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
         <h2 id="owned-club-name" style="margin-bottom:0;"></h2>
-        <button class="btn btn-danger btn-sm" id="delete-club-btn" style="display:none;">Eliminar clube</button>
+        <button class="btn btn-danger btn-sm" id="delete-club-btn" style="display:none;" data-i18n="clube.delete">Eliminar clube</button>
       </div>
       <div id="invite-form-box" style="max-width:520px;margin-bottom:20px;">
-        <input type="text" id="member-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);margin-bottom:10px;"/>
+        <input type="text" id="member-input" data-i18n-ph="clan.memberPh" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);margin-bottom:10px;"/>
         <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-membro" checked style="width:auto;"/> Só membro</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-organizador" style="width:auto;"/> Pode criar torneios</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-moderador" style="width:auto;"/> Pode moderar torneios</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-membro" checked style="width:auto;"/> <span data-i18n="clube.perm.memberOnly">Só membro</span></label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-organizador" style="width:auto;"/> <span data-i18n="clube.perm.canCreate">Pode criar torneios</span></label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" id="perm-moderador" style="width:auto;"/> <span data-i18n="clube.perm.canModerate">Pode moderar torneios</span></label>
         </div>
-        <button class="btn btn-outline btn-sm" id="add-member-btn">Convidar</button>
+        <button class="btn btn-outline btn-sm" id="add-member-btn" data-i18n="clan.invite">Convidar</button>
       </div>
       <p class="form-error" id="member-error" style="margin-bottom:16px;"></p>
-      <div class="card" id="members-list"><p class="muted">Sem membros ainda.</p></div>
+      <div class="card" id="members-list"><p class="muted" data-i18n="clan.noMembers">Sem membros ainda.</p></div>
+
+      <div id="presets-box" style="display:none;margin-top:40px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+          <h2 style="margin-bottom:0;" data-i18n="clube.presets.title">Presets de configuração</h2>
+          <button class="btn btn-outline btn-sm" id="preset-new-btn" data-i18n="clube.presets.new">+ Novo preset</button>
+        </div>
+        <p class="muted" style="font-size:0.85rem;margin-bottom:16px;" data-i18n="clube.presets.intro">Guarda configurações de torneio já prontas — ao criar um torneio como este clube, escolhe um preset e o formulário preenche-se sozinho.</p>
+        <div class="card" id="presets-list" style="margin-bottom:20px;"><p class="muted" data-i18n="clube.presets.none">Ainda não há presets.</p></div>
+
+        <div id="preset-form-box" class="form-section" style="display:none;">
+          <div class="form-section-head">
+            <div><div class="form-section-title" id="preset-form-title" data-i18n="clube.presets.newTitle">Novo preset</div></div>
+          </div>
+          <div class="form-group"><label data-i18n="clube.presets.field.name">Nome do preset</label><input type="text" id="pz-name" placeholder="Ex: CS2 competitivo"/></div>
+          <div class="form-group"><label data-i18n="criar.field.game">Jogo</label><input type="text" id="pz-game" placeholder="Ex: Counter-Strike 2"/></div>
+          <div class="form-group">
+            <label data-i18n="criar.field.format">Formato</label>
+            <div class="pill-group" id="pz-teamsize">
+              <div class="pill" data-v="1">1v1</div><div class="pill" data-v="2">2v2</div><div class="pill" data-v="3">3v3</div>
+              <div class="pill" data-v="4">4v4</div><div class="pill" data-v="5">5v5</div><div class="pill" data-v="6">6v6</div>
+            </div>
+          </div>
+          <div class="form-group"><label data-i18n="criar.field.maxteams">Número de equipas</label><input type="number" id="pz-maxteams" min="2" value="8" class="field-sm"/></div>
+          <div class="form-group">
+            <label data-i18n="criar.field.bracketType">Tipo de bracket</label>
+            <div class="pill-group" id="pz-bracket">
+              <div class="pill" data-v="single" data-i18n="criar.bracket.single">Eliminação simples</div>
+              <div class="pill" data-v="double" data-i18n="criar.bracket.double">Eliminação dupla</div>
+              <div class="pill" data-v="round-robin" data-i18n="criar.bracket.roundRobin">Todos contra todos</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="criar.field.layout">Como mostrar a bracket</label>
+            <div class="pill-group" id="pz-layout">
+              <div class="pill" data-v="one-side" data-i18n="criar.layout.one">Um lado (lista simples)</div>
+              <div class="pill" data-v="two-side" data-i18n="criar.layout.two">Dois lados (espelhada, converge ao centro)</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="criar.field.drawmode">Modo de sorteio da bracket</label>
+            <div class="pill-group" id="pz-drawmode">
+              <div class="pill" data-v="random" data-i18n="criar.random">Aleatório</div>
+              <div class="pill" data-v="seed" data-i18n="criar.drawmode.seed">Por seed (espalhado)</div>
+              <div class="pill" data-v="manual" data-i18n="criar.drawmode.manual">Manual (eu escolho quem joga contra quem)</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="criar.field.bestof">Melhor de quantas partidas</label>
+            <div class="pill-group" id="pz-bestof">
+              <div class="pill" data-v="1">BO1</div>
+              <div class="pill" data-v="3">BO3</div>
+              <div class="pill" data-v="5">BO5</div>
+              <div class="pill" data-v="custom" data-i18n="criar.custom">Personalizado</div>
+            </div>
+            <input type="number" id="pz-bestof-custom" min="1" step="2" placeholder="Ex: 7 (tem de ser ímpar)" class="field-sm" style="display:none;margin-top:10px;"/>
+          </div>
+          <div class="form-group"><label data-i18n="criar.field.pointstowin">Pontos para vencer cada partida</label><input type="number" id="pz-pointstowin" min="1" placeholder="Ex: 13" class="field-sm"/></div>
+          <div class="form-group">
+            <label data-i18n="criar.field.coin">Como decidir quem começa</label>
+            <div class="pill-group" id="pz-coin">
+              <div class="pill" data-v="coin" data-i18n="criar.random">Aleatório</div>
+              <div class="pill" data-v="rps" data-i18n="criar.rps">Pedra, papel, tesoura</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="criar.field.maps">Mapas do torneio (opcional — só é preciso se ativares o banimento de mapas)</label>
+            <div class="maps-input">
+              <input type="text" id="pz-map-input" placeholder="Nome do mapa e Enter"/>
+              <button type="button" class="btn btn-outline btn-sm" id="pz-map-add" data-i18n="criar.add">Adicionar</button>
+            </div>
+            <div class="pill-group" id="pz-maps-list"></div>
+          </div>
+          <div class="checkbox-field">
+            <input type="checkbox" id="pz-banmaps"/>
+            <label for="pz-banmaps" data-i18n="criar.field.banmaps">Ativar banimento de mapas no lobby.</label>
+          </div>
+          <div class="checkbox-field">
+            <input type="checkbox" id="pz-useplayernames"/>
+            <label for="pz-useplayernames" data-i18n="criar.field.useplayernames">Usar o nickname do jogador como nome da equipa (útil em 1v1).</label>
+          </div>
+          <div class="form-group">
+            <label data-i18n="criar.field.assign">Atribuição de jogadores às equipas</label>
+            <div class="pill-group" id="pz-assign">
+              <div class="pill" data-v="roulette" data-i18n="criar.roulette">Roleta</div>
+              <div class="pill" data-v="rps" data-i18n="criar.rps">Pedra, papel, tesoura</div>
+              <div class="pill" data-v="manual" data-i18n="criar.manual">Manual</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="criar.field.draft">Quando houver mais de 2 capitães, quem escolhe os jogadores?</label>
+            <div class="pill-group" id="pz-draft">
+              <div class="pill" data-v="organizer" data-i18n="criar.draft.organizer">Eu decido (organizador)</div>
+              <div class="pill" data-v="captains" data-i18n="criar.draft.captains">Os capitães escolhem</div>
+              <div class="pill" data-v="random" data-i18n="criar.random">Aleatório</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="criar.field.visibility">Visibilidade</label>
+            <div class="pill-group" id="pz-visibility">
+              <div class="pill" data-v="public" data-i18n="criar.visibility.public">Pública</div>
+              <div class="pill" data-v="private" data-i18n="criar.visibility.private">Privada (código)</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="criar.field.joinmode">Como as pessoas podem entrar</label>
+            <div class="pill-group" id="pz-joinmode">
+              <div class="pill" data-v="both" data-i18n="criar.joinmode.both">Sozinho ou com o clã</div>
+              <div class="pill" data-v="solo" data-i18n="criar.joinmode.solo">Só sozinho</div>
+              <div class="pill" data-v="clan" data-i18n="criar.joinmode.clan">Só com o clã</div>
+            </div>
+          </div>
+          <p class="form-error" id="preset-form-error" style="margin-bottom:12px;"></p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-accent" id="preset-save-btn" data-i18n="clube.presets.save">Guardar preset</button>
+            <button class="btn btn-outline" id="preset-cancel-btn" data-i18n="clube.presets.cancel">Cancelar</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="memberof-box" style="display:none;">
-      <h2 style="margin-bottom:16px;">Clubes onde sou membro</h2>
+      <h2 style="margin-bottom:16px;" data-i18n="clube.memberOfTitle">Clubes onde sou membro</h2>
       <div class="card" id="memberof-list"></div>
     </div>
   </div>
@@ -74,6 +192,7 @@
 <footer><span>© 2026 Knockout League</span></footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script type="module">
 import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp, arrayRemove, arrayUnion } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -83,6 +202,7 @@ let currentUserData = null;
 let ownedClub = null;
 let isOwner = false;
 let members = [];
+function tr(k, fallback){ return (window.KL_T && window.KL_T(k)) || fallback; }
 
 onAuthStateChanged(auth, async function(user){
   currentUser = user;
@@ -118,20 +238,22 @@ async function loadOwnedClub(){
       try{
         const ownerSnap = await getDoc(doc(db,'users',ownedClub.ownerUid));
         if(ownerSnap.exists()){
-          ownedClub.ownerNickname = ownerSnap.data().nickname || 'Jogador';
+          ownedClub.ownerNickname = ownerSnap.data().nickname || tr('clan.playerFallback','Jogador');
           if(isOwner) await updateDoc(doc(db,'clubs',ownedClub.id), { ownerNickname: ownedClub.ownerNickname }).catch(()=>{});
         }
       }catch(e){}
     }
     document.getElementById('create-box').style.display = 'none';
     document.getElementById('owned-box').style.display = 'block';
-    document.getElementById('owned-club-name').textContent = ownedClub.name + (isOwner ? '' : ' (visitando)');
+    document.getElementById('owned-club-name').textContent = ownedClub.name + (isOwner ? '' : tr('clan.visiting',' (visitando)'));
     document.getElementById('invite-form-box').style.display = isOwner ? 'block' : 'none';
     document.getElementById('delete-club-btn').style.display = isOwner ? 'inline-block' : 'none';
+    document.getElementById('presets-box').style.display = isOwner ? 'block' : 'none';
+    if(isOwner) await loadPresets();
     await loadMembers();
   }catch(e){
     document.getElementById('create-box').style.display = 'block';
-    document.getElementById('create-club-error').textContent = 'Não consegui verificar se já tens clube (' + e.message + '). Ainda podes tentar criar um.';
+    document.getElementById('create-club-error').textContent = tr('clube.errCheck1','Não consegui verificar se já tens clube (') + e.message + tr('clube.errCheck2',"). Ainda podes tentar criar um.");
     document.getElementById('create-club-error').style.display = 'block';
   }
 }
@@ -146,18 +268,18 @@ async function loadMembers(){
   const snap = await getDocs(collection(db,'clubs',ownedClub.id,'members'));
   members = snap.docs.map(d=>({id:d.id, ...d.data()}));
   const el = document.getElementById('members-list');
-  const leaderRow = `<div class="member-row"><span>${ownedClub.ownerNickname || 'Jogador'}</span><span class="badge-perm" style="border-color:var(--gold);color:var(--gold);">Líder</span></div>`;
-  if(members.length === 0){ el.innerHTML = leaderRow + '<p class="muted" style="margin-top:10px;">Sem mais membros ainda.</p>'; return; }
+  const leaderRow = `<div class="member-row"><span>${ownedClub.ownerNickname || tr('clan.playerFallback','Jogador')}</span><span class="badge-perm" style="border-color:var(--gold);color:var(--gold);">${tr('clan.role.leader','Líder')}</span></div>`;
+  if(members.length === 0){ el.innerHTML = leaderRow + '<p class="muted" style="margin-top:10px;">' + tr('clan.noMoreMembers','Sem mais membros ainda.') + '</p>'; return; }
   el.innerHTML = leaderRow + members.map(m => {
     const perms = memberPerms(m);
     const isMembroOnly = perms.length === 0;
-    const editControls = isOwner ? `<button class="btn btn-sm btn-outline" data-save="${m.id}">Guardar</button><button class="btn btn-sm btn-outline" data-leader="${m.id}">Tornar Líder</button><button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>` : '';
+    const editControls = isOwner ? `<button class="btn btn-sm btn-outline" data-save="${m.id}">${tr('clube.save','Guardar')}</button><button class="btn btn-sm btn-outline" data-leader="${m.id}">${tr('clan.makeLeader','Tornar Líder')}</button><button class="btn btn-sm btn-danger" data-rm="${m.id}">${tr('clan.remove','Remover')}</button>` : '';
     return `<div class="member-row">
       <span>${m.nickname}</span>
       <span style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="membro" ${isMembroOnly?'checked':''} ${isOwner?'':'disabled'} style="width:auto;"/> Só membro</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="organizador" ${perms.includes('organizador')?'checked':''} ${isOwner?'':'disabled'} style="width:auto;"/> Criar torneios</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="moderador" ${perms.includes('moderador')?'checked':''} ${isOwner?'':'disabled'} style="width:auto;"/> Moderar</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="membro" ${isMembroOnly?'checked':''} ${isOwner?'':'disabled'} style="width:auto;"/> ${tr('clube.perm.memberOnly','Só membro')}</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="organizador" ${perms.includes('organizador')?'checked':''} ${isOwner?'':'disabled'} style="width:auto;"/> ${tr('clube.perm.create','Criar torneios')}</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;text-transform:none;font-family:'Inter';color:var(--ink);"><input type="checkbox" data-editperm="${m.id}" data-permval="moderador" ${perms.includes('moderador')?'checked':''} ${isOwner?'':'disabled'} style="width:auto;"/> ${tr('clube.perm.moderate','Moderar')}</label>
         ${editControls}
       </span>
     </div>`;
@@ -165,7 +287,7 @@ async function loadMembers(){
 
   el.querySelectorAll('[data-rm]').forEach(btn=>{
     btn.addEventListener('click', async function(){
-      if(!confirm('Remover este membro do clube?')) return;
+      if(!confirm(tr('clube.confirmRemove','Remover este membro do clube?'))) return;
       const m = members.find(x=>x.id===btn.dataset.rm);
       await deleteDoc(doc(db,'clubs',ownedClub.id,'members',btn.dataset.rm));
       if(m){
@@ -180,10 +302,10 @@ async function loadMembers(){
     btn.addEventListener('click', async function(){
       const m = members.find(x=>x.id===btn.dataset.leader);
       if(!m) return;
-      if(!confirm('Tornar "'+m.nickname+'" o novo líder do clube? Vais passar a ser um membro comum.')) return;
+      if(!confirm(tr('clube.confirmMakeLeader1','Tornar "')+m.nickname+tr('clube.confirmMakeLeader2','" o novo líder do clube? Vais passar a ser um membro comum.'))) return;
       try{
         const oldOwnerUid = ownedClub.ownerUid;
-        const oldOwnerNickname = ownedClub.ownerNickname || (currentUserData && currentUserData.nickname) || 'Membro';
+        const oldOwnerNickname = ownedClub.ownerNickname || (currentUserData && currentUserData.nickname) || tr('clan.role.member','Membro');
         await addDoc(collection(db,'clubs',ownedClub.id,'members'), { uid: oldOwnerUid, nickname: oldOwnerNickname, permissions: [] });
         await deleteDoc(doc(db,'clubs',ownedClub.id,'members',m.id));
         await updateDoc(doc(db,'clubs',ownedClub.id), {
@@ -192,7 +314,7 @@ async function loadMembers(){
         });
         await updateDoc(doc(db,'users',oldOwnerUid), { clubIds: arrayUnion(ownedClub.id) }).catch(()=>{});
         window.location.href = 'clube.html?id=' + ownedClub.id;
-      }catch(e){ alert('Erro ao transferir liderança: ' + e.message); }
+      }catch(e){ alert(tr('clan.errTransfer','Erro ao transferir liderança: ') + e.message); }
     });
   });
 
@@ -222,8 +344,8 @@ async function loadMembers(){
         clubUpd.organizerUids = newPerms.includes('organizador') ? arrayUnion(m.uid) : arrayRemove(m.uid);
         await updateDoc(doc(db,'clubs',ownedClub.id), clubUpd);
       }
-      btn.textContent = 'Guardado ✓';
-      setTimeout(()=>{ btn.textContent = 'Guardar'; }, 1500);
+      btn.textContent = tr('clube.saved','Guardado ✓');
+      setTimeout(()=>{ btn.textContent = tr('clube.save','Guardar'); }, 1500);
     });
   });
 }
@@ -243,12 +365,12 @@ async function loadMemberOf(){
       let labels = '';
       try{
         const memSnap = await getDocs(query(collection(db,'clubs',clubId,'members'), where('uid','==',currentUser.uid)));
-        if(!memSnap.empty) labels = memberPerms(memSnap.docs[0].data()).map(p => p === 'organizador' ? 'Podes criar torneios' : 'Podes moderar').join(' · ');
+        if(!memSnap.empty) labels = memberPerms(memSnap.docs[0].data()).map(p => p === 'organizador' ? tr('clube.canCreate','Podes criar torneios') : tr('clube.canModerate','Podes moderar')).join(' · ');
       }catch(e){}
-      return `<a href="clube.html?id=${clubId}" class="member-row" style="text-decoration:none;color:var(--ink);"><span>${clubSnap.data().name} →</span><span class="badge-perm">${labels || 'Sem permissões'}</span></a>`;
+      return `<a href="clube.html?id=${clubId}" class="member-row" style="text-decoration:none;color:var(--ink);"><span>${clubSnap.data().name} →</span><span class="badge-perm">${labels || tr('clube.noPerms','Sem permissões')}</span></a>`;
     }));
     const filtered = cards.filter(Boolean);
-    list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clube.</p>';
+    list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">' + tr('clube.notMemberOfAny','Não fazes parte de mais nenhum clube.') + '</p>';
   }catch(e){ /* falha silenciosa — não é crítico */ }
 }
 
@@ -256,11 +378,11 @@ document.getElementById('create-club-btn').addEventListener('click', async funct
   const err = document.getElementById('create-club-error');
   err.style.display = 'none';
   const name = document.getElementById('club-name-input').value.trim();
-  if(!name){ err.textContent = 'Dá um nome ao clube.'; err.style.display = 'block'; return; }
+  if(!name){ err.textContent = tr('clube.errNoName','Dá um nome ao clube.'); err.style.display = 'block'; return; }
   try{
     await addDoc(collection(db,'clubs'), { name, ownerUid: currentUser.uid, ownerNickname: currentUserData?.nickname || 'Eu', createdAt: serverTimestamp() });
     await loadOwnedClub();
-  }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
+  }catch(e){ err.textContent = tr('def.msg.error','Erro: ') + e.message; err.style.display = 'block'; }
 });
 
 document.getElementById('perm-membro').addEventListener('change', function(){
@@ -280,14 +402,14 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
   if(document.getElementById('perm-organizador').checked) permissions.push('organizador');
   if(document.getElementById('perm-moderador').checked) permissions.push('moderador');
   const parts = input.split('#');
-  if(parts.length !== 2 || !parts[0] || !parts[1]){ err.textContent = 'Formato inválido. Usa nickname#tag.'; err.style.display = 'block'; return; }
+  if(parts.length !== 2 || !parts[0] || !parts[1]){ err.textContent = tr('clan.errFormat','Formato inválido. Usa nickname#tag.'); err.style.display = 'block'; return; }
   const nick = parts[0].trim(), tag = parts[1].trim().toUpperCase();
   try{
     const q = query(collection(db,'users'), where('nicknameLower','==',nick.toLowerCase()));
     const snap = await getDocs(q);
     const found = snap.docs.find(d => (d.data().tag||'').toUpperCase() === tag);
-    if(!found){ err.textContent = 'Não encontrei nenhum jogador com esse nickname e tag.'; err.style.display = 'block'; return; }
-    if(members.some(m => m.uid === found.id)){ err.textContent = 'Já é membro deste clube.'; err.style.display = 'block'; return; }
+    if(!found){ err.textContent = tr('clan.errNotFound','Não encontrei nenhum jogador com esse nickname e tag.'); err.style.display = 'block'; return; }
+    if(members.some(m => m.uid === found.id)){ err.textContent = tr('clube.errAlreadyMember','Já é membro deste clube.'); err.style.display = 'block'; return; }
     await addDoc(collection(db,'notifications'), {
       toUid: found.id, type: 'club_invite', refId: ownedClub.id, refName: ownedClub.name,
       permissions, status: 'pending', createdAt: serverTimestamp()
@@ -297,14 +419,14 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
     document.getElementById('perm-moderador').checked = false;
     document.getElementById('perm-membro').checked = true;
     err.style.color = 'var(--win)'; err.style.borderColor = 'var(--win)';
-    err.textContent = 'Convite enviado — fica à espera de ' + found.data().nickname + ' aceitar nas notificações dele.';
+    err.textContent = tr('clan.inviteSent1','Convite enviado — fica à espera de ') + found.data().nickname + tr('clan.inviteSent2',' aceitar nas notificações dele.');
     err.style.display = 'block';
-  }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
+  }catch(e){ err.textContent = tr('def.msg.error','Erro: ') + e.message; err.style.display = 'block'; }
 });
 
 document.getElementById('delete-club-btn').addEventListener('click', async function(){
   if(!ownedClub || !isOwner) return;
-  if(!confirm('Eliminar o clube "'+ownedClub.name+'"? Esta ação é irreversível e remove todos os membros.')) return;
+  if(!confirm(tr('clube.confirmDelete1','Eliminar o clube "')+ownedClub.name+tr('clube.confirmDelete2','"? Esta ação é irreversível e remove todos os membros.'))) return;
   try{
     const memSnap = await getDocs(collection(db,'clubs',ownedClub.id,'members'));
     await Promise.all(memSnap.docs.map(async m=>{
@@ -314,7 +436,207 @@ document.getElementById('delete-club-btn').addEventListener('click', async funct
     await deleteDoc(doc(db,'clubs',ownedClub.id));
     ownedClub = null;
     window.location.href = 'clube.html';
-  }catch(e){ alert('Erro ao eliminar clube: ' + e.message); }
+  }catch(e){ alert(tr('clube.errDelete','Erro ao eliminar clube: ') + e.message); }
+});
+
+// ---------- Presets de configuração de torneio ----------
+let presets = [];
+let editingPresetId = null;
+let presetMaps = [];
+
+function pzBindPills(id, def){
+  const el = document.getElementById(id);
+  el.querySelectorAll('.pill').forEach(function(p){
+    p.classList.toggle('selected', p.dataset.v === def);
+    p.addEventListener('click', function(){
+      el.querySelectorAll('.pill').forEach(function(x){ x.classList.remove('selected'); });
+      p.classList.add('selected');
+    });
+  });
+}
+function pzSelected(id){ const s = document.querySelector('#'+id+' .pill.selected'); return s ? s.dataset.v : null; }
+function pzSelectPill(id, value){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.querySelectorAll('.pill').forEach(function(p){ p.classList.toggle('selected', p.dataset.v === String(value)); });
+}
+['pz-teamsize','pz-bracket','pz-layout','pz-drawmode','pz-bestof','pz-coin','pz-assign','pz-draft','pz-visibility','pz-joinmode'].forEach(id => pzBindPills(id, null));
+document.querySelectorAll('#pz-bestof .pill').forEach(function(p){
+  p.addEventListener('click', function(){
+    document.getElementById('pz-bestof-custom').style.display = (p.dataset.v === 'custom') ? 'block' : 'none';
+  });
+});
+
+function pzRenderMaps(){
+  const el = document.getElementById('pz-maps-list');
+  el.innerHTML = '';
+  presetMaps.forEach(function(m,i){
+    const tag = document.createElement('div');
+    tag.className = 'map-tag';
+    tag.innerHTML = '<span>'+m+'</span><button type="button">×</button>';
+    tag.querySelector('button').addEventListener('click', function(){ presetMaps.splice(i,1); pzRenderMaps(); });
+    el.appendChild(tag);
+  });
+}
+function pzAddMap(){
+  const input = document.getElementById('pz-map-input');
+  const v = input.value.trim();
+  if(v && !presetMaps.includes(v)){ presetMaps.push(v); pzRenderMaps(); }
+  input.value = '';
+}
+document.getElementById('pz-map-add').addEventListener('click', pzAddMap);
+document.getElementById('pz-map-input').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); pzAddMap(); } });
+
+function presetSummary(p){
+  const size = p.teamSize;
+  return (p.game || '—') + ' · ' + size + 'v' + size + ' · ' + (p.maxTeams||'') + ' ' + tr('clube.presets.teamsWord','equipas') + ' · ' + (p.bracketType||'');
+}
+
+function resetPresetForm(){
+  editingPresetId = null;
+  document.getElementById('pz-name').value = '';
+  document.getElementById('pz-game').value = '';
+  document.getElementById('pz-maxteams').value = 8;
+  document.getElementById('pz-pointstowin').value = '';
+  document.getElementById('pz-bestof-custom').value = '';
+  document.getElementById('pz-bestof-custom').style.display = 'none';
+  document.getElementById('pz-banmaps').checked = false;
+  document.getElementById('pz-useplayernames').checked = false;
+  presetMaps = [];
+  pzRenderMaps();
+  pzSelectPill('pz-teamsize','5');
+  pzSelectPill('pz-bracket','single');
+  pzSelectPill('pz-layout','one-side');
+  pzSelectPill('pz-drawmode','random');
+  pzSelectPill('pz-bestof','1');
+  pzSelectPill('pz-coin','coin');
+  pzSelectPill('pz-assign','roulette');
+  pzSelectPill('pz-draft','organizer');
+  pzSelectPill('pz-visibility','public');
+  pzSelectPill('pz-joinmode','both');
+  document.getElementById('preset-form-error').style.display = 'none';
+}
+
+function openPresetForm(preset){
+  resetPresetForm();
+  document.getElementById('preset-form-title').textContent = preset ? tr('clube.presets.editTitle','Editar preset') : tr('clube.presets.newTitle','Novo preset');
+  if(preset){
+    editingPresetId = preset.id;
+    document.getElementById('pz-name').value = preset.name || '';
+    document.getElementById('pz-game').value = preset.game || '';
+    document.getElementById('pz-maxteams').value = preset.maxTeams || 8;
+    document.getElementById('pz-pointstowin').value = preset.pointsToWin || '';
+    document.getElementById('pz-banmaps').checked = !!preset.mapBanEnabled;
+    document.getElementById('pz-useplayernames').checked = !!preset.usePlayerNames;
+    presetMaps = Array.isArray(preset.maps) ? preset.maps.slice() : [];
+    pzRenderMaps();
+    pzSelectPill('pz-teamsize', preset.teamSize);
+    pzSelectPill('pz-bracket', preset.bracketType);
+    pzSelectPill('pz-layout', preset.bracketLayout);
+    pzSelectPill('pz-drawmode', preset.bracketDrawMode);
+    pzSelectPill('pz-coin', preset.coinMethod);
+    pzSelectPill('pz-assign', preset.assignMode);
+    pzSelectPill('pz-draft', preset.draftMode);
+    pzSelectPill('pz-visibility', preset.visibility);
+    pzSelectPill('pz-joinmode', preset.joinMode);
+    const bestOfPill = [1,3,5].includes(preset.bestOf) ? String(preset.bestOf) : 'custom';
+    pzSelectPill('pz-bestof', bestOfPill);
+    if(bestOfPill === 'custom'){
+      document.getElementById('pz-bestof-custom').style.display = 'block';
+      document.getElementById('pz-bestof-custom').value = preset.bestOf || '';
+    }
+  }
+  document.getElementById('preset-form-box').style.display = 'block';
+  document.getElementById('preset-form-box').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function closePresetForm(){
+  document.getElementById('preset-form-box').style.display = 'none';
+  editingPresetId = null;
+}
+
+async function loadPresets(){
+  const box = document.getElementById('presets-list');
+  try{
+    const snap = await getDocs(collection(db,'clubs',ownedClub.id,'presets'));
+    presets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderPresets();
+  }catch(e){ box.innerHTML = '<p class="muted">' + tr('clube.presets.errLoad','Erro ao carregar presets. (') + e.message + ')</p>'; }
+}
+
+function renderPresets(){
+  const box = document.getElementById('presets-list');
+  if(presets.length === 0){ box.innerHTML = '<p class="muted">' + tr('clube.presets.none','Ainda não há presets.') + '</p>'; return; }
+  box.innerHTML = presets.map(p => `<div class="member-row">
+    <span><strong>${p.name}</strong><br/><span class="muted" style="font-size:0.78rem;">${presetSummary(p)}</span></span>
+    <span style="display:flex;gap:8px;">
+      <button class="btn btn-sm btn-outline" data-edit="${p.id}">${tr('clube.presets.edit','Editar')}</button>
+      <button class="btn btn-sm btn-danger" data-delp="${p.id}">${tr('clan.remove','Remover')}</button>
+    </span>
+  </div>`).join('');
+  box.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', function(){
+      const p = presets.find(x=>x.id===btn.dataset.edit);
+      if(p) openPresetForm(p);
+    });
+  });
+  box.querySelectorAll('[data-delp]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      if(!confirm(tr('clube.presets.confirmDelete','Eliminar este preset?'))) return;
+      try{
+        await deleteDoc(doc(db,'clubs',ownedClub.id,'presets',btn.dataset.delp));
+        await loadPresets();
+      }catch(e){ alert(tr('def.msg.error','Erro: ') + e.message); }
+    });
+  });
+}
+
+document.getElementById('preset-new-btn').addEventListener('click', function(){ openPresetForm(null); });
+document.getElementById('preset-cancel-btn').addEventListener('click', closePresetForm);
+
+document.getElementById('preset-save-btn').addEventListener('click', async function(){
+  const err = document.getElementById('preset-form-error');
+  err.style.display = 'none';
+  const name = document.getElementById('pz-name').value.trim();
+  if(!name){ err.textContent = tr('clube.presets.errNoName','Dá um nome ao preset.'); err.style.display = 'block'; return; }
+  const bestOfSel = pzSelected('pz-bestof');
+  const bestOf = bestOfSel === 'custom' ? parseInt(document.getElementById('pz-bestof-custom').value, 10) : parseInt(bestOfSel, 10);
+  if(!bestOf || bestOf < 1 || bestOf % 2 === 0){ err.textContent = tr('criar.errBestOf','O número de "melhor de quantas partidas" tem de ser ímpar (1, 3, 5, 7...).'); err.style.display = 'block'; return; }
+  const pointsToWinRaw = document.getElementById('pz-pointstowin').value;
+  const pointsToWin = pointsToWinRaw ? parseInt(pointsToWinRaw, 10) : null;
+  if(!pointsToWin){ err.textContent = tr('criar.errPoints','Define os pontos para vencer cada partida.'); err.style.display = 'block'; return; }
+  const maxTeams = parseInt(document.getElementById('pz-maxteams').value, 10);
+  if(!maxTeams || maxTeams < 2){ err.textContent = tr('criar.errMaxTeams','Precisas de pelo menos 2 equipas.'); err.style.display = 'block'; return; }
+
+  const preset = {
+    name, game: document.getElementById('pz-game').value.trim(),
+    teamSize: parseInt(pzSelected('pz-teamsize'), 10), maxTeams,
+    bracketType: pzSelected('pz-bracket'),
+    bracketLayout: pzSelected('pz-bracket') === 'round-robin' ? 'one-side' : pzSelected('pz-layout'),
+    bracketDrawMode: pzSelected('pz-drawmode'),
+    bestOf, pointsToWin,
+    coinMethod: pzSelected('pz-coin'),
+    mapBanEnabled: document.getElementById('pz-banmaps').checked,
+    maps: presetMaps.slice(),
+    usePlayerNames: document.getElementById('pz-useplayernames').checked,
+    assignMode: pzSelected('pz-assign'),
+    draftMode: pzSelected('pz-draft'),
+    visibility: pzSelected('pz-visibility'),
+    joinMode: pzSelected('pz-joinmode')
+  };
+
+  const btn = document.getElementById('preset-save-btn');
+  btn.disabled = true;
+  try{
+    if(editingPresetId){
+      await updateDoc(doc(db,'clubs',ownedClub.id,'presets',editingPresetId), preset);
+    } else {
+      await addDoc(collection(db,'clubs',ownedClub.id,'presets'), { ...preset, createdAt: serverTimestamp() });
+    }
+    closePresetForm();
+    await loadPresets();
+  }catch(e){ err.textContent = tr('def.msg.error','Erro: ') + e.message; err.style.display = 'block'; }
+  btn.disabled = false;
 });
 </script>
 <script type="module" src="nav-auth.js"></script>

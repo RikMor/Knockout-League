@@ -4,7 +4,7 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>O meu clã — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<link rel="stylesheet" href="shared.css?v=3"/>
 <style>
   .member-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); gap: 10px; flex-wrap: wrap; }
   .member-row:last-child { border-bottom: none; }
@@ -17,50 +17,50 @@
   <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
   <button class="nav-mobile-toggle">☰</button>
   <ul class="nav-links">
-    <li><a href="index.html">Início</a></li>
-    <li><a href="torneios.html">Torneios</a></li>
-    <li><a href="criar-torneio.html">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+    <li><a href="index.html" data-i18n="nav.home">Início</a></li>
+    <li><a href="torneios.html" data-i18n="nav.tournaments">Torneios</a></li>
+    <li><a href="criar-torneio.html" data-i18n="nav.create">Criar torneio</a></li>
+    <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="contacto.html" data-i18n="nav.contact">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html" data-i18n="nav.login">Entrar</a></li>
   </ul>
 </nav>
 
 <div class="wrap page-head">
-  <div class="eyebrow">Equipa</div>
-  <h1>O meu clã</h1>
-  <p class="muted" style="margin-top:10px;">Um clã é uma equipa fixa — entra já formada em qualquer torneio, sem sorteios.</p>
+  <div class="eyebrow" data-i18n="clan.eyebrow">Equipa</div>
+  <h1 data-i18n="nav.myClan">O meu clã</h1>
+  <p class="muted" style="margin-top:10px;" data-i18n="clan.intro">Um clã é uma equipa fixa — entra já formada em qualquer torneio, sem sorteios.</p>
 </div>
 
 <div class="wrap" style="padding-bottom:90px;">
   <div class="not-logged" id="not-logged" style="display:none;">
-    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para geres um clã.</p>
-    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+    <p class="muted" style="margin-bottom:24px;" data-i18n="clan.restricted.text">Tens de iniciar sessão para geres um clã.</p>
+    <a href="login.html"><button class="btn btn-accent" data-i18n="nav.login">Entrar</button></a>
   </div>
 
   <div id="content" style="display:none;">
     <div id="create-box" class="card" style="margin-bottom:30px;display:none;">
-      <h3 style="margin-bottom:12px;">Ainda não tens um clã</h3>
-      <div class="form-group"><label>Nome do clã</label><input type="text" id="clan-name-input" placeholder="Ex: Os Invencíveis"/></div>
-      <button class="btn btn-accent" id="create-clan-btn">Criar clã</button>
+      <h3 style="margin-bottom:12px;" data-i18n="clan.noClan.title">Ainda não tens um clã</h3>
+      <div class="form-group"><label data-i18n="clan.nameLabel">Nome do clã</label><input type="text" id="clan-name-input" data-i18n-ph="clan.namePh" placeholder="Ex: Os Invencíveis"/></div>
+      <button class="btn btn-accent" id="create-clan-btn" data-i18n="clan.create">Criar clã</button>
       <p class="form-error" id="create-clan-error" style="margin-top:12px;"></p>
     </div>
 
     <div id="owned-box" style="display:none;margin-bottom:40px;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
         <h2 id="owned-clan-name" style="margin-bottom:0;"></h2>
-        <button class="btn btn-danger btn-sm" id="delete-clan-btn" style="display:none;">Eliminar clã</button>
+        <button class="btn btn-danger btn-sm" id="delete-clan-btn" style="display:none;" data-i18n="clan.delete">Eliminar clã</button>
       </div>
       <div id="invite-form-box" style="display:flex;gap:8px;max-width:520px;margin-bottom:20px;flex-wrap:wrap;">
-        <input type="text" id="member-input" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
-        <button class="btn btn-outline btn-sm" id="add-member-btn">Convidar</button>
+        <input type="text" id="member-input" data-i18n-ph="clan.memberPh" placeholder="nickname#tag (ex: ShadowBlade#A1B2)" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);"/>
+        <button class="btn btn-outline btn-sm" id="add-member-btn" data-i18n="clan.invite">Convidar</button>
       </div>
       <p class="form-error" id="member-error" style="margin-bottom:16px;"></p>
-      <div class="card" id="members-list"><p class="muted">Sem membros ainda.</p></div>
+      <div class="card" id="members-list"><p class="muted" data-i18n="clan.noMembers">Sem membros ainda.</p></div>
     </div>
 
     <div id="memberof-box" style="display:none;">
-      <h2 style="margin-bottom:16px;">Clãs onde sou membro</h2>
+      <h2 style="margin-bottom:16px;" data-i18n="clan.memberOfTitle">Clãs onde sou membro</h2>
       <div class="card" id="memberof-list"></div>
     </div>
   </div>
@@ -69,6 +69,7 @@
 <footer><span>© 2026 Knockout League</span></footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script type="module">
 import { auth, db, doc, getDoc, updateDoc, deleteDoc, collection, collectionGroup, addDoc, getDocs, query, where, serverTimestamp, arrayRemove, arrayUnion } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -78,6 +79,7 @@ let currentUserData = null;
 let ownedClan = null;
 let isOwner = false;
 let members = [];
+function tr(k, fallback){ return (window.KL_T && window.KL_T(k)) || fallback; }
 
 onAuthStateChanged(auth, async function(user){
   currentUser = user;
@@ -113,28 +115,28 @@ async function loadOwnedClan(){
       try{
         const ownerSnap = await getDoc(doc(db,'users',ownedClan.ownerUid));
         if(ownerSnap.exists()){
-          ownedClan.ownerNickname = ownerSnap.data().nickname || 'Jogador';
+          ownedClan.ownerNickname = ownerSnap.data().nickname || tr('clan.playerFallback','Jogador');
           if(isOwner) await updateDoc(doc(db,'clans',ownedClan.id), { ownerNickname: ownedClan.ownerNickname }).catch(()=>{});
         }
       }catch(e){}
     }
     document.getElementById('create-box').style.display = 'none';
     document.getElementById('owned-box').style.display = 'block';
-    document.getElementById('owned-clan-name').textContent = ownedClan.name + (isOwner ? '' : ' (visitando)');
+    document.getElementById('owned-clan-name').textContent = ownedClan.name + (isOwner ? '' : tr('clan.visiting',' (visitando)'));
     document.getElementById('invite-form-box').style.display = isOwner ? 'block' : 'none';
     document.getElementById('delete-clan-btn').style.display = isOwner ? 'inline-block' : 'none';
     await loadMembers();
   }catch(e){
     document.getElementById('create-box').style.display = 'block';
-    document.getElementById('create-clan-error').textContent = 'Não consegui verificar se já tens clã (' + e.message + '). Ainda podes tentar criar um.';
+    document.getElementById('create-clan-error').textContent = tr('clan.errCheck1','Não consegui verificar se já tens clã (') + e.message + tr('clan.errCheck2',"). Ainda podes tentar criar um.");
     document.getElementById('create-clan-error').style.display = 'block';
   }
 }
 
 function roleSelectHtml(m){
   return `<select data-role="${m.id}" style="padding:5px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:0.78rem;">
-    <option value="">Membro</option>
-    <option value="captain" ${ownedClan.captainUid===m.uid?'selected':''}>Capitão</option>
+    <option value="">${tr('clan.role.member','Membro')}</option>
+    <option value="captain" ${ownedClan.captainUid===m.uid?'selected':''}>${tr('clan.role.captain','Capitão')}</option>
   </select>`;
 }
 
@@ -142,12 +144,12 @@ async function loadMembers(){
   const snap = await getDocs(collection(db,'clans',ownedClan.id,'members'));
   members = snap.docs.map(d=>({id:d.id, ...d.data()}));
   const el = document.getElementById('members-list');
-  const leaderRow = `<div class="member-row"><span>${ownedClan.ownerNickname || 'Jogador'}</span><span class="badge-role">Líder</span></div>`;
-  if(members.length === 0){ el.innerHTML = leaderRow + '<p class="muted" style="margin-top:10px;">Sem mais membros ainda.</p>'; return; }
+  const leaderRow = `<div class="member-row"><span>${ownedClan.ownerNickname || tr('clan.playerFallback','Jogador')}</span><span class="badge-role">${tr('clan.role.leader','Líder')}</span></div>`;
+  if(members.length === 0){ el.innerHTML = leaderRow + '<p class="muted" style="margin-top:10px;">' + tr('clan.noMoreMembers','Sem mais membros ainda.') + '</p>'; return; }
   el.innerHTML = leaderRow + members.map(m => {
-    const roleTag = ownedClan.captainUid === m.uid ? '<span class="badge-role">Capitão</span>' : '';
+    const roleTag = ownedClan.captainUid === m.uid ? '<span class="badge-role">'+tr('clan.role.captain','Capitão')+'</span>' : '';
     const editControls = isOwner
-      ? `${roleSelectHtml(m)}<button class="btn btn-sm btn-outline" data-leader="${m.id}">Tornar Líder</button><button class="btn btn-sm btn-danger" data-rm="${m.id}">Remover</button>`
+      ? `${roleSelectHtml(m)}<button class="btn btn-sm btn-outline" data-leader="${m.id}">${tr('clan.makeLeader','Tornar Líder')}</button><button class="btn btn-sm btn-danger" data-rm="${m.id}">${tr('clan.remove','Remover')}</button>`
       : '';
     return `<div class="member-row">
       <span>${m.nickname}${roleTag}</span>
@@ -158,7 +160,7 @@ async function loadMembers(){
   }).join('');
   el.querySelectorAll('[data-rm]').forEach(btn=>{
     btn.addEventListener('click', async function(){
-      if(!confirm('Remover este membro do clã?')) return;
+      if(!confirm(tr('clan.confirmRemove','Remover este membro do clã?'))) return;
       const m = members.find(x=>x.id===btn.dataset.rm);
       const upd = {};
       if(m && ownedClan.captainUid === m.uid) upd.captainUid = null;
@@ -172,10 +174,10 @@ async function loadMembers(){
     btn.addEventListener('click', async function(){
       const m = members.find(x=>x.id===btn.dataset.leader);
       if(!m) return;
-      if(!confirm('Tornar "'+m.nickname+'" o novo líder do clã? Vais passar a ser um membro comum.')) return;
+      if(!confirm(tr('clan.confirmMakeLeader1','Tornar "')+m.nickname+tr('clan.confirmMakeLeader2','" o novo líder do clã? Vais passar a ser um membro comum.'))) return;
       try{
         const oldOwnerUid = ownedClan.ownerUid;
-        const oldOwnerNickname = ownedClan.ownerNickname || (currentUserData && currentUserData.nickname) || 'Membro';
+        const oldOwnerNickname = ownedClan.ownerNickname || (currentUserData && currentUserData.nickname) || tr('clan.role.member','Membro');
         await addDoc(collection(db,'clans',ownedClan.id,'members'), { uid: oldOwnerUid, nickname: oldOwnerNickname });
         await deleteDoc(doc(db,'clans',ownedClan.id,'members',m.id));
         const upd = { ownerUid: m.uid, ownerNickname: m.nickname };
@@ -183,7 +185,7 @@ async function loadMembers(){
         await updateDoc(doc(db,'clans',ownedClan.id), upd);
         await updateDoc(doc(db,'users',oldOwnerUid), { clanIds: arrayUnion(ownedClan.id) }).catch(()=>{});
         window.location.href = 'clan.html?id=' + ownedClan.id;
-      }catch(e){ alert('Erro ao transferir liderança: ' + e.message); }
+      }catch(e){ alert(tr('clan.errTransfer','Erro ao transferir liderança: ') + e.message); }
     });
   });
   el.querySelectorAll('[data-role]').forEach(sel=>{
@@ -213,7 +215,7 @@ async function loadMemberOf(){
       return `<a href="clan.html?id=${clanId}" class="member-row" style="text-decoration:none;color:var(--ink);"><span>${clanSnap.data().name} →</span></a>`;
     }));
     const filtered = cards.filter(Boolean);
-    list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">Não fazes parte de mais nenhum clã.</p>';
+    list.innerHTML = filtered.length ? filtered.join('') : '<p class="muted">' + tr('clan.notMemberOfAny','Não fazes parte de mais nenhum clã.') + '</p>';
   }catch(e){ /* falha silenciosa — não é crítico */ }
 }
 
@@ -221,11 +223,11 @@ document.getElementById('create-clan-btn').addEventListener('click', async funct
   const err = document.getElementById('create-clan-error');
   err.style.display = 'none';
   const name = document.getElementById('clan-name-input').value.trim();
-  if(!name){ err.textContent = 'Dá um nome ao clã.'; err.style.display = 'block'; return; }
+  if(!name){ err.textContent = tr('clan.errNoName','Dá um nome ao clã.'); err.style.display = 'block'; return; }
   try{
     await addDoc(collection(db,'clans'), { name, ownerUid: currentUser.uid, ownerNickname: currentUserData?.nickname || 'Eu', captainUid: null, createdAt: serverTimestamp() });
     await loadOwnedClan();
-  }catch(e){ err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
+  }catch(e){ err.textContent = tr('def.msg.error','Erro: ') + e.message; err.style.display = 'block'; }
 });
 
 document.getElementById('add-member-btn').addEventListener('click', async function(){
@@ -233,14 +235,14 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
   err.style.display = 'none';
   const input = document.getElementById('member-input').value.trim();
   const parts = input.split('#');
-  if(parts.length !== 2 || !parts[0] || !parts[1]){ err.textContent = 'Formato inválido. Usa nickname#tag.'; err.style.display = 'block'; return; }
+  if(parts.length !== 2 || !parts[0] || !parts[1]){ err.textContent = tr('clan.errFormat','Formato inválido. Usa nickname#tag.'); err.style.display = 'block'; return; }
   const nick = parts[0].trim(), tag = parts[1].trim().toUpperCase();
   try{
     const q = query(collection(db,'users'), where('nicknameLower','==',nick.toLowerCase()));
     const snap = await getDocs(q);
     const found = snap.docs.find(d => (d.data().tag||'').toUpperCase() === tag);
-    if(!found){ err.textContent = 'Não encontrei nenhum jogador com esse nickname e tag.'; err.style.display = 'block'; return; }
-    if(members.some(m => m.uid === found.id)){ err.textContent = 'Já é membro deste clã.'; err.style.display = 'block'; return; }
+    if(!found){ err.textContent = tr('clan.errNotFound','Não encontrei nenhum jogador com esse nickname e tag.'); err.style.display = 'block'; return; }
+    if(members.some(m => m.uid === found.id)){ err.textContent = tr('clan.errAlreadyMember','Já é membro deste clã.'); err.style.display = 'block'; return; }
     await addDoc(collection(db,'notifications'), {
       toUid: found.id, type: 'clan_invite', refId: ownedClan.id, refName: ownedClan.name,
       status: 'pending', createdAt: serverTimestamp()
@@ -254,7 +256,7 @@ document.getElementById('add-member-btn').addEventListener('click', async functi
 
 document.getElementById('delete-clan-btn').addEventListener('click', async function(){
   if(!ownedClan || !isOwner) return;
-  if(!confirm('Eliminar o clã "'+ownedClan.name+'"? Esta ação é irreversível e remove todos os membros.')) return;
+  if(!confirm(tr('clan.confirmDelete1','Eliminar o clã "')+ownedClan.name+tr('clan.confirmDelete2','"? Esta ação é irreversível e remove todos os membros.'))) return;
   try{
     const memSnap = await getDocs(collection(db,'clans',ownedClan.id,'members'));
     await Promise.all(memSnap.docs.map(async m=>{
@@ -264,7 +266,7 @@ document.getElementById('delete-clan-btn').addEventListener('click', async funct
     await deleteDoc(doc(db,'clans',ownedClan.id));
     ownedClan = null;
     window.location.href = 'clan.html';
-  }catch(e){ alert('Erro ao eliminar clã: ' + e.message); }
+  }catch(e){ alert(tr('clan.errDelete','Erro ao eliminar clã: ') + e.message); }
 });
 </script>
 <script type="module" src="nav-auth.js"></script>

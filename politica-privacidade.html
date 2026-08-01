@@ -4,7 +4,7 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Política de Privacidade — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<link rel="stylesheet" href="shared.css?v=3"/>
 <style>
   .policy-wrap { max-width: 760px; margin: 0 auto; padding: 56px 5vw 100px; }
   .policy-wrap h2 { margin: 10px 0 28px; }
@@ -29,10 +29,10 @@
 </nav>
 
 <div class="policy-wrap">
-  <div class="eyebrow">Legal</div>
-  <h2>Política de Privacidade</h2>
+  <div class="eyebrow" data-i18n="privacy.eyebrow">Legal</div>
+  <h2 data-i18n="privacy.title">Política de Privacidade</h2>
   <div class="policy-updated">Última atualização: 2026</div>
-  <p>Esta Política de Privacidade explica como o <strong>Knockout League</strong> recolhe, usa e protege os dados dos seus utilizadores. Ao criar uma conta, seja como utilizador registado ou convidado, aceitas os termos aqui descritos.</p>
+  <p>Esta Política de Privacidade explica como o <strong>Knockout League</strong> recolhe, usa e protege os dados dos seus utilizadores. Ao criar uma conta, aceitas os termos aqui descritos.</p>
 
   <h3>1. Dados que recolhemos</h3>
   <ul>
@@ -54,19 +54,16 @@
     <li>Para manter a segurança e integridade da plataforma (ex. moderação)</li>
   </ul>
 
-  <h3>3. Contas de convidado</h3>
-  <p>As contas de convidado são temporárias e destinadas a sessões pontuais. Os dados associados a estas contas são eliminados automaticamente ao fim de um período de inatividade.</p>
-
-  <h3>4. Partilha de dados</h3>
+  <h3>3. Partilha de dados</h3>
   <p>Não vendemos os teus dados a terceiros. Os dados são armazenados através de serviços de infraestrutura (Firebase/Google Cloud) usados exclusivamente para o funcionamento da plataforma. O teu nickname, tag, avatar e estatísticas são visíveis a outros utilizadores dentro do site, no âmbito normal de um site de torneios.</p>
 
-  <h3>5. Idade mínima</h3>
+  <h3>4. Idade mínima</h3>
   <p>O Knockout League destina-se a utilizadores com pelo menos 13 anos. Ao registares-te, confirmas cumprir este requisito.</p>
 
-  <h3>6. Os teus direitos</h3>
+  <h3>5. Os teus direitos</h3>
   <p>Podes a qualquer momento pedir a atualização ou eliminação da tua conta e dos teus dados através da página de Contacto ou diretamente nas definições do perfil.</p>
 
-  <h3>7. Contacto</h3>
+  <h3>6. Contacto</h3>
   <p>Para qualquer questão relacionada com esta política ou com os teus dados, usa a página de <a href="contacto.html" style="color:var(--accent);">Contacto</a>.</p>
 </div>
 
@@ -76,6 +73,7 @@
 </footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script type="module" src="nav-auth.js"></script>
 </body>
 </html>

@@ -41,7 +41,7 @@ onSnapshot(doc(db, 'config', 'site'), function(snap){
 
 onAuthStateChanged(auth, async function(user){
   isSiteAdmin = false;
-  if(user && !user.isAnonymous){
+  if(user){
     try{
       const snap = await getDoc(doc(db, 'users', user.uid));
       isSiteAdmin = snap.exists() && snap.data().role === 'admin';

@@ -139,7 +139,37 @@ body > nav {
   display: none; padding: 12px 14px; margin-bottom: 18px; background: rgba(194,59,46,0.08);
   border: 1px solid var(--danger); color: var(--danger); font-size: 0.85rem;
 }
+/* FORM SECTIONS — agrupam opções relacionadas (criar torneio / configurações) */
+.form-section { border: 1px solid var(--line); background: var(--surface); padding: 26px 24px; margin-bottom: 22px; }
+.form-section-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.form-section-num {
+  font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent);
+  border: 1px solid var(--accent); width: 28px; height: 28px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.form-section-title { font-family: 'Anton', sans-serif; font-size: 1.05rem; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
+.form-section-desc { font-size: 0.82rem; color: var(--muted); }
+.form-section .form-group:last-child { margin-bottom: 0; }
+.form-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.form-row > .form-group, .form-row > div { flex: 1; min-width: 200px; }
+.checkbox-field { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px; }
+.checkbox-field input[type="checkbox"] { width: auto; margin-top: 4px; }
+.checkbox-field label { margin: 0; text-transform: none; font-family: 'Inter', sans-serif; font-size: 0.92rem; color: var(--ink); }
+.field-sm { max-width: 160px; }
+.field-md { max-width: 320px; }
+.field-label-sm { font-size: 0.72rem; }
+.maps-input { display: flex; gap: 8px; margin-bottom: 10px; max-width: 420px; }
+.maps-input input { flex: 1; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.map-tag { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--ink); padding: 7px 10px; font-size: 0.82rem; font-weight: 600; }
+.map-tag button { background: none; border: none; cursor: pointer; color: var(--danger); font-weight: 700; }
+
 .pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.nav-lang-toggle { display: flex; border: 1px solid var(--ink); margin-left: 14px; }
+.nav-lang-toggle button { font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem; letter-spacing: 1px; padding: 6px 10px; background: transparent; border: none; color: var(--muted); cursor: pointer; }
+.nav-lang-toggle button + button { border-left: 1px solid var(--ink); }
+.nav-lang-toggle button.active { background: var(--ink); color: var(--bg); }
+@media(max-width:900px){ .nav-lang-toggle { margin: 10px 0 0; } }
 .pill {
   padding: 9px 15px; border: 1px solid var(--line); background: var(--surface);
   font-size: 0.8rem; font-weight: 600; cursor: pointer; user-select: none; transition: all .12s;
@@ -188,6 +218,7 @@ section { padding: 64px 0; }
 .reorder-row.dragging { opacity: 0.4; }
 .reorder-row .drag-handle { color: var(--muted); font-size: 1.1rem; }
 .reorder-row .reorder-num { font-family: 'IBM Plex Mono'; color: var(--accent); font-weight: 700; width: 24px; }
+.roulette-wheel {
   width: 260px; height: 260px; border-radius: 50%; border: 3px solid var(--ink);
   display: flex; align-items: center; justify-content: center; margin: 0 auto;
   font-family: 'Anton', sans-serif; font-size: 1.6rem; text-align: center; padding: 20px;
@@ -234,4 +265,5 @@ footer { border-top: 2px solid var(--ink); padding: 28px 5vw; display: flex; jus
   .nav-links.open { display: flex; }
   .nav-mobile-toggle { display: block; }
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .form-section { padding: 20px 16px; }
 }

@@ -4,7 +4,7 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Notificações — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<link rel="stylesheet" href="shared.css?v=3"/>
 <style>
   .notif-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line); gap: 14px; flex-wrap: wrap; }
   .notif-item:last-child { border-bottom: none; }
@@ -19,34 +19,35 @@
   <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
   <button class="nav-mobile-toggle">☰</button>
   <ul class="nav-links">
-    <li><a href="index.html">Início</a></li>
-    <li><a href="torneios.html">Torneios</a></li>
-    <li><a href="criar-torneio.html">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+    <li><a href="index.html" data-i18n="nav.home">Início</a></li>
+    <li><a href="torneios.html" data-i18n="nav.tournaments">Torneios</a></li>
+    <li><a href="criar-torneio.html" data-i18n="nav.create">Criar torneio</a></li>
+    <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="contacto.html" data-i18n="nav.contact">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html" data-i18n="nav.login">Entrar</a></li>
   </ul>
 </nav>
 
 <div class="wrap page-head">
-  <div class="eyebrow">A tua conta</div>
-  <h1>Notificações</h1>
+  <div class="eyebrow" data-i18n="notifpg.eyebrow">A tua conta</div>
+  <h1 data-i18n="nav.notifications">Notificações</h1>
 </div>
 
 <div class="wrap" style="padding-bottom:90px;">
   <div class="not-logged" id="not-logged" style="display:none;">
-    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para ver as tuas notificações.</p>
-    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+    <p class="muted" style="margin-bottom:24px;" data-i18n="notifpg.restricted.text">Tens de iniciar sessão para ver as tuas notificações.</p>
+    <a href="login.html"><button class="btn btn-accent" data-i18n="nav.login">Entrar</button></a>
   </div>
 
   <div id="content" style="display:none;">
-    <div class="card" id="notif-list"><p class="muted">A carregar...</p></div>
+    <div class="card" id="notif-list"><p class="muted" data-i18n="notifpg.loading">A carregar...</p></div>
   </div>
 </div>
 
 <footer><span>© 2026 Knockout League</span></footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script type="module">
 import { auth, db, doc, getDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, arrayUnion } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -54,6 +55,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/f
 let currentUser = null;
 let currentUserData = null;
 let notifs = [];
+function tr(k, fallback){ return (window.KL_T && window.KL_T(k)) || fallback; }
 
 onAuthStateChanged(auth, async function(user){
   currentUser = user;
@@ -71,27 +73,27 @@ async function loadNotifs(){
     notifs = snap.docs.map(d=>({id:d.id, ...d.data()}))
       .sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0));
     render();
-  }catch(e){ box.innerHTML = '<p class="muted">Erro ao carregar notificações. (' + e.message + ')</p>'; }
+  }catch(e){ box.innerHTML = '<p class="muted">' + tr('notifpg.errLoad','Erro ao carregar notificações. (') + e.message + ')</p>'; }
 }
 
 function render(){
   const box = document.getElementById('notif-list');
-  if(notifs.length === 0){ box.innerHTML = '<p class="muted">Sem notificações.</p>'; return; }
+  if(notifs.length === 0){ box.innerHTML = '<p class="muted">' + tr('notifpg.empty','Sem notificações.') + '</p>'; return; }
   box.innerHTML = notifs.map(n => {
     const isInvite = (n.type === 'club_invite' || n.type === 'clan_invite') && n.status === 'pending';
     const isMatchHelp = n.type === 'match_help';
-    const kind = n.type === 'club_invite' ? 'clube' : 'clã';
-    const permsLine = n.permissions ? (' — pode: ' + n.permissions.map(p => p==='organizador'?'criar torneios':'moderar').join(', ')) : '';
+    const kind = n.type === 'club_invite' ? tr('notifpg.club','clube') : tr('notifpg.clan','clã');
+    const permsLine = n.permissions ? (' — ' + tr('notifpg.canPrefix','pode: ') + n.permissions.map(p => p==='organizador'?tr('notifpg.permCreate','criar torneios'):tr('notifpg.permModerate','moderar')).join(', ')) : '';
     return `<div class="notif-item">
       <div>
-        <div class="notif-title">${isMatchHelp ? ((n.fromNickname||'Um jogador') + ' está a chamar-te numa sala de partida') : ('Convite para o ' + kind + ' "' + n.refName + '"')}</div>
-        <div class="notif-sub">${isMatchHelp ? ('Torneio: ' + n.refName) : (permsLine || '')}</div>
+        <div class="notif-title">${isMatchHelp ? ((n.fromNickname||tr('notifpg.aPlayer','Um jogador')) + tr('notifpg.callingYou',' está a chamar-te numa sala de partida')) : (tr('notifpg.inviteTo','Convite para o ') + kind + ' "' + n.refName + '"')}</div>
+        <div class="notif-sub">${isMatchHelp ? (tr('notifpg.tournamentPrefix','Torneio: ') + n.refName) : (permsLine || '')}</div>
       </div>
       ${isInvite
-        ? `<div style="display:flex;gap:8px;"><button class="btn btn-accent btn-sm" data-accept="${n.id}">Aceitar</button><button class="btn btn-outline btn-sm" data-decline="${n.id}">Recusar</button></div>`
+        ? `<div style="display:flex;gap:8px;"><button class="btn btn-accent btn-sm" data-accept="${n.id}">${tr('notifpg.accept','Aceitar')}</button><button class="btn btn-outline btn-sm" data-decline="${n.id}">${tr('notifpg.decline','Recusar')}</button></div>`
         : isMatchHelp
-          ? `<div style="display:flex;gap:8px;"><a href="sala-partida.html?t=${n.refId}&m=${n.matchId}"><button class="btn btn-accent btn-sm">Ver sala</button></a><button class="btn btn-outline btn-sm" data-dismiss="${n.id}">Dispensar</button></div>`
-          : `<span class="notif-status">${n.status === 'accepted' ? 'Aceite' : (n.status === 'declined' ? 'Recusado' : n.status)}</span>`}
+          ? `<div style="display:flex;gap:8px;"><a href="sala-partida.html?t=${n.refId}&m=${n.matchId}"><button class="btn btn-accent btn-sm">${tr('notifpg.viewRoom','Ver sala')}</button></a><button class="btn btn-outline btn-sm" data-dismiss="${n.id}">${tr('notifpg.dismiss','Dispensar')}</button></div>`
+          : `<span class="notif-status">${n.status === 'accepted' ? tr('notifpg.accepted','Aceite') : (n.status === 'declined' ? tr('notifpg.declined','Recusado') : n.status)}</span>`}
     </div>`;
   }).join('');
 
@@ -110,7 +112,7 @@ async function dismissNotif(notifId){
   try{
     await deleteDoc(doc(db,'notifications',notifId));
     await loadNotifs();
-  }catch(e){ alert('Erro: ' + e.message); }
+  }catch(e){ alert(tr('def.msg.error','Erro: ') + e.message); }
 }
 
 async function acceptInvite(notifId){
@@ -132,14 +134,14 @@ async function acceptInvite(notifId){
     }
     await updateDoc(doc(db,'notifications',notifId), { status: 'accepted' });
     await loadNotifs();
-  }catch(e){ alert('Erro ao aceitar: ' + e.message); }
+  }catch(e){ alert(tr('notifpg.errAccept','Erro ao aceitar: ') + e.message); }
 }
 
 async function declineInvite(notifId){
   try{
     await updateDoc(doc(db,'notifications',notifId), { status: 'declined' });
     await loadNotifs();
-  }catch(e){ alert('Erro: ' + e.message); }
+  }catch(e){ alert(tr('def.msg.error','Erro: ') + e.message); }
 }
 </script>
 <script type="module" src="nav-auth.js"></script>

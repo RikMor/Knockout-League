@@ -10,7 +10,6 @@ Igual ao ManyGames, com um campo extra `role`.
 ```
 {
   name, nickname, nicknameLower, email, country, avatarUrl,
-  isGuest: bool,
   role: "admin" | "player",       // novo — define quem vê o painel de admin
   stats: { torneios, vitorias, derrotas, mvp },
   createdAt

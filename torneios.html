@@ -4,7 +4,7 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Torneios — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<link rel="stylesheet" href="shared.css?v=3"/>
 <style>
   .t-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 24px; }
   .join-private { display: flex; gap: 10px; max-width: 420px; }
@@ -16,72 +16,75 @@
   <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
   <button class="nav-mobile-toggle">☰</button>
   <ul class="nav-links">
-    <li><a href="index.html">Início</a></li>
-    <li><a href="torneios.html" class="active">Torneios</a></li>
-    <li><a href="criar-torneio.html">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+    <li><a href="index.html" data-i18n="nav.home">Início</a></li>
+    <li><a href="torneios.html" class="active" data-i18n="nav.tournaments">Torneios</a></li>
+    <li><a href="criar-torneio.html" data-i18n="nav.create">Criar torneio</a></li>
+    <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="contacto.html" data-i18n="nav.contact">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html" data-i18n="nav.login">Entrar</a></li>
   </ul>
 </nav>
 
 <div class="wrap page-head">
-  <div class="eyebrow">Salas</div>
-  <h1>Torneios</h1>
+  <div class="eyebrow" data-i18n="torneios.eyebrow">Salas</div>
+  <h1 data-i18n="torneios.title">Torneios</h1>
 </div>
 
 <div class="wrap" style="padding-bottom:60px;">
   <div class="card" style="margin-bottom:36px;">
-    <h3 style="margin-bottom:12px;">Tenho um código de sala privada</h3>
+    <h3 style="margin-bottom:12px;" data-i18n="torneios.privateLabel">Tenho um código de sala privada</h3>
     <div class="join-private">
       <input type="text" id="code-input" placeholder="Ex: A1B2C3" class="mono" style="text-transform:uppercase;padding:12px 14px;border:1px solid var(--line);"/>
-      <button class="btn btn-accent" id="code-go">Entrar</button>
+      <button class="btn btn-accent" id="code-go" data-i18n="torneios.privateBtn">Entrar</button>
     </div>
     <p class="form-error" id="code-error" style="margin-top:12px;"></p>
   </div>
 
-  <h2 style="margin-bottom:6px;">Torneios públicos</h2>
-  <div class="t-list" id="t-list"><p class="muted">A carregar...</p></div>
+  <h2 style="margin-bottom:6px;" data-i18n="torneios.publicTitle">Torneios públicos</h2>
+  <div class="t-list" id="t-list"><p class="muted" data-i18n="torneios.loading">A carregar...</p></div>
 </div>
 
 <footer><span>© 2026 Knockout League</span></footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script type="module">
 import { db, collection, query, where, onSnapshot } from './firebase.js';
 
 function loadPublic(){
   const el = document.getElementById('t-list');
+  const tr = (k, fallback) => (window.KL_T && window.KL_T(k)) || fallback;
   try{
     const q = query(collection(db,'tournaments'), where('visibility','==','public'));
     onSnapshot(q, snap=>{
-      if(snap.empty){ el.innerHTML = '<p class="muted">Ainda não há torneios públicos. <a href="criar-torneio.html">Cria o primeiro.</a></p>'; return; }
+      if(snap.empty){ el.innerHTML = `<p class="muted">${tr('index.empty','Ainda não há torneios públicos. <a href="criar-torneio.html">Cria o primeiro.</a>')}</p>`; return; }
       el.innerHTML = '';
       snap.forEach(d=>{
         const t = d.data();
         const card = document.createElement('a');
         card.href = 'torneio.html?id=' + d.id;
         card.className = 't-card';
-        const btnLabel = t.status === 'inscricoes' ? 'Inscrever' : 'Ver';
-        card.innerHTML = `<span class="badge badge-open">${t.status || 'inscrições'}</span><h3>${t.name}</h3><span class="muted">${t.game||''} · ${t.teamSize}v${t.teamSize} · até ${t.maxTeams} equipas</span>${t.organizerDisplayName ? '<span style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-family:\'IBM Plex Mono\';font-size:0.68rem;letter-spacing:0.5px;color:var(--gold);text-transform:uppercase;"><span style="font-size:0.9rem;">👑</span>'+t.organizerDisplayName+'</span>' : ''}<button class="btn ${t.status === 'inscricoes' ? 'btn-accent' : 'btn-outline'} btn-sm" style="margin-top:10px;display:block;">${btnLabel}</button>`;
+        const btnLabel = t.status === 'inscricoes' ? tr('torneios.joinBtn','Inscrever') : tr('index.viewBtn','Ver');
+        card.innerHTML = `<span class="badge badge-open">${t.status || 'inscrições'}</span><h3>${t.name}</h3><span class="muted">${t.game||''} · ${t.teamSize}v${t.teamSize} · ${tr('torneios.upTo','até')} ${t.maxTeams} ${tr('torneios.teamsWord','equipas')}</span>${t.organizerDisplayName ? '<span style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-family:\'IBM Plex Mono\';font-size:0.68rem;letter-spacing:0.5px;color:var(--gold);text-transform:uppercase;"><span style="font-size:0.9rem;">👑</span>'+t.organizerDisplayName+'</span>' : ''}<button class="btn ${t.status === 'inscricoes' ? 'btn-accent' : 'btn-outline'} btn-sm" style="margin-top:10px;display:block;">${btnLabel}</button>`;
         el.appendChild(card);
       });
-    }, ()=>{ el.innerHTML = '<p class="muted">Liga o teu projeto Firebase em firebase.js para ver torneios reais.</p>'; });
-  }catch(e){ el.innerHTML = '<p class="muted">Liga o teu projeto Firebase em firebase.js para ver torneios reais.</p>'; }
+    }, ()=>{ el.innerHTML = `<p class="muted">${tr('index.fallback','Liga o teu projeto Firebase em firebase.js para ver torneios reais.')}</p>`; });
+  }catch(e){ el.innerHTML = `<p class="muted">${tr('index.fallback','Liga o teu projeto Firebase em firebase.js para ver torneios reais.')}</p>`; }
 }
 loadPublic();
 
 document.getElementById('code-go').addEventListener('click', async function(){
   const err = document.getElementById('code-error');
   err.style.display = 'none';
+  const tr = (k, fallback) => (window.KL_T && window.KL_T(k)) || fallback;
   const code = document.getElementById('code-input').value.trim().toUpperCase();
-  if(!code){ err.textContent = 'Introduz um código.'; err.style.display='block'; return; }
+  if(!code){ err.textContent = tr('torneios.errNoCode','Introduz um código.'); err.style.display='block'; return; }
   try{
     const q = query(collection(db,'tournaments'), where('inviteCode','==',code));
     const snap = await getDocs(q);
-    if(snap.empty){ err.textContent = 'Nenhum torneio com esse código.'; err.style.display='block'; return; }
+    if(snap.empty){ err.textContent = tr('torneios.errNotFound','Nenhum torneio com esse código.'); err.style.display='block'; return; }
     window.location.href = 'torneio.html?id=' + snap.docs[0].id;
-  }catch(e){ err.textContent = 'Erro a procurar o código.'; err.style.display='block'; }
+  }catch(e){ err.textContent = tr('torneios.errSearch','Erro a procurar o código.'); err.style.display='block'; }
 });
 </script>
 <script type="module" src="nav-auth.js"></script>

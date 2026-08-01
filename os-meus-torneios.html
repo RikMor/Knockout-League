@@ -4,7 +4,7 @@
 <script type="module" src="manutencao.js"></script>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Os meus torneios — Knockout League</title>
-<link rel="stylesheet" href="shared.css?v=2"/>
+<link rel="stylesheet" href="shared.css?v=3"/>
 <style>
   .tabs { display: flex; border-bottom: 2px solid var(--ink); margin-bottom: 28px; }
   .tab-btn { padding: 12px 20px; background: none; border: none; cursor: pointer; font-weight: 700; font-size: 0.85rem; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; }
@@ -21,37 +21,37 @@
   <a href="index.html" class="nav-logo"><span class="nav-logo-mark">KL</span><span class="nav-logo-text">KNOCKOUT<span>LEAGUE</span></span></a>
   <button class="nav-mobile-toggle">☰</button>
   <ul class="nav-links">
-    <li><a href="index.html">Início</a></li>
-    <li><a href="torneios.html">Torneios</a></li>
-    <li><a href="criar-torneio.html">Criar torneio</a></li>
-    <li><a href="faq.html">FAQ</a></li>
-    <li><a href="contacto.html">Contacto</a></li>
-    <li id="nav-user-area"><a href="login.html">Entrar</a></li>
+    <li><a href="index.html" data-i18n="nav.home">Início</a></li>
+    <li><a href="torneios.html" data-i18n="nav.tournaments">Torneios</a></li>
+    <li><a href="criar-torneio.html" data-i18n="nav.create">Criar torneio</a></li>
+    <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="contacto.html" data-i18n="nav.contact">Contacto</a></li>
+    <li id="nav-user-area"><a href="login.html" data-i18n="nav.login">Entrar</a></li>
   </ul>
 </nav>
 
 <div class="wrap page-head">
-  <div class="eyebrow">A tua conta</div>
-  <h1>Os meus torneios</h1>
+  <div class="eyebrow" data-i18n="notifpg.eyebrow">A tua conta</div>
+  <h1 data-i18n="nav.myTournaments">Os meus torneios</h1>
 </div>
 
 <div class="wrap" style="padding-bottom:90px;">
   <div class="not-logged" id="not-logged" style="display:none;">
-    <p class="muted" style="margin-bottom:24px;">Tens de iniciar sessão para ver os teus torneios.</p>
-    <a href="login.html"><button class="btn btn-accent">Entrar</button></a>
+    <p class="muted" style="margin-bottom:24px;" data-i18n="meus.restricted.text">Tens de iniciar sessão para ver os teus torneios.</p>
+    <a href="login.html"><button class="btn btn-accent" data-i18n="nav.login">Entrar</button></a>
   </div>
 
   <div id="content" style="display:none;">
     <div class="tabs">
-      <button class="tab-btn active" data-tab="jogar">A jogar</button>
-      <button class="tab-btn" data-tab="organizar">A organizar / moderar</button>
+      <button class="tab-btn active" data-tab="jogar" data-i18n="meus.tab.playing">A jogar</button>
+      <button class="tab-btn" data-tab="organizar" data-i18n="meus.tab.organizing">A organizar / moderar</button>
     </div>
 
     <div class="tab-panel active" id="panel-jogar">
-      <div class="t-list" id="list-jogar"><p class="muted">A carregar...</p></div>
+      <div class="t-list" id="list-jogar"><p class="muted" data-i18n="notifpg.loading">A carregar...</p></div>
     </div>
     <div class="tab-panel" id="panel-organizar">
-      <div class="t-list" id="list-organizar"><p class="muted">A carregar...</p></div>
+      <div class="t-list" id="list-organizar"><p class="muted" data-i18n="notifpg.loading">A carregar...</p></div>
     </div>
   </div>
 </div>
@@ -59,6 +59,7 @@
 <footer><span>© 2026 Knockout League</span></footer>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script>
 document.querySelectorAll('.tab-btn').forEach(function(btn){
   btn.addEventListener('click', function(){
@@ -74,14 +75,15 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
 import { auth, db, collection, getDocs, query, where } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
+function tr(k, fallback){ return (window.KL_T && window.KL_T(k)) || fallback; }
 function cardHtml(t, id){
   const badgeClass = t.visibility==='private' ? 'badge-private' : 'badge-open';
-  const badgeText = t.visibility==='private' ? 'Privado' : 'Público';
+  const badgeText = t.visibility==='private' ? tr('t.private','Privado') : tr('t.public','Público');
   return `<a href="torneio.html?id=${id}" class="t-card">
     <span class="badge ${badgeClass}">${badgeText}</span>
     <h3>${t.name}</h3>
     <span class="muted">${t.game||''} · ${t.teamSize}v${t.teamSize} · ${t.status||''}</span>
-    ${t.organizerDisplayName ? '<span class="muted" style="display:block;font-size:0.78rem;margin-top:4px;">Organizado por '+t.organizerDisplayName+'</span>' : ''}
+    ${t.organizerDisplayName ? '<span class="muted" style="display:block;font-size:0.78rem;margin-top:4px;">'+tr('index.organizedBy','Organizado por ')+t.organizerDisplayName+'</span>' : ''}
   </a>`;
 }
 
@@ -93,10 +95,10 @@ onAuthStateChanged(auth, async function(user){
   try{
     const snap = await getDocs(query(collection(db,'tournaments'), where('participantUids','array-contains', user.uid)));
     const el = document.getElementById('list-jogar');
-    if(snap.empty){ el.innerHTML = '<p class="muted">Ainda não entraste em nenhum torneio. <a href="torneios.html" style="color:var(--accent);">Explora os torneios abertos.</a></p>'; }
+    if(snap.empty){ el.innerHTML = '<p class="muted">' + tr('meus.emptyPlaying','Ainda não entraste em nenhum torneio. ') + '<a href="torneios.html" style="color:var(--accent);">' + tr('meus.emptyPlayingLink','Explora os torneios abertos.') + '</a></p>'; }
     else{ el.innerHTML = snap.docs.map(d => cardHtml(d.data(), d.id)).join(''); }
   }catch(e){
-    document.getElementById('list-jogar').innerHTML = '<p class="muted">Erro ao carregar. ('+e.message+')</p>';
+    document.getElementById('list-jogar').innerHTML = '<p class="muted">' + tr('meus.errLoad','Erro ao carregar. (') + e.message + ')</p>';
   }
 
   // A organizar/moderar: sou criador, moderador direto, ou líder/moderador do clube organizador
@@ -118,9 +120,9 @@ onAuthStateChanged(auth, async function(user){
       byClub.forEach(snap => snap.docs.forEach(d => map.set(d.id, d.data())));
     }
     const el = document.getElementById('list-organizar');
-    if(map.size === 0){ el.innerHTML = '<p class="muted">Ainda não organizas nem moderas nenhum torneio. <a href="criar-torneio.html" style="color:var(--accent);">Cria um.</a></p>'; }
+    if(map.size === 0){ el.innerHTML = '<p class="muted">' + tr('meus.emptyOrganizing','Ainda não organizas nem moderas nenhum torneio. ') + '<a href="criar-torneio.html" style="color:var(--accent);">' + tr('meus.emptyOrganizingLink','Cria um.') + '</a></p>'; }
     else{ el.innerHTML = [...map.entries()].map(([id,t]) => cardHtml(t, id)).join(''); }
-  }catch(e){ document.getElementById('list-organizar').innerHTML = '<p class="muted">Erro ao carregar. ('+e.message+')</p>'; }
+  }catch(e){ document.getElementById('list-organizar').innerHTML = '<p class="muted">' + tr('meus.errLoad','Erro ao carregar. (') + e.message + ')</p>'; }
 });
 </script>
 <script type="module" src="nav-auth.js"></script>
