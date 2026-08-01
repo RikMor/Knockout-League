@@ -153,6 +153,11 @@
         <input type="number" id="cfg-maxteams" min="2" class="field-sm"/>
         <p class="form-hint" data-i18n="criar.field.maxteams.hint">Quantas equipas vão disputar o torneio.</p>
       </div>
+      <div class="form-group">
+        <label data-i18n="criar.field.maxplayers">Número de jogadores a entrar no torneio (opcional)</label>
+        <input type="number" id="cfg-maxplayers" min="2" placeholder="Ex: 32" class="field-sm"/>
+        <p class="form-hint" data-i18n="criar.field.maxplayers.hint">Limite de pessoas que podem entrar na pool de jogadores. Deixa vazio para não ter limite.</p>
+      </div>
       <div class="form-group" id="cfg-bracket-type-group">
         <label><span data-i18n="criar.field.bracketType">Tipo de bracket</span> <span class="muted" style="text-transform:none;" id="cfg-bracket-type-hint"></span></label>
         <div class="pill-group" id="cfg-pill-bracket-type">
@@ -489,7 +494,7 @@ function renderScheduleLine(){
   return '<div class="muted" style="margin-top:12px;font-size:0.82rem;display:flex;gap:18px;flex-wrap:wrap;">'+parts.map(p=>'<span>🗓 '+p+'</span>').join('')+'</div>';
 }
 function statusLabel(s){
-  const map = { 'inscricoes': T('t.status.signups','Inscrições'), 'em-curso': T('t.status.ongoing','Em curso'), 'terminado': T('t.status.finished','Terminado') };
+  const map = { 'inscricoes': T('t.status.signups','Inscrições'), 'fechado': T('t.status.checkin','Check-in'), 'em-curso': T('t.status.ongoing','Em curso'), 'terminado': T('t.status.finished','Terminado') };
   return map[s] || s;
 }
 function renderHeader(){
@@ -551,6 +556,7 @@ function renderConfig(){
   cfgSetSelected('cfg-pill-visibility', tournament.visibility || 'public');
   cfgSetSelected('cfg-pill-teamsize', String(tournament.teamSize || 5));
   document.getElementById('cfg-maxteams').value = tournament.maxTeams || '';
+  document.getElementById('cfg-maxplayers').value = tournament.maxPlayers || '';
   document.getElementById('cfg-teamsize-hint').textContent = bracketGenerated() ? T('t.cfg.teamsizeHint','(já há equipas/bracket — muda com cuidado, pode desalinhar equipas já formadas)') : '';
   cfgSetSelected('cfg-pill-coin', tournament.coinMethod || 'coin');
   cfgSetSelected('cfg-pill-layout', tournament.bracketLayout || 'one-side');
@@ -583,12 +589,15 @@ document.getElementById('cfg-save-btn').addEventListener('click', async function
   const pointsToWin = document.getElementById('cfg-pointstowin').value ? parseInt(document.getElementById('cfg-pointstowin').value, 10) : null;
   const teamSize = parseInt(cfgSelected('cfg-pill-teamsize'), 10);
   const maxTeams = parseInt(document.getElementById('cfg-maxteams').value, 10);
+  const maxPlayersRaw = document.getElementById('cfg-maxplayers').value;
+  const maxPlayers = maxPlayersRaw ? parseInt(maxPlayersRaw, 10) : null;
   if(!bestOf || bestOf < 1 || bestOf % 2 === 0){ msg.textContent = T('t.cfg.errBestOf','O "melhor de quantas partidas" tem de ser ímpar.'); msg.style.display = 'block'; return; }
   if(!pointsToWin){ msg.textContent = T('t.cfg.errPoints','Define os pontos para vencer cada partida.'); msg.style.display = 'block'; return; }
   if(!maxTeams || maxTeams < 2){ msg.textContent = T('t.cfg.errMaxTeams','Define um número de equipas válido (mínimo 2).'); msg.style.display = 'block'; return; }
+  if(maxPlayers !== null && maxPlayers < 2){ msg.textContent = T('t.cfg.errMaxPlayers','O número de jogadores tem de ser pelo menos 2 (ou deixa vazio para não ter limite).'); msg.style.display = 'block'; return; }
   await updateDoc(tRef, {
     name, game,
-    teamSize, maxTeams,
+    teamSize, maxTeams, maxPlayers,
     visibility: cfgSelected('cfg-pill-visibility'),
     coinMethod: cfgSelected('cfg-pill-coin'),
     bracketLayout: cfgSelected('cfg-pill-layout'),
@@ -720,6 +729,7 @@ function renderJoinBox(){
   if(showSolo){
     document.getElementById('join-solo-btn').addEventListener('click', async function(){
       if(isUidInPool(currentUser.uid)){ alert(T('t.join.alreadyIn','Já estás inscrito neste torneio.')); return; }
+      if(playersSlotsLeft() < 1){ alert(T('t.join.playersFull','Já não há vagas para mais jogadores neste torneio.')); return; }
       const nick = currentUserData?.nickname || currentUser.displayName || T('torneio.playerFallback','Jogador');
       const tag = currentUserData?.tag || '';
       await addDoc(playersCol, { uid: currentUser.uid, name: nick, tag, source: 'platform', isCaptain: false, teamId: null });
@@ -730,6 +740,7 @@ function renderJoinBox(){
     document.getElementById('join-clan-btn').addEventListener('click', async function(){
       if(isUidInPool(currentUser.uid)){ alert(T('t.join.alreadyIn','Já estás inscrito neste torneio.')); return; }
       if(teams.length >= tournament.maxTeams){ alert(T('t.join.noSlots','Já não há vagas para mais equipas neste torneio.')); return; }
+      if(playersSlotsLeft() < 1){ alert(T('t.join.playersFull','Já não há vagas para mais jogadores neste torneio.')); return; }
       const clan = await myOwnedClan();
       if(!clan){ alert(T('t.join.noClan','Não lideras nem és capitão de nenhum clã. Cria um em "O meu clã" ou entra sozinho.')); return; }
       const nick = currentUserData?.nickname || currentUser.displayName || T('torneio.playerFallback','Jogador');
@@ -770,6 +781,7 @@ async function myOwnedClan(){
 
 async function createClanTeam(clan, chosenMembers, mine){
   if(isUidInPool(mine.uid)) throw new Error(T('t.join.alreadyIn','Já estás inscrito neste torneio.'));
+  if(1 + chosenMembers.length > playersSlotsLeft()) throw new Error(T('t.join.playersFull','Já não há vagas para mais jogadores neste torneio.'));
   const teamRef = await addDoc(teamsCol, { name: clan.name, captainPlayerId: null, players: [], seed: teams.length + 1 });
   const mineRef = await addDoc(playersCol, { uid: mine.uid, name: mine.name, source: 'platform', isCaptain: false, teamId: teamRef.id });
   await markParticipant(mine.uid);
@@ -831,14 +843,23 @@ function renderAdminControls(){
   document.getElementById('roulette-btn').style.display = (isAdmin() && tournament.assignMode === 'roulette') ? 'inline-flex' : 'none';
   document.getElementById('rps-btn').style.display = (isAdmin() && tournament.assignMode === 'rps') ? 'inline-flex' : 'none';
   const genBtn = document.getElementById('gen-bracket-btn');
-  genBtn.textContent = (tournament.draftMode === 'captains' && tournament.draftPhase && !bracketGenerated())
-    ? T('t.genBracket','Gerar bracket')
-    : T('torneio.startTournament','Começar torneio');
+  if(tournament.status === 'inscricoes'){
+    genBtn.textContent = T('t.checkin.closeBtn','Fechar inscrições e pedir check-in');
+  } else if(tournament.draftMode === 'captains' && tournament.draftPhase && !bracketGenerated()){
+    genBtn.textContent = T('t.genBracket','Gerar bracket');
+  } else {
+    genBtn.textContent = T('torneio.startTournament','Começar torneio');
+  }
 }
 
 function bracketGenerated(){ return matches.length > 0; }
 
 function unassignedPlayers(){ return players.filter(p => !p.teamId); }
+
+function playersSlotsLeft(){
+  if(!tournament.maxPlayers) return Infinity;
+  return Math.max(0, tournament.maxPlayers - players.length);
+}
 
 function isMyDraftTurn(){
   if(tournament.draftMode !== 'captains' || !tournament.draftPhase || !tournament.draftStarted || bracketGenerated()) return false;
@@ -852,21 +873,41 @@ function renderPool(){
   if(pool.length === 0){ box.innerHTML = `<p class="muted">${T('t.pool.none','Sem jogadores por atribuir.')}</p>`; return; }
   box.innerHTML = '';
   const myTurn = isMyDraftTurn();
+  const checkinPhase = tournament.status === 'fechado';
   pool.forEach(function(p){
     const row = document.createElement('div');
     row.className = 'pool-row';
     let controls = '';
+    const isMe = currentUser && p.uid === currentUser.uid;
+    let checkinHtml = '';
+    if(checkinPhase){
+      if(p.checkedIn){
+        checkinHtml = `<span class="muted" style="font-size:0.78rem;">✅ ${T('t.checkin.done','Check-in feito')}</span>`;
+      } else if(isMe){
+        checkinHtml = `<button class="btn btn-sm btn-accent" data-checkin="${p.id}">${T('t.checkin.doBtn','Fazer check-in')}</button>`;
+      } else {
+        checkinHtml = `<span class="muted" style="font-size:0.78rem;">⏳ ${T('t.checkin.pending','Por fazer check-in')}</span>`;
+      }
+    }
     if(isAdmin()){
       const teamOpts = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
       controls = `
+        ${checkinHtml}
         <button class="btn btn-sm btn-outline" data-cap="${p.id}">${T('t.pool.makeCaptain','Tornar capitão')}</button>
         <select data-assign="${p.id}"><option value="">${T('t.pool.assignTo','Atribuir a...')}</option>${teamOpts}</select>
         <button class="btn btn-sm btn-danger" data-kickpool="${p.id}">${T('t.pool.remove','Remover')}</button>`;
     } else if(myTurn){
-      controls = `<button class="btn btn-sm btn-accent" data-mypick="${p.id}">${T('t.draft.pick','Escolher')}</button>`;
+      controls = `${checkinHtml}<button class="btn btn-sm btn-accent" data-mypick="${p.id}">${T('t.draft.pick','Escolher')}</button>`;
+    } else {
+      controls = checkinHtml;
     }
     row.innerHTML = `<span>${playerLabel(p)} ${p.source==='manual' ? '<span class="muted">('+T('t.pool.external','externo')+')</span>' : ''}</span><span style="display:flex;gap:8px;align-items:center;">${controls}</span>`;
     box.appendChild(row);
+  });
+  box.querySelectorAll('[data-checkin]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      await updateDoc(doc(playersCol, btn.dataset.checkin), { checkedIn: true });
+    });
   });
   if(isAdmin()){
     box.querySelectorAll('[data-cap]').forEach(btn=>{
@@ -1024,15 +1065,13 @@ function renderTeams(){
   const showSeed = (tournament.bracketDrawMode === 'seed' || tournament.bracketDrawMode === 'manual') && (!bracketGenerated() || isAdmin());
 
   const hintEl = document.getElementById('teams-order-hint');
-  if(showSeed && isAdmin()){
+  if(showSeed && isAdmin() && bracketGenerated()){
+    // depois de gerada, o reordenar aqui só serve de referência — a edição real
+    // passa a ser feita na tabela "Posições na bracket" da aba Bracket
     hintEl.style.display = 'block';
     hintEl.textContent = tournament.bracketDrawMode === 'manual'
-      ? (bracketGenerated()
-          ? T('t.team.hintManualGen','Ajusta as posições e usa "Regenerar bracket" (aba Bracket) para aplicar — posição 1 joga contra a 2, a 3 contra a 4, etc.')
-          : T('t.team.hintManual','Define a posição de cada equipa — a 1 joga contra a 2, a 3 contra a 4, etc.'))
-      : (bracketGenerated()
-          ? T('t.team.hintSeedGen','Ajusta as seeds e usa "Regenerar bracket" (aba Bracket) para aplicar.')
-          : T('t.team.hintSeed','Define a seed de cada equipa antes de gerar a bracket.'));
+      ? T('t.team.hintManualGen','Ajusta as posições e usa "Regenerar bracket" (aba Bracket) para aplicar — posição 1 joga contra a 2, a 3 contra a 4, etc.')
+      : T('t.team.hintSeedGen','Ajusta as seeds e usa "Regenerar bracket" (aba Bracket) para aplicar.');
   } else {
     hintEl.style.display = 'none';
   }
@@ -1107,32 +1146,57 @@ function renderReorderBox(showSeed){
     .sort((a,b) => (a.seed||999) - (b.seed||999));
   if(readyTeams.length < 2){ box.style.display = 'none'; box.innerHTML = ''; return; }
   box.style.display = 'block';
-  box.innerHTML = `<p class="muted" style="font-size:0.8rem;margin-bottom:10px;">${T('t.reorder.hint','Arrasta para reordenar — a posição 1 fica no topo.')}</p>` +
-    readyTeams.map((t,i) => `<div class="reorder-row" draggable="true" data-teamid="${t.id}"><span class="drag-handle">⠿</span><span class="reorder-num">${i+1}</span><span>${t.name}</span></div>`).join('');
 
-  let dragEl = null;
-  box.querySelectorAll('.reorder-row').forEach(row=>{
-    row.addEventListener('dragstart', function(){ dragEl = row; row.classList.add('dragging'); });
-    row.addEventListener('dragend', async function(){
-      row.classList.remove('dragging');
-      const rows = [...box.querySelectorAll('.reorder-row')];
-      for(let i=0;i<rows.length;i++){
-        await updateDoc(doc(teamsCol, rows[i].dataset.teamid), { seed: i+1 });
+  // Usa exatamente o mesmo componente visual/comportamento da tabela "Posições na
+  // bracket" (aba Bracket, depois de gerada): arrastar pelo ⠿ e um botão "Guardar"
+  // explícito, em vez de gravar a cada drag — assim o organizador define a ordem das
+  // seeds ANTES de gerar a bracket com o mesmo método que já conhece de depois.
+  let currentTeams = readyTeams.slice();
+
+  function draw(){
+    box.innerHTML = `
+      <h3 style="margin-bottom:14px;">${T('t.pos.title','Posições na bracket')}</h3>
+      <p class="muted" style="font-size:0.82rem;margin-bottom:14px;">${T('t.pos.dragHint','Arrasta pelo ⠿ para mudar a ordem. Guarda para aplicar aos confrontos desta ronda.')}</p>
+      <div id="reorder-rows">${currentTeams.map((t,i) => `
+        <div class="pos-row" draggable="true" data-idx="${i}">
+          <span class="pos-handle">⠿</span><span class="pos-num">${i+1}.</span><span>${t.name}</span>
+        </div>`).join('')}</div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" id="reorder-save-btn">${T('sala.save','Guardar')}</button>
+      </div>`;
+    wireRows();
+    box.querySelector('#reorder-save-btn').addEventListener('click', async function(){
+      for(let i=0;i<currentTeams.length;i++){
+        await updateDoc(doc(teamsCol, currentTeams[i].id), { seed: i+1 });
       }
+      alert(T('t.reorder.saved','Posições guardadas.'));
     });
-    row.addEventListener('dragover', function(e){
-      e.preventDefault();
-      if(!dragEl || dragEl === row) return;
-      const rect = row.getBoundingClientRect();
-      const after = (e.clientY - rect.top) > rect.height / 2;
-      row.parentNode.insertBefore(dragEl, after ? row.nextSibling : row);
+  }
+
+  let dragIdx = null;
+  function wireRows(){
+    const rowsBox = document.getElementById('reorder-rows');
+    rowsBox.querySelectorAll('.pos-row').forEach(row=>{
+      row.addEventListener('dragstart', function(){ dragIdx = parseInt(row.dataset.idx,10); row.classList.add('dragging'); });
+      row.addEventListener('dragend', function(){ row.classList.remove('dragging'); });
+      row.addEventListener('dragover', function(e){
+        e.preventDefault();
+        if(dragIdx === null) return;
+        const overIdx = parseInt(row.dataset.idx,10);
+        if(overIdx === dragIdx) return;
+        const [moved] = currentTeams.splice(dragIdx,1);
+        currentTeams.splice(overIdx,0,moved);
+        dragIdx = overIdx;
+        rowsBox.innerHTML = currentTeams.map((t,i) => `
+          <div class="pos-row" draggable="true" data-idx="${i}">
+            <span class="pos-handle">⠿</span><span class="pos-num">${i+1}.</span><span>${t.name}</span>
+          </div>`).join('');
+        wireRows();
+      });
     });
-  });
-  // renumera visualmente enquanto arrasta
-  const observer = new MutationObserver(()=>{
-    box.querySelectorAll('.reorder-row .reorder-num').forEach((el,i)=>{ el.textContent = i+1; });
-  });
-  observer.observe(box, { childList: true });
+  }
+
+  draw();
 }
 
 document.getElementById('add-team-btn').addEventListener('click', async function(){
@@ -1142,12 +1206,14 @@ document.getElementById('add-team-btn').addEventListener('click', async function
 });
 
 document.getElementById('add-bot-btn').addEventListener('click', async function(){
+  if(playersSlotsLeft() < 1){ alert(T('t.join.playersFull','Já não há vagas para mais jogadores neste torneio.')); return; }
   const name = prompt(T('t.bot.namePrompt','Nome do bot:'), 'Bot ' + (players.filter(p=>p.source==='bot').length + 1));
   if(!name) return;
   await addDoc(playersCol, { uid: null, name, source: 'bot', isCaptain: false, teamId: null });
 });
 
 document.getElementById('add-registered-btn').addEventListener('click', async function(){
+  if(playersSlotsLeft() < 1){ alert(T('t.join.playersFull','Já não há vagas para mais jogadores neste torneio.')); return; }
   const input = prompt(T('t.registered.prompt','Nickname e tag do jogador (ex: ShadowBlade#A1B2) — pede-lhe para confirmar a tag no perfil dele:'));
   if(!input) return;
   const parts = input.trim().split('#');
@@ -1250,6 +1316,27 @@ function seedPositions(size){
 
 document.getElementById('gen-bracket-btn').addEventListener('click', async function(){
   if(bracketGenerated()){ alert(T('t.start.already','Este torneio já começou.')); return; }
+
+  if(tournament.status === 'inscricoes'){
+    if(!confirm(T('t.checkin.confirmClose','Fechar as inscrições agora? Os jogadores que estão na pool vão ter de fazer check-in antes de a bracket ser gerada.'))) return;
+    for(const p of unassignedPlayers()){
+      // bots e jogadores adicionados manualmente não conseguem fazer check-in sozinhos, por isso já entram confirmados
+      await updateDoc(doc(playersCol, p.id), { checkedIn: p.source === 'platform' ? false : true });
+    }
+    await updateDoc(tRef, { status: 'fechado' });
+    alert(T('t.checkin.opened','Inscrições fechadas. Os jogadores da pool já podem fazer check-in. Quando estiverem prontos, clica novamente em "Começar torneio" para continuar.'));
+    return;
+  }
+
+  const notCheckedIn = unassignedPlayers().filter(p => p.checkedIn === false);
+  if(notCheckedIn.length > 0){
+    if(!confirm(T('t.checkin.removeConfirm1','') + notCheckedIn.length + T('t.checkin.removeConfirm2',' jogador(es) da pool não fizeram check-in e vão ser removidos do torneio. Continuar?'))) return;
+    for(const p of notCheckedIn){
+      await deleteDoc(doc(playersCol, p.id));
+      await unmarkParticipant(p.uid);
+    }
+    players = players.filter(p => !notCheckedIn.some(nc => nc.id === p.id));
+  }
 
   if(tournament.draftMode === 'captains' && !tournament.draftPhase){
     if(teams.length < 2 || !teams.every(t => t.captainPlayerId)){

@@ -59,6 +59,11 @@
       <p class="form-hint" id="maxteams-hint" data-i18n="criar.field.maxteams.hint">Quantas equipas vão disputar o torneio.</p>
     </div>
     <div class="form-group">
+      <label data-i18n="criar.field.maxplayers">Número de jogadores a entrar no torneio (opcional)</label>
+      <input type="number" id="t-maxplayers" min="2" placeholder="Ex: 32" class="field-sm"/>
+      <p class="form-hint" data-i18n="criar.field.maxplayers.hint">Limite de pessoas que podem entrar na pool de jogadores. Deixa vazio para não ter limite.</p>
+    </div>
+    <div class="form-group">
       <label data-i18n="criar.field.bracketType">Tipo de bracket</label>
       <div class="pill-group" id="pill-bracket">
         <div class="pill" data-v="single" data-i18n="criar.bracket.single">Eliminação simples</div>
@@ -360,6 +365,7 @@ function applyPreset(preset){
   if(!preset) return;
   document.getElementById('t-game').value = preset.game || '';
   document.getElementById('t-maxteams').value = preset.maxTeams || 8;
+  document.getElementById('t-maxplayers').value = preset.maxPlayers || '';
   document.getElementById('t-pointstowin').value = preset.pointsToWin || '';
   document.getElementById('t-banmaps').checked = !!preset.mapBanEnabled;
   document.getElementById('t-useplayernames').checked = !!preset.usePlayerNames;
@@ -415,6 +421,8 @@ document.getElementById('create-btn').addEventListener('click', async function()
   const game = document.getElementById('t-game').value.trim();
   const teamSize = parseInt(selected('pill-teamsize'), 10);
   const maxTeams = parseInt(document.getElementById('t-maxteams').value, 10);
+  const maxPlayersRaw = document.getElementById('t-maxplayers').value;
+  const maxPlayers = maxPlayersRaw ? parseInt(maxPlayersRaw, 10) : null;
   const bracketType = selected('pill-bracket');
   const bracketDrawMode = selected('pill-drawmode');
   const visibility = selected('pill-visibility');
@@ -439,6 +447,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
   if(!name){ showError('Dá um nome ao torneio.'); return; }
   if(!game){ showError('Indica o jogo do torneio.'); return; }
   if(!maxTeams || maxTeams < 2){ showError('Precisas de pelo menos 2 equipas.'); return; }
+  if(maxPlayers !== null && maxPlayers < 2){ showError('O número de jogadores tem de ser pelo menos 2 (ou deixa vazio para não ter limite).'); return; }
   if(document.getElementById('t-banmaps').checked && maps.length === 0){ showError('Ativaste o banimento de mapas — adiciona pelo menos um mapa (ou desativa o banimento).'); return; }
   if(!bestOf || bestOf < 1 || bestOf % 2 === 0){ showError('O número de "melhor de quantas partidas" tem de ser ímpar (1, 3, 5, 7...).'); return; }
   if(!pointsToWin){ showError('Define os pontos para vencer cada partida.'); return; }
@@ -448,7 +457,7 @@ document.getElementById('create-btn').addEventListener('click', async function()
 
   try{
     const docRef = await addDoc(collection(db,'tournaments'), {
-      name, game, teamSize, maxTeams, bracketType, bracketDrawMode, bracketLayout, visibility,
+      name, game, teamSize, maxTeams, maxPlayers, bracketType, bracketDrawMode, bracketLayout, visibility,
       inviteCode: visibility === 'private' ? genCode() : null,
       assignMode, draftMode, coinMethod, bestOf, pointsToWin, mapBanEnabled, maps,
       creatorUid: currentUser.uid, moderatorUids: [],

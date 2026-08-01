@@ -26,7 +26,7 @@ O primeiro admin define-se manualmente no Firestore (muda `role` para `"admin"` 
   visibility: "public" | "private",
   inviteCode,                      // só se privado
   creatorUid, creatorParticipates: bool,
-  maxTeams,
+  maxTeams, maxPlayers,             // maxPlayers é opcional — limite de pessoas na pool, sem limite se null
   assignMode: "roulette" | "manual",     // como os jogadores vão para as equipas
   draftMode: "random" | "captains" | "organizer",  // quando há >2 capitães
   maps: [ "Mirage", "Inferno", ... ],    // definidos pelo criador
@@ -35,7 +35,7 @@ O primeiro admin define-se manualmente no Firestore (muda `role` para `"admin"` 
   joinMode: "both" | "solo" | "clan",   // como as pessoas podem entrar no torneio
   participantUids: [uid, ...],      // todos os uids que já estiveram/estão inscritos (pool ou equipa) — usado por "Os meus torneios" → "A jogar", sem precisar de índice collectionGroup
   regOpensAt, regClosesAt,          // datetime-local strings, opcionais
-  status: "inscricoes" | "draft" | "em-curso" | "terminado",
+  status: "inscricoes" | "fechado" | "em-curso" | "terminado",  // "fechado" = inscrições fechadas, à espera de check-in da pool
   createdAt
 }
 ```
@@ -44,10 +44,12 @@ O primeiro admin define-se manualmente no Firestore (muda `role` para `"admin"` 
 Pool de jogadores antes (ou fora) de terem equipa.
 ```
 {
-  uid: string | null,       // null = jogador manual (fora da plataforma)
-  name, source: "platform" | "manual",
+  uid: string | null,       // null = jogador manual/bot (fora da plataforma)
+  name, source: "platform" | "manual" | "bot",
   isCaptain: bool,
-  teamId: string | null
+  teamId: string | null,
+  checkedIn: bool            // só relevante enquanto o jogador está na pool e o torneio está "fechado";
+                              // bots/manuais ficam automaticamente true (não conseguem fazer check-in sozinhos)
 }
 ```
 
