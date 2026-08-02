@@ -26,7 +26,7 @@ O primeiro admin define-se manualmente no Firestore (muda `role` para `"admin"` 
   visibility: "public" | "private",
   inviteCode,                      // só se privado
   creatorUid, creatorParticipates: bool,
-  maxTeams, maxPlayers,             // maxPlayers é opcional — limite de pessoas na pool, sem limite se null
+  maxTeams, maxPlayers,             // ambos opcionais — limite máximo, sem limite se null (cuidado: comparações a maxTeams/maxPlayers têm de checar truthy primeiro, "X >= null" é sempre true em JS)
   assignMode: "roulette" | "manual",     // como os jogadores vão para as equipas
   draftMode: "random" | "captains" | "organizer",  // quando há >2 capitães
   maps: [ "Mirage", "Inferno", ... ],    // definidos pelo criador

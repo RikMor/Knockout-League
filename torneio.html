@@ -134,6 +134,7 @@
       </div>
       <div class="form-group"><label data-i18n="criar.field.name">Nome do torneio</label><input type="text" id="cfg-name" class="field-md"/></div>
       <div class="form-group"><label data-i18n="criar.field.game">Jogo</label><input type="text" id="cfg-game" class="field-md"/></div>
+      <div class="form-group"><label data-i18n="criar.field.description">Descrição do torneio <span class="muted" style="text-transform:none;" data-i18n="criar.field.optional">(opcional)</span></label><textarea id="cfg-description" rows="3" maxlength="600" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit;font-size:0.9rem;resize:vertical;"></textarea></div>
     </div>
 
     <div class="form-section">
@@ -149,9 +150,9 @@
         </div>
       </div>
       <div class="form-group">
-        <label id="cfg-maxteams-label" data-i18n="criar.field.maxteams">Número de equipas</label>
-        <input type="number" id="cfg-maxteams" min="2" class="field-sm"/>
-        <p class="form-hint" id="cfg-maxteams-hint" data-i18n="criar.field.maxteams.hint">Quantas equipas vão disputar o torneio.</p>
+        <label id="cfg-maxteams-label" data-i18n="criar.field.maxteams">Número de equipas (opcional)</label>
+        <input type="number" id="cfg-maxteams" min="2" placeholder="Ex: 8" class="field-sm"/>
+        <p class="form-hint" id="cfg-maxteams-hint" data-i18n="criar.field.maxteams.hint">Quantas equipas vão disputar o torneio, no máximo. Deixa vazio para não ter limite.</p>
       </div>
       <div class="form-group" id="cfg-maxplayers-group">
         <label data-i18n="criar.field.maxplayers">Número de jogadores a entrar no torneio (opcional)</label>
@@ -460,10 +461,15 @@ onSnapshot(tRef, function(snap){
 });
 onSnapshot(playersCol, function(snap){ players = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
 onSnapshot(teamsCol, function(snap){ teams = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
+// as datas de abertura/fecho de inscrições não disparam nenhum evento do Firestore
+// quando a hora chega — por isso reavalia periodicamente para a janela de
+// inscrições abrir/fechar sozinha sem precisar de recarregar a página.
+setInterval(function(){ if(tournament) renderAll(); }, 20000);
 onSnapshot(matchesCol, function(snap){
   matches = snap.docs.map(d=>({id:d.id,...d.data()}));
   renderBracket();
   maybeAutoRedirect();
+  resolveAutomaticByes();
 });
 
 function maybeAutoRedirect(){
@@ -483,6 +489,16 @@ function fmtDT(v){
   const d = new Date(v);
   if(isNaN(d.getTime())) return null;
   return d.toLocaleString('pt-PT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+// Verifica se a janela de inscrições agendada (data/hora de abertura e fecho)
+// está aberta agora — usado para além do campo "status" porque o status só
+// muda quando o organizador clica em "Fechar inscrições/Começar torneio",
+// e as datas/horas agendadas por si só não alteravam nada.
+function regWindowOpen(t){
+  const now = new Date();
+  if(t.regOpensAt){ const o = new Date(t.regOpensAt); if(!isNaN(o.getTime()) && now < o) return false; }
+  if(t.regClosesAt){ const c = new Date(t.regClosesAt); if(!isNaN(c.getTime()) && now > c) return false; }
+  return true;
 }
 function renderScheduleLine(){
   const open = fmtDT(tournament.regOpensAt);
@@ -510,6 +526,7 @@ function renderHeader(){
       ${tournament.visibility==='private' && isAdmin() ? '<span class="invite-code">'+tournament.inviteCode+'</span>' : ''}
     </div>
     ${orgName ? '<div class="ticket" data-tag="Organizador" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 16px;"><span style="color:var(--gold);font-size:1.1rem;">👑</span><strong>'+orgName+'</strong></div>' : ''}
+    ${tournament.description ? '<p class="muted" style="margin-top:14px;max-width:640px;white-space:pre-wrap;">'+tournament.description+'</p>' : ''}
     ${renderScheduleLine()}`;
 
   if(!tournament.organizerDisplayName && !organizerNameCache && tournament.creatorUid){
@@ -527,20 +544,21 @@ function cfgUpdateMaxTeamsLabel(){
   const hint = document.getElementById('cfg-maxteams-hint');
   const maxPlayersGroup = document.getElementById('cfg-maxplayers-group');
   if(size === 1){
-    label.textContent = T('criar.field.maxplayers1v1','Número de jogadores');
-    hint.textContent = T('criar.field.maxplayers1v1.hint','Em 1v1 cada jogador é a sua própria equipa — quantos jogadores vão entrar na bracket. É um limite máximo, não precisas de saber o número exato à partida.');
+    label.textContent = T('criar.field.maxplayers1v1','Número de jogadores (opcional)');
+    hint.textContent = T('criar.field.maxplayers1v1.hint','Em 1v1 cada jogador é a sua própria equipa — quantos jogadores vão entrar na bracket, no máximo. Deixa vazio para não ter limite.');
     maxPlayersGroup.style.display = 'none';
   } else {
-    label.textContent = T('criar.field.maxteams','Número de equipas');
-    hint.textContent = T('criar.field.maxteams.hintN','Quantas equipas vão aparecer na bracket. É um limite máximo.');
+    label.textContent = T('criar.field.maxteams','Número de equipas (opcional)');
+    hint.textContent = T('criar.field.maxteams.hintN','Quantas equipas vão aparecer na bracket, no máximo. Deixa vazio para não ter limite.');
     maxPlayersGroup.style.display = 'block';
   }
 }
 document.querySelectorAll('#cfg-pill-teamsize .pill').forEach(function(p){
   p.addEventListener('click', cfgUpdateMaxTeamsLabel);
 });
+// só corrige se houver um valor inválido (abaixo do mínimo) — vazio fica vazio, significa "sem limite"
 document.getElementById('cfg-maxteams').addEventListener('blur', function(){
-  if(!this.value || parseInt(this.value,10) < 2) this.value = tournament.maxTeams || 8;
+  if(this.value && parseInt(this.value,10) < 2) this.value = 2;
 });
 document.getElementById('cfg-maxplayers').addEventListener('blur', function(){
   if(this.value && parseInt(this.value,10) < 2) this.value = '';
@@ -578,6 +596,7 @@ function renderConfig(){
   if(!isAdmin()) return;
   document.getElementById('cfg-name').value = tournament.name || '';
   document.getElementById('cfg-game').value = tournament.game || '';
+  document.getElementById('cfg-description').value = tournament.description || '';
   cfgSetSelected('cfg-pill-visibility', tournament.visibility || 'public');
   cfgSetSelected('cfg-pill-teamsize', String(tournament.teamSize || 5));
   document.getElementById('cfg-maxteams').value = tournament.maxTeams || '';
@@ -609,20 +628,22 @@ document.getElementById('cfg-save-btn').addEventListener('click', async function
   msg.style.display = 'none';
   const name = document.getElementById('cfg-name').value.trim();
   const game = document.getElementById('cfg-game').value.trim();
+  const description = document.getElementById('cfg-description').value.trim() || null;
   if(!name || !game){ msg.textContent = T('t.cfg.errNameGame','Preenche o nome e o jogo.'); msg.style.display = 'block'; return; }
   const boSel = cfgSelected('cfg-pill-bestof');
   const bestOf = boSel === 'custom' ? parseInt(document.getElementById('cfg-bestof-custom').value, 10) : parseInt(boSel, 10);
   const pointsToWin = document.getElementById('cfg-pointstowin').value ? parseInt(document.getElementById('cfg-pointstowin').value, 10) : null;
   const teamSize = parseInt(cfgSelected('cfg-pill-teamsize'), 10);
-  const maxTeams = parseInt(document.getElementById('cfg-maxteams').value, 10);
+  const maxTeamsRaw = document.getElementById('cfg-maxteams').value;
+  const maxTeams = maxTeamsRaw ? parseInt(maxTeamsRaw, 10) : null;
   const maxPlayersRaw = document.getElementById('cfg-maxplayers').value;
   const maxPlayers = (teamSize === 1 || !maxPlayersRaw) ? null : parseInt(maxPlayersRaw, 10);
   if(!bestOf || bestOf < 1 || bestOf % 2 === 0){ msg.textContent = T('t.cfg.errBestOf','O "melhor de quantas partidas" tem de ser ímpar.'); msg.style.display = 'block'; return; }
   if(!pointsToWin){ msg.textContent = T('t.cfg.errPoints','Define os pontos para vencer cada partida.'); msg.style.display = 'block'; return; }
-  if(!maxTeams || maxTeams < 2){ msg.textContent = T('t.cfg.errMaxTeams','Define um número de equipas válido (mínimo 2).'); msg.style.display = 'block'; return; }
+  if(maxTeams !== null && maxTeams < 2){ msg.textContent = T('t.cfg.errMaxTeams','Se definires um número de equipas, tem de ser pelo menos 2 (ou deixa vazio para não ter limite).'); msg.style.display = 'block'; return; }
   if(maxPlayers !== null && maxPlayers < 2){ msg.textContent = T('t.cfg.errMaxPlayers','O número de jogadores tem de ser pelo menos 2 (ou deixa vazio para não ter limite).'); msg.style.display = 'block'; return; }
   await updateDoc(tRef, {
-    name, game,
+    name, game, description,
     teamSize, maxTeams, maxPlayers,
     visibility: cfgSelected('cfg-pill-visibility'),
     coinMethod: cfgSelected('cfg-pill-coin'),
@@ -737,6 +758,12 @@ function isUidInPool(uid){
 function renderJoinBox(){
   const box = document.getElementById('join-box');
   if(tournament.status !== 'inscricoes'){ box.style.display='none'; return; }
+  if(!regWindowOpen(tournament)){
+    box.style.display='block';
+    const notYet = tournament.regOpensAt && new Date() < new Date(tournament.regOpensAt);
+    box.innerHTML = `<p class="muted">${notYet ? T('t.join.notOpenYet','As inscrições ainda não abriram.') : T('t.join.closedSchedule','As inscrições já fecharam.')}</p>`;
+    return;
+  }
   if(!currentUser){
     box.style.display='block';
     box.innerHTML = T('t.join.needLogin','Precisas de <a href="login.html" style="color:var(--accent);font-weight:700;">entrar</a> para te juntares a este torneio.');
@@ -765,7 +792,7 @@ function renderJoinBox(){
   if(showClan){
     document.getElementById('join-clan-btn').addEventListener('click', async function(){
       if(isUidInPool(currentUser.uid)){ alert(T('t.join.alreadyIn','Já estás inscrito neste torneio.')); return; }
-      if(teams.length >= tournament.maxTeams){ alert(T('t.join.noSlots','Já não há vagas para mais equipas neste torneio.')); return; }
+      if(tournament.maxTeams && teams.length >= tournament.maxTeams){ alert(T('t.join.noSlots','Já não há vagas para mais equipas neste torneio.')); return; }
       if(playersSlotsLeft() < 1){ alert(T('t.join.playersFull','Já não há vagas para mais jogadores neste torneio.')); return; }
       const clan = await myOwnedClan();
       if(!clan){ alert(T('t.join.noClan','Não lideras nem és capitão de nenhum clã. Cria um em "O meu clã" ou entra sozinho.')); return; }
@@ -924,8 +951,10 @@ function renderPool(){
         <button class="btn btn-sm btn-danger" data-kickpool="${p.id}">${T('t.pool.remove','Remover')}</button>`;
     } else if(myTurn){
       controls = `${checkinHtml}<button class="btn btn-sm btn-accent" data-mypick="${p.id}">${T('t.draft.pick','Escolher')}</button>`;
+      if(isMe) controls += `<button class="btn btn-sm btn-outline" data-leavepool="${p.id}">${T('t.pool.leave','Sair da pool')}</button>`;
     } else {
       controls = checkinHtml;
+      if(isMe) controls += `<button class="btn btn-sm btn-outline" data-leavepool="${p.id}">${T('t.pool.leave','Sair da pool')}</button>`;
     }
     row.innerHTML = `<span>${playerLabel(p)} ${p.source==='manual' ? '<span class="muted">('+T('t.pool.external','externo')+')</span>' : ''}</span><span style="display:flex;gap:8px;align-items:center;">${controls}</span>`;
     box.appendChild(row);
@@ -968,12 +997,21 @@ function renderPool(){
       });
     });
   }
+  box.querySelectorAll('[data-leavepool]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      if(!confirm(T('t.pool.confirmLeave','Sair da pool de jogadores? Deixas de participar neste torneio.'))) return;
+      const p = players.find(x=>x.id===btn.dataset.leavepool);
+      if(!p || !currentUser || p.uid !== currentUser.uid) return;
+      await deleteDoc(doc(playersCol, btn.dataset.leavepool));
+      await unmarkParticipant(currentUser.uid);
+    });
+  });
 }
 
 async function makeCaptain(playerId){
   const p = players.find(x=>x.id===playerId);
   if(!p) return;
-  if(teams.length >= tournament.maxTeams){ alert(T('t.join.noSlots','Já não há vagas para mais equipas neste torneio.')); return; }
+  if(tournament.maxTeams && teams.length >= tournament.maxTeams){ alert(T('t.join.noSlots','Já não há vagas para mais equipas neste torneio.')); return; }
   let name;
   if(tournament.usePlayerNames){
     name = p.name;
@@ -990,7 +1028,16 @@ async function assignPlayerToTeam(playerId, teamId){
   if(!team) return;
   if((team.players||[]).length >= tournament.teamSize){ alert(T('t.team.full','Essa equipa já está cheia.')); return; }
   await updateDoc(doc(playersCol, playerId), { teamId: teamId });
-  await updateDoc(doc(teamsCol, teamId), { players: [...(team.players||[]), playerId] });
+  const newPlayers = [...(team.players||[]), playerId];
+  const teamUpdate = { players: newPlayers };
+  // equipa sem capitão definido (ex: montada manualmente pelo organizador) —
+  // o primeiro jogador atribuído torna-se capitão automaticamente, para os
+  // botões de "equipa X venceu" na sala da partida ficarem sempre disponíveis.
+  if(!team.captainPlayerId){
+    teamUpdate.captainPlayerId = playerId;
+    await updateDoc(doc(playersCol, playerId), { isCaptain: true });
+  }
+  await updateDoc(doc(teamsCol, teamId), teamUpdate);
   if(tournament.draftMode === 'captains'){ await advanceDraftTurn(); }
 }
 
@@ -1087,7 +1134,7 @@ function renderTeams(){
   if(teams.length === 0){ box.innerHTML = `<p class="muted">${T('t.team.none','Ainda não há equipas.')}</p>`; return; }
   box.innerHTML = '';
   const mine = myPoolEntry();
-  const canJoinSelf = tournament.status === 'inscricoes' && mine && !mine.teamId;
+  const canJoinSelf = tournament.status === 'inscricoes' && regWindowOpen(tournament) && mine && !mine.teamId;
   const showSeed = (tournament.bracketDrawMode === 'seed' || tournament.bracketDrawMode === 'manual') && (!bracketGenerated() || isAdmin());
 
   const hintEl = document.getElementById('teams-order-hint');
@@ -1115,15 +1162,24 @@ function renderTeams(){
     }
     let joinBtn = (canJoinSelf && !full) ? `<button class="btn btn-sm btn-outline" data-jointeam="${t.id}" style="margin-top:8px;">${T('t.team.joinThis','Juntar-me a esta equipa')}</button>` : '';
     let delTeamBtn = isAdmin() ? `<button class="btn btn-sm btn-danger" data-delteam="${t.id}" style="margin-top:8px;margin-left:6px;">${T('t.team.delete','Eliminar equipa')}</button>` : '';
-    card.innerHTML = `<h4>${t.name}</h4>${seedHtml}<p class="muted" style="font-size:0.78rem;margin-bottom:10px;">${tplayers.length}/${tournament.teamSize} ${T('t.team.players','jogadores')}</p>` +
+    const iAmOnThisTeam = currentUser && tplayers.some(p => p.uid === currentUser.uid);
+    let withdrawBtn = (iAmOnThisTeam && !t.disqualified) ? `<button class="btn btn-sm btn-outline" data-withdraw="${t.id}" style="margin-top:8px;margin-left:6px;">${T('t.team.withdraw','Desistir do torneio')}</button>` : '';
+    const dqTag = t.disqualified ? ' <span class="muted" style="font-size:0.7rem;">('+T('t.team.disqualified','desistiu')+')</span>' : '';
+    card.innerHTML = `<h4>${t.name}${dqTag}</h4>${seedHtml}<p class="muted" style="font-size:0.78rem;margin-bottom:10px;">${tplayers.length}/${tournament.teamSize} ${T('t.team.players','jogadores')}</p>` +
       tplayers.map(p => `<div class="player-row"><span>${playerLabel(p)}${p.isCaptain ? '<span class="cap-tag">'+T('t.team.captain','CAPITÃO')+'</span>' : ''}</span>${isAdmin() ? '<button class="btn btn-sm btn-danger" data-kickmember="'+p.id+'">'+T('t.pool.remove','Remover')+'</button>' : ''}</div>`).join('') +
-      joinBtn + delTeamBtn;
+      joinBtn + delTeamBtn + withdrawBtn;
     box.appendChild(card);
   });
 
   box.querySelectorAll('[data-jointeam]').forEach(btn=>{
     btn.addEventListener('click', async function(){
       await assignPlayerToTeam(mine.id, btn.dataset.jointeam);
+    });
+  });
+  box.querySelectorAll('[data-withdraw]').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      if(!confirm(T('t.team.confirmWithdraw','Sair do torneio? A tua equipa fica desqualificada e, se já estiveres num confronto, o adversário avança automaticamente. Isto não tem volta atrás.'))) return;
+      await withdrawTeam(btn.dataset.withdraw);
     });
   });
   if(isAdmin()){
@@ -1151,18 +1207,52 @@ function renderTeams(){
           ? T('t.team.confirmDeleteInMatch','Eliminar esta equipa? Está colocada na bracket — essa vaga fica livre. Os jogadores voltam para o pool.')
           : T('t.team.confirmDelete','Eliminar esta equipa? Os jogadores voltam para o pool.');
         if(!confirm(msg)) return;
-        for(const pid of (team.players||[])){
-          await updateDoc(doc(playersCol, pid), { teamId: null, isCaptain: false });
-        }
-        for(const m of matches){
-          if(m.status === 'terminado') continue;
-          if(m.teamAId === team.id) await updateDoc(doc(matchesCol, m.id), { teamAId: null });
-          if(m.teamBId === team.id) await updateDoc(doc(matchesCol, m.id), { teamBId: null });
-        }
-        await deleteDoc(doc(teamsCol, team.id));
+        await deleteTeamAndCleanup(team.id);
       });
     });
   }
+}
+
+// Um jogador (qualquer membro, incluindo o capitão/líder) desiste do torneio em nome
+// da equipa: fica marcada como desqualificada e, se estiver num confronto ainda por
+// decidir, o adversário avança automaticamente (vitória por desistência/walkover).
+async function withdrawTeam(teamId){
+  const team = teams.find(t=>t.id===teamId);
+  if(!team || team.disqualified) return;
+  await updateDoc(doc(teamsCol, teamId), { disqualified: true });
+  const activeMatch = matches.find(m => (m.teamAId===teamId || m.teamBId===teamId) && m.status !== 'terminado' && m.teamAId && m.teamBId);
+  if(activeMatch){
+    const winnerId = activeMatch.teamAId === teamId ? activeMatch.teamBId : activeMatch.teamAId;
+    await updateDoc(doc(matchesCol, activeMatch.id), { winnerId, status: 'terminado', walkover: true });
+    if(activeMatch.nextMatchId){
+      const field = activeMatch.nextSlot === 'A' ? 'teamAId' : 'teamBId';
+      await updateDoc(doc(matchesCol, activeMatch.nextMatchId), { [field]: winnerId });
+    }
+    await maybeActivateGrandFinalReset(activeMatch, winnerId);
+  } else {
+    for(const m of matches){
+      if(m.status === 'terminado') continue;
+      if(m.teamAId === teamId) await updateDoc(doc(matchesCol, m.id), { teamAId: null });
+      if(m.teamBId === teamId) await updateDoc(doc(matchesCol, m.id), { teamBId: null });
+    }
+  }
+}
+
+// Elimina uma equipa: liberta a vaga que ocupava na bracket (se estiver colocada
+// nalgum confronto ainda não terminado) e devolve os jogadores ao pool.
+// Reutilizado tanto no separador Equipas como no editor de "Posições na bracket".
+async function deleteTeamAndCleanup(teamId){
+  const team = teams.find(t=>t.id===teamId);
+  if(!team) return;
+  for(const pid of (team.players||[])){
+    await updateDoc(doc(playersCol, pid), { teamId: null, isCaptain: false });
+  }
+  for(const m of matches){
+    if(m.status === 'terminado') continue;
+    if(m.teamAId === teamId) await updateDoc(doc(matchesCol, m.id), { teamAId: null });
+    if(m.teamBId === teamId) await updateDoc(doc(matchesCol, m.id), { teamBId: null });
+  }
+  await deleteDoc(doc(teamsCol, teamId));
 }
 
 function renderReorderBox(showSeed){
@@ -1291,7 +1381,7 @@ async function autoAssignRemainingPool(){
   while(pool.length > 0){
     let target = workingTeams.find(t => t.players.length < tournament.teamSize);
     if(!target){
-      if(workingTeams.length >= tournament.maxTeams) break; // sem mais espaço
+      if(tournament.maxTeams && workingTeams.length >= tournament.maxTeams) break; // sem mais espaço
       const autoName = (tournament.usePlayerNames && tournament.teamSize === 1) ? pool[0].name : (T('t.team.autoName','Equipa ') + (workingTeams.length + 1));
       target = { id: null, name: autoName, players: [], captainPlayerId: null, isNew: true, seed: workingTeams.length + 1 };
       workingTeams.push(target);
@@ -1439,6 +1529,43 @@ document.getElementById('cfg-map-input').addEventListener('keydown', function(e)
 // distribui equipas pelos confrontos da 1ª ronda garantindo que cada "bye"
 // (posição vazia) fica sempre sozinho num confronto, nunca dois byes juntos —
 // isso evitava que sobrassem confrontos "A definir vs A definir" que nunca avançavam.
+// Em eliminação dupla, uma vaga vazia numa partida da bracket de perdedores só pode
+// ser confirmada como "sem adversário a caminho" depois de sabermos que já não há
+// nenhum confronto pendente que ainda lhe possa entregar uma equipa (vencedor ou
+// perdedor). Corre depois de cada atualização das partidas e avança sozinho quem
+// não tem mesmo adversário (bye), em cascata, até a bracket ficar coerente.
+let _resolvingByes = false;
+async function resolveAutomaticByes(){
+  if(!isAdmin() || !tournament || tournament.bracketType === 'round-robin') return;
+  if(_resolvingByes) return;
+  _resolvingByes = true;
+  try{
+    const pendingFor = (matchId, slot) => matches.some(src => src.status !== 'terminado' && (
+      (src.nextMatchId === matchId && src.nextSlot === slot) ||
+      (src.loserNextMatchId === matchId && src.loserNextSlot === slot)
+    ));
+    for(const m of matches){
+      if(m.status === 'terminado' || m.dormant) continue;
+      const hasA = !!m.teamAId, hasB = !!m.teamBId;
+      if(hasA && hasB) continue;
+      if(!hasA && !hasB){
+        if(!pendingFor(m.id,'A') && !pendingFor(m.id,'B')){
+          await updateDoc(doc(matchesCol, m.id), { status: 'terminado', winnerId: null, skipped: true });
+        }
+        continue;
+      }
+      const missingSlot = hasA ? 'B' : 'A';
+      if(pendingFor(m.id, missingSlot)) continue;
+      const winnerId = hasA ? m.teamAId : m.teamBId;
+      await updateDoc(doc(matchesCol, m.id), { winnerId, status: 'terminado', bye: true });
+      if(m.nextMatchId){
+        await updateDoc(doc(matchesCol, m.nextMatchId), { [m.nextSlot === 'A' ? 'teamAId' : 'teamBId']: winnerId });
+      }
+      // um "bye" não teve adversário real, por isso não há perdedor para mandar para a bracket de perdedores
+    }
+  } finally { _resolvingByes = false; }
+}
+
 function padWithByes(orderedIds, size){
   const byes = size - orderedIds.length;
   const matchCount = size / 2;
@@ -1468,8 +1595,8 @@ async function generateBracket(readyTeams){
         idx++;
       }
     }
-  } else {
-    // single elimination (também usado como base para double elimination — bracket de vencedores)
+  } else if(tournament.bracketType !== 'double'){
+    // single elimination (também usado como base para round-robin/outros — bracket de vencedores)
     let size = 1; while(size < teamIds.length) size *= 2;
     let slots;
     if(tournament.bracketDrawMode === 'seed'){
@@ -1519,11 +1646,102 @@ async function generateBracket(readyTeams){
       });
     }
     plan = rounds.flat();
+  } else {
+    // eliminação dupla: bracket de vencedores (winners) + bracket de perdedores
+    // (losers, que recebe quem perde na winners) + grande final entre os dois
+    // campeões, com uma partida de "reset" só ativada se a equipa vinda da
+    // bracket de perdedores vencer a grande final (nesse caso fica 1-1 e há
+    // de decidir tudo numa segunda partida).
+    let size = 1; while(size < teamIds.length) size *= 2;
+    let slots;
+    if(tournament.bracketDrawMode === 'seed'){
+      const bySeed = [...readyTeams].sort((a,b) => (a.seed || 999) - (b.seed || 999));
+      const positions = seedPositions(size);
+      slots = positions.map(seedNum => (bySeed[seedNum-1] ? bySeed[seedNum-1].id : null));
+    } else if(tournament.bracketDrawMode === 'manual'){
+      const byPosition = [...readyTeams].sort((a,b) => (a.seed || 999) - (b.seed || 999)).map(t => t.id);
+      slots = padWithByes(byPosition, size);
+    } else {
+      const shuffled = [...teamIds].sort(()=>Math.random()-0.5);
+      slots = padWithByes(shuffled, size);
+    }
+
+    const R = Math.log2(size); // número de rondas da bracket de vencedores
+
+    // ── bracket de vencedores ──
+    let wbRounds = [];
+    let wb0 = [];
+    for(let i=0;i<size/2;i++) wb0.push({ id:'wb0m'+i, round:0, matchIndex:i, bracket:'winners', teamAId:slots[i*2], teamBId:slots[i*2+1] });
+    wbRounds.push(wb0);
+    let wcount = size/2, wr = 1;
+    while(wcount > 1){
+      let ms = [];
+      for(let i=0;i<wcount/2;i++) ms.push({ id:'wb'+wr+'m'+i, round:wr, matchIndex:i, bracket:'winners', teamAId:null, teamBId:null });
+      wbRounds.push(ms); wcount/=2; wr++;
+    }
+    for(let ri=0; ri<wbRounds.length-1; ri++){
+      wbRounds[ri].forEach((m,i)=>{
+        m.nextMatchId = wbRounds[ri+1][Math.floor(i/2)].id;
+        m.nextSlot = i%2===0 ? 'A' : 'B';
+      });
+    }
+
+    // ── bracket de perdedores ──
+    // tem 2R-2 rondas: a ronda 0 emparelha os perdedores da winners-ronda-0 entre
+    // si; depois alterna sempre entre uma ronda que recebe perdedores frescos da
+    // winners seguinte e uma ronda de consolidação só dentro da losers.
+    let lbRounds = [];
+    if(R >= 2){
+      let lb0 = [];
+      for(let i=0;i<wb0.length/2;i++) lb0.push({ id:'lb0m'+i, round:0, matchIndex:i, bracket:'losers', teamAId:null, teamBId:null });
+      lbRounds.push(lb0);
+      wb0.forEach((m,i)=>{
+        const target = lb0[Math.floor(i/2)];
+        m.loserNextMatchId = target.id;
+        m.loserNextSlot = i%2===0 ? 'A' : 'B';
+      });
+
+      let lbIdx = 1, prevRound = lb0;
+      for(let j=1;j<R;j++){
+        const wbLoseRound = wbRounds[j];
+        let mixRound = [];
+        for(let i=0;i<wbLoseRound.length;i++) mixRound.push({ id:'lb'+lbIdx+'m'+i, round:lbIdx, matchIndex:i, bracket:'losers', teamAId:null, teamBId:null });
+        prevRound.forEach((m,i)=>{ m.nextMatchId = mixRound[i].id; m.nextSlot = 'A'; });
+        wbLoseRound.forEach((m,i)=>{ m.loserNextMatchId = mixRound[i].id; m.loserNextSlot = 'B'; });
+        lbRounds.push(mixRound);
+        lbIdx++; prevRound = mixRound;
+
+        if(j < R-1){
+          let consRound = [];
+          for(let i=0;i<mixRound.length/2;i++) consRound.push({ id:'lb'+lbIdx+'m'+i, round:lbIdx, matchIndex:i, bracket:'losers', teamAId:null, teamBId:null });
+          prevRound.forEach((m,i)=>{
+            const target = consRound[Math.floor(i/2)];
+            m.nextMatchId = target.id;
+            m.nextSlot = i%2===0 ? 'A' : 'B';
+          });
+          lbRounds.push(consRound);
+          lbIdx++; prevRound = consRound;
+        }
+      }
+    }
+
+    // ── grande final + reset ──
+    const wbFinal = wbRounds[wbRounds.length-1][0];
+    const lbFinal = lbRounds.length ? lbRounds[lbRounds.length-1][0] : null;
+    const grandFinalRound = wbRounds.length;
+    const grandFinal = { id:'gf0', round:grandFinalRound, matchIndex:0, bracket:'grand-final', teamAId:null, teamBId:null };
+    const grandFinalReset = { id:'gf1', round:grandFinalRound+1, matchIndex:0, bracket:'grand-final', teamAId:null, teamBId:null, dormant:true };
+    wbFinal.nextMatchId = grandFinal.id; wbFinal.nextSlot = 'A';
+    if(lbFinal){ lbFinal.nextMatchId = grandFinal.id; lbFinal.nextSlot = 'B'; }
+
+    plan = [...wbRounds.flat(), ...lbRounds.flat(), grandFinal, grandFinalReset];
   }
 
   for(const m of plan){
     await setDoc(doc(matchesCol, m.id), {
       round: m.round, matchIndex: m.matchIndex,
+      bracket: m.bracket || (tournament.bracketType === 'round-robin' ? 'round-robin' : 'single'),
+      dormant: m.dormant || false,
       teamAId: m.teamAId || null, teamBId: m.teamBId || null,
       winnerId: null,
       bestOf: tournament.bestOf || 1,
@@ -1531,8 +1749,19 @@ async function generateBracket(readyTeams){
       gamesWonA: 0, gamesWonB: 0,
       currentGame: { index: 0, firstBanTeamId: null, firstBanMethod: null, mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null, resultProposal: null, disputed: false },
       serverInfo: null, status: 'por-jogar',
-      nextMatchId: m.nextMatchId || null, nextSlot: m.nextSlot || null
+      nextMatchId: m.nextMatchId || null, nextSlot: m.nextSlot || null,
+      loserNextMatchId: m.loserNextMatchId || null, loserNextSlot: m.loserNextSlot || null
     });
+  }
+}
+
+async function maybeActivateGrandFinalReset(m, winnerId){
+  if(m.id !== 'gf0' || m.bracket !== 'grand-final') return;
+  const resetRef = doc(matchesCol,'gf1');
+  if(winnerId === m.teamBId){
+    await updateDoc(resetRef, { teamAId: m.teamAId, teamBId: m.teamBId, dormant: false });
+  } else {
+    await updateDoc(resetRef, { status: 'terminado', skipped: true, dormant: false });
   }
 }
 
@@ -1543,6 +1772,14 @@ async function declareWinnerInternal(matchId, winnerId, planRef){
     const field = m.nextSlot === 'A' ? 'teamAId' : 'teamBId';
     await updateDoc(doc(matchesCol, m.nextMatchId), { [field]: winnerId });
   }
+  if(m && m.loserNextMatchId){
+    const loserId = winnerId === m.teamAId ? m.teamBId : m.teamAId;
+    if(loserId){
+      const lfield = m.loserNextSlot === 'A' ? 'teamAId' : 'teamBId';
+      await updateDoc(doc(matchesCol, m.loserNextMatchId), { [lfield]: loserId });
+    }
+  }
+  if(m) await maybeActivateGrandFinalReset(m, winnerId);
 }
 
 // ── BRACKET RENDER ──────────────────────────────────────────────
@@ -1581,7 +1818,11 @@ function roundsBeforeStarted(rn){
 }
 function renderPositionsEditor(){
   const box = document.getElementById('positions-editor-box');
-  if(!isAdmin() || tournament.bracketType === 'round-robin' || matches.length === 0){ box.style.display = 'none'; return; }
+  // O editor de posições assume uma única árvore de eliminação — em eliminação dupla
+  // isso misturaria confrontos da bracket de vencedores com os da bracket de
+  // perdedores na mesma "ronda", por isso fica desativado; usa "Regenerar bracket"
+  // (que respeita as seeds/posições das equipas) para ajustar a ordem inicial.
+  if(!isAdmin() || tournament.bracketType === 'round-robin' || tournament.bracketType === 'double' || matches.length === 0){ box.style.display = 'none'; return; }
   box.style.display = 'block';
 
   const byRound = {};
@@ -1602,7 +1843,8 @@ function renderPositionsEditor(){
     <div class="pos-row ${locked?'locked':''}" draggable="${!locked}" data-slotidx="${i}">
       ${!locked ? '<span class="pos-handle">⠿</span>' : '<span style="width:16px;"></span>'}
       <span class="pos-num">${i+1}.</span>
-      <span>${teamName(s.teamId)}</span>
+      <span style="flex:1;">${teamName(s.teamId)}</span>
+      ${s.teamId ? '<button type="button" class="btn btn-sm btn-danger" data-posdelteam="'+s.teamId+'" title="'+T('t.team.delete','Eliminar equipa')+'" style="padding:2px 8px;font-size:0.7rem;">✕</button>' : ''}
     </div>`).join('');
 
   box.innerHTML = `
@@ -1618,6 +1860,16 @@ function renderPositionsEditor(){
 
   box.querySelectorAll('[data-posround]').forEach(btn=>{
     btn.addEventListener('click', function(){ posEditorRound = parseInt(btn.dataset.posround,10); renderPositionsEditor(); });
+  });
+
+  box.querySelectorAll('[data-posdelteam]').forEach(btn=>{
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+      const team = teams.find(t=>t.id===btn.dataset.posdelteam);
+      if(!team) return;
+      if(!confirm(T('t.team.confirmDeleteInMatch','Eliminar esta equipa? Está colocada na bracket — essa vaga fica livre. Os jogadores voltam para o pool.'))) return;
+      await deleteTeamAndCleanup(team.id);
+    });
   });
 
   if(!locked){
@@ -1714,23 +1966,31 @@ function renderBracket(){
   renderPositionsEditor();
   const box = document.getElementById('bracket-box');
   if(matches.length === 0){ box.innerHTML = `<p class="muted">${T('torneio.bracketNotGenerated','A bracket ainda não foi gerada.')}</p>`; return; }
+  if(tournament.bracketType === 'double'){ renderDoubleEliminationBracket(box); return; }
   const byRound = {};
   matches.forEach(m => { (byRound[m.round] = byRound[m.round] || []).push(m); });
   const roundNums = Object.keys(byRound).map(Number).sort((a,b)=>a-b);
 
   const twoSide = tournament.bracketLayout === 'two-side' && tournament.bracketType !== 'round-robin' && roundNums.length > 1;
+  let innerHtml;
 
   if(twoSide){
     const lastRound = roundNums[roundNums.length-1];
+    const numRounds = roundNums.length;
     const leftCols = [];
     const rightCols = [];
     let centerHtml = '';
     roundNums.forEach(rn => {
       const ms = byRound[rn].slice().sort((a,b)=>a.matchIndex-b.matchIndex);
       if(rn === lastRound && ms.length === 1){ centerHtml = matchCardHtml(ms[0]); return; }
-      const half = Math.ceil(ms.length/2);
-      const left = ms.slice(0, half);
-      const right = ms.slice(half);
+      // Divide esquerda/direita pela posição ORIGINAL (matchIndex) de cada confronto na
+      // árvore completa da bracket, não pela simples metade da lista já filtrada — a lista
+      // fica mais curta quando há "byes" removidos da Ronda 1, e dividir por posição nesse
+      // caso desalinhava os confrontos (equipas apareciam do lado errado).
+      const origCount = Math.pow(2, numRounds - 1 - rn);
+      const threshold = origCount / 2;
+      const left = ms.filter(m => m.matchIndex < threshold);
+      const right = ms.filter(m => m.matchIndex >= threshold);
       leftCols.push(`<div class="bracket-round"><div class="round-label">${T('t.round','Ronda')} ${rn+1}</div>` + left.map(matchCardHtml).join('') + `</div>`);
       rightCols.push(`<div class="bracket-round"><div class="round-label">${T('t.round','Ronda')} ${rn+1}</div>` + right.map(matchCardHtml).join('') + `</div>`);
     });
@@ -1738,7 +1998,7 @@ function renderBracket(){
     // conteúdo fora do ecrã) — invertemos a ORDEM dos elementos no próprio HTML
     const leftHtml = '<div class="bracket">' + leftCols.join('') + '</div>';
     const rightHtml = '<div class="bracket">' + rightCols.slice().reverse().join('') + '</div>';
-    box.innerHTML = `<div class="bracket-scroll" style="display:flex;align-items:center;gap:24px;overflow-x:auto;padding:20px 4px 40px;">${leftHtml}<div style="flex-shrink:0;text-align:center;position:relative;z-index:1;"><div class="round-label">${T('t.final','Final')}</div>${centerHtml}</div>${rightHtml}</div>`;
+    innerHtml = `<div class="bracket-scroll" style="display:flex;align-items:center;gap:24px;padding:20px 4px 40px;">${leftHtml}<div style="flex-shrink:0;text-align:center;position:relative;z-index:1;"><div class="round-label">${T('t.final','Final')}</div>${centerHtml}</div>${rightHtml}</div>`;
   } else {
     let html = '<div class="bracket">';
     roundNums.forEach(rn => {
@@ -1747,14 +2007,22 @@ function renderBracket(){
       html += '</div>';
     });
     html += '</div>';
-    box.innerHTML = html;
+    innerHtml = html;
   }
+
+  box.innerHTML = `
+    <div class="bracket-viewport-controls">
+      <button type="button" class="btn btn-outline btn-sm" id="bracket-reset-view">${T('t.bracket.resetView','↺ Repor vista')}</button>
+      <span class="muted" style="font-size:0.75rem;align-self:center;">${T('t.bracket.dragHint','Arrasta para mover a bracket em qualquer direção')}</span>
+    </div>
+    <div class="bracket-viewport" id="bracket-viewport"><div class="bracket-pan" id="bracket-pan">${innerHtml}</div></div>`;
 
   box.querySelectorAll('[data-match]').forEach(el=>{
     el.addEventListener('click', ()=> window.location.href = 'sala-partida.html?t='+tId+'&m='+el.dataset.match);
   });
 
   const linesContainer = twoSide ? box.querySelector('.bracket-scroll') : box.querySelector('.bracket');
+  setupBracketPan(document.getElementById('bracket-viewport'), document.getElementById('bracket-pan'));
   requestAnimationFrame(function(){ drawBracketConnectors(linesContainer); });
   if(!window._bracketResizeBound){
     window._bracketResizeBound = true;
@@ -1765,6 +2033,119 @@ function renderBracket(){
       }, 150);
     });
   }
+}
+
+// Eliminação dupla: mostra sempre as duas brackets (vencedores e perdedores) na
+// mesma vista, uma por baixo da outra, seguidas da grande final — nunca só a
+// bracket de vencedores. Quem perde na bracket de vencedores aparece
+// automaticamente na bracket de perdedores assim que o confronto é decidido.
+function renderDoubleEliminationBracket(box){
+  const visible = matches.filter(m => !m.skipped && !(m.dormant && !m.teamAId && !m.teamBId));
+  const wb = visible.filter(m => m.bracket === 'winners');
+  const lb = visible.filter(m => m.bracket === 'losers');
+  const gf = visible.filter(m => m.bracket === 'grand-final').sort((a,b)=>a.round-b.round);
+
+  function columnsHtml(list){
+    const byRound = {};
+    list.forEach(m => { (byRound[m.round] = byRound[m.round] || []).push(m); });
+    const roundNums = Object.keys(byRound).map(Number).sort((a,b)=>a-b);
+    let html = '';
+    roundNums.forEach(rn => {
+      html += `<div class="bracket-round"><div class="round-label">${T('t.round','Ronda')} ${rn+1}</div>` +
+        byRound[rn].sort((a,b)=>a.matchIndex-b.matchIndex).map(matchCardHtml).join('') + `</div>`;
+    });
+    return html;
+  }
+
+  const gfLabelHtml = gf.map((m,i) => `<div class="bracket-round"><div class="round-label">${i===0 ? T('t.bracket.grandFinal','Grande Final') : T('t.bracket.grandFinalReset','Grande Final — desforra')}</div>${matchCardHtml(m)}</div>`).join('');
+
+  const innerHtml = `
+    <h4 style="margin:0 0 4px;color:var(--gold);text-transform:uppercase;font-size:0.8rem;letter-spacing:0.5px;">${T('t.bracket.winnersBracket','Bracket de vencedores')}</h4>
+    <div class="bracket" style="margin-bottom:10px;">${columnsHtml(wb)}</div>
+    <h4 style="margin:22px 0 4px;color:var(--gold);text-transform:uppercase;font-size:0.8rem;letter-spacing:0.5px;">${T('t.bracket.losersBracket','Bracket de perdedores')}</h4>
+    <div class="bracket" style="margin-bottom:10px;">${columnsHtml(lb)}</div>
+    ${gf.length ? `<h4 style="margin:22px 0 4px;color:var(--gold);text-transform:uppercase;font-size:0.8rem;letter-spacing:0.5px;">${T('t.bracket.grandFinal','Grande Final')}</h4><div class="bracket">${gfLabelHtml}</div>` : ''}
+  `;
+
+  box.innerHTML = `
+    <div class="bracket-viewport-controls">
+      <button type="button" class="btn btn-outline btn-sm" id="bracket-reset-view">${T('t.bracket.resetView','↺ Repor vista')}</button>
+      <span class="muted" style="font-size:0.75rem;align-self:center;">${T('t.bracket.dragHint','Arrasta para mover a bracket em qualquer direção')}</span>
+    </div>
+    <div class="bracket-viewport" id="bracket-viewport" style="height:82vh;max-height:900px;"><div class="bracket-pan" id="bracket-pan" style="padding:16px;">${innerHtml}</div></div>`;
+
+  box.querySelectorAll('[data-match]').forEach(el=>{
+    el.addEventListener('click', ()=> window.location.href = 'sala-partida.html?t='+tId+'&m='+el.dataset.match);
+  });
+
+  setupBracketPan(document.getElementById('bracket-viewport'), document.getElementById('bracket-pan'));
+  requestAnimationFrame(function(){ drawBracketConnectors(document.getElementById('bracket-pan')); });
+  if(!window._bracketResizeBound){
+    window._bracketResizeBound = true;
+    window.addEventListener('resize', function(){
+      clearTimeout(window._bracketResizeTimer);
+      window._bracketResizeTimer = setTimeout(function(){
+        drawBracketConnectors(document.querySelector('#bracket-box .bracket-scroll') || document.querySelector('#bracket-box .bracket-pan') || document.querySelector('#bracket-box .bracket'));
+      }, 150);
+    });
+  }
+}
+// em vez de depender de uma barra de scroll só horizontal — útil quando a
+// bracket é maior do que cabe no ecrã (largura e/ou altura).
+function setupBracketPan(viewport, pan){
+  if(!viewport || !pan) return;
+  let panX = 0, panY = 0, dragging = false, startX = 0, startY = 0, startPanX = 0, startPanY = 0, moved = false;
+
+  function clamp(){
+    const vw = viewport.clientWidth, vh = viewport.clientHeight;
+    const pw = pan.scrollWidth, ph = pan.scrollHeight;
+    const margin = 120; // deixa arrastar um pouco além da borda do conteúdo
+    const minX = Math.min(0, vw - pw - margin), maxX = margin;
+    const minY = Math.min(0, vh - ph - margin), maxY = margin;
+    panX = Math.max(minX, Math.min(maxX, panX));
+    panY = Math.max(minY, Math.min(maxY, panY));
+  }
+  function apply(){ pan.style.transform = 'translate(' + panX + 'px,' + panY + 'px)'; }
+
+  function down(x, y){
+    dragging = true; moved = false;
+    startX = x; startY = y; startPanX = panX; startPanY = panY;
+    viewport.classList.add('grabbing');
+  }
+  function move(x, y){
+    if(!dragging) return;
+    const dx = x - startX, dy = y - startY;
+    if(Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+    panX = startPanX + dx; panY = startPanY + dy;
+    clamp(); apply();
+  }
+  function up(){
+    dragging = false;
+    viewport.classList.remove('grabbing');
+    drawBracketConnectors(document.querySelector('#bracket-box .bracket-scroll') || document.querySelector('#bracket-box .bracket'));
+  }
+
+  viewport.addEventListener('mousedown', function(e){ down(e.clientX, e.clientY); e.preventDefault(); });
+  window.addEventListener('mousemove', function(e){ move(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', up);
+  // impede que um simples clique em "arrastar sem mover" abra a sala da partida por engano
+  viewport.addEventListener('click', function(e){ if(moved){ e.stopPropagation(); e.preventDefault(); } }, true);
+
+  viewport.addEventListener('touchstart', function(e){ const t = e.touches[0]; down(t.clientX, t.clientY); }, { passive: true });
+  viewport.addEventListener('touchmove', function(e){ const t = e.touches[0]; move(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
+  viewport.addEventListener('touchend', up);
+
+  // centra a bracket verticalmente e alinha à esquerda ao abrir
+  panX = 16;
+  panY = Math.max(0, (viewport.clientHeight - pan.scrollHeight) / 2);
+  apply();
+
+  const resetBtn = document.getElementById('bracket-reset-view');
+  if(resetBtn) resetBtn.addEventListener('click', function(){
+    panX = 16; panY = Math.max(0, (viewport.clientHeight - pan.scrollHeight) / 2);
+    apply();
+    drawBracketConnectors(document.querySelector('#bracket-box .bracket-scroll') || document.querySelector('#bracket-box .bracket'));
+  });
 }
 
 // ── MODAL DE LOBBY ──────────────────────────────────────────────

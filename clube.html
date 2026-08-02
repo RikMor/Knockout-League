@@ -84,7 +84,7 @@
               <div class="pill" data-v="4">4v4</div><div class="pill" data-v="5">5v5</div><div class="pill" data-v="6">6v6</div>
             </div>
           </div>
-          <div class="form-group"><label data-i18n="criar.field.maxteams">Número de equipas</label><input type="number" id="pz-maxteams" min="2" value="8" class="field-sm"/></div>
+          <div class="form-group"><label data-i18n="criar.field.maxteams">Número de equipas (opcional)</label><input type="number" id="pz-maxteams" min="2" placeholder="Ex: 8" class="field-sm"/></div>
           <div class="form-group">
             <label data-i18n="criar.field.bracketType">Tipo de bracket</label>
             <div class="pill-group" id="pz-bracket">
@@ -489,14 +489,15 @@ document.getElementById('pz-map-input').addEventListener('keydown', function(e){
 
 function presetSummary(p){
   const size = p.teamSize;
-  return (p.game || '—') + ' · ' + size + 'v' + size + ' · ' + (p.maxTeams||'') + ' ' + tr('clube.presets.teamsWord','equipas') + ' · ' + (p.bracketType||'');
+  const teamsInfo = p.maxTeams ? (p.maxTeams + ' ' + tr('clube.presets.teamsWord','equipas')) : tr('clube.presets.noTeamLimit','sem limite de equipas');
+  return (p.game || '—') + ' · ' + size + 'v' + size + ' · ' + teamsInfo + ' · ' + (p.bracketType||'');
 }
 
 function resetPresetForm(){
   editingPresetId = null;
   document.getElementById('pz-name').value = '';
   document.getElementById('pz-game').value = '';
-  document.getElementById('pz-maxteams').value = 8;
+  document.getElementById('pz-maxteams').value = '';
   document.getElementById('pz-pointstowin').value = '';
   document.getElementById('pz-bestof-custom').value = '';
   document.getElementById('pz-bestof-custom').style.display = 'none';
@@ -524,7 +525,7 @@ function openPresetForm(preset){
     editingPresetId = preset.id;
     document.getElementById('pz-name').value = preset.name || '';
     document.getElementById('pz-game').value = preset.game || '';
-    document.getElementById('pz-maxteams').value = preset.maxTeams || 8;
+    document.getElementById('pz-maxteams').value = preset.maxTeams || '';
     document.getElementById('pz-pointstowin').value = preset.pointsToWin || '';
     document.getElementById('pz-banmaps').checked = !!preset.mapBanEnabled;
     document.getElementById('pz-useplayernames').checked = !!preset.usePlayerNames;
@@ -569,11 +570,17 @@ function renderPresets(){
   if(presets.length === 0){ box.innerHTML = '<p class="muted">' + tr('clube.presets.none','Ainda não há presets.') + '</p>'; return; }
   box.innerHTML = presets.map(p => `<div class="member-row">
     <span><strong>${p.name}</strong><br/><span class="muted" style="font-size:0.78rem;">${presetSummary(p)}</span></span>
-    <span style="display:flex;gap:8px;">
+    <span style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-accent" data-start="${p.id}">${tr('clube.presets.start','Começar torneio')}</button>
       <button class="btn btn-sm btn-outline" data-edit="${p.id}">${tr('clube.presets.edit','Editar')}</button>
       <button class="btn btn-sm btn-danger" data-delp="${p.id}">${tr('clan.remove','Remover')}</button>
     </span>
   </div>`).join('');
+  box.querySelectorAll('[data-start]').forEach(btn=>{
+    btn.addEventListener('click', function(){
+      location.href = 'criar-torneio.html?club=' + encodeURIComponent(ownedClub.id) + '&preset=' + encodeURIComponent(btn.dataset.start);
+    });
+  });
   box.querySelectorAll('[data-edit]').forEach(btn=>{
     btn.addEventListener('click', function(){
       const p = presets.find(x=>x.id===btn.dataset.edit);
@@ -605,8 +612,9 @@ document.getElementById('preset-save-btn').addEventListener('click', async funct
   const pointsToWinRaw = document.getElementById('pz-pointstowin').value;
   const pointsToWin = pointsToWinRaw ? parseInt(pointsToWinRaw, 10) : null;
   if(!pointsToWin){ err.textContent = tr('criar.errPoints','Define os pontos para vencer cada partida.'); err.style.display = 'block'; return; }
-  const maxTeams = parseInt(document.getElementById('pz-maxteams').value, 10);
-  if(!maxTeams || maxTeams < 2){ err.textContent = tr('criar.errMaxTeams','Precisas de pelo menos 2 equipas.'); err.style.display = 'block'; return; }
+  const maxTeamsRaw = document.getElementById('pz-maxteams').value;
+  const maxTeams = maxTeamsRaw ? parseInt(maxTeamsRaw, 10) : null;
+  if(maxTeams !== null && maxTeams < 2){ err.textContent = tr('criar.errMaxTeams','Se definires um número de equipas, tem de ser pelo menos 2 (ou deixa vazio para não ter limite).'); err.style.display = 'block'; return; }
 
   const preset = {
     name, game: document.getElementById('pz-game').value.trim(),

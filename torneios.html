@@ -51,27 +51,51 @@
 <script type="module">
 import { db, collection, query, where, onSnapshot } from './firebase.js';
 
+function regWindowOpen(t){
+  const now = new Date();
+  if(t.regOpensAt){ const o = new Date(t.regOpensAt); if(!isNaN(o.getTime()) && now < o) return false; }
+  if(t.regClosesAt){ const c = new Date(t.regClosesAt); if(!isNaN(c.getTime()) && now > c) return false; }
+  return true;
+}
+
+let lastPublicDocs = null;
+function renderPublicList(){
+  const el = document.getElementById('t-list');
+  const tr = (k, fallback) => (window.KL_T && window.KL_T(k)) || fallback;
+  if(!lastPublicDocs) return;
+  if(lastPublicDocs.length === 0){ el.innerHTML = `<p class="muted">${tr('index.empty','Ainda não há torneios públicos. <a href="criar-torneio.html">Cria o primeiro.</a>')}</p>`; return; }
+  el.innerHTML = '';
+  lastPublicDocs.forEach(({id, data:t})=>{
+    const card = document.createElement('a');
+    card.href = 'torneio.html?id=' + id;
+    card.className = 't-card';
+    const regOpen = regWindowOpen(t);
+    const signupsActuallyOpen = t.status === 'inscricoes' && regOpen;
+    const badgeLabel = t.status === 'inscricoes' && !regOpen
+      ? (t.regOpensAt && new Date() < new Date(t.regOpensAt) ? tr('torneios.badge.notOpenYet','Ainda não abriu') : tr('torneios.badge.closed','Inscrições fechadas'))
+      : (t.status || 'inscrições');
+    const btnLabel = signupsActuallyOpen ? tr('torneios.joinBtn','Inscrever') : tr('index.viewBtn','Ver');
+    const teamsInfo = t.maxTeams ? (tr('torneios.upTo','até') + ' ' + t.maxTeams + ' ' + tr('torneios.teamsWord','equipas')) : tr('torneios.noLimit','sem limite de equipas');
+    card.innerHTML = `<span class="badge badge-open">${badgeLabel}</span><h3>${t.name}</h3><span class="muted">${t.game||''} · ${t.teamSize}v${t.teamSize} · ${teamsInfo}</span>${t.organizerDisplayName ? '<span style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-family:\'IBM Plex Mono\';font-size:0.68rem;letter-spacing:0.5px;color:var(--gold);text-transform:uppercase;"><span style="font-size:0.9rem;">👑</span>'+t.organizerDisplayName+'</span>' : ''}<button class="btn ${signupsActuallyOpen ? 'btn-accent' : 'btn-outline'} btn-sm" style="margin-top:10px;display:block;">${btnLabel}</button>`;
+    el.appendChild(card);
+  });
+}
 function loadPublic(){
   const el = document.getElementById('t-list');
   const tr = (k, fallback) => (window.KL_T && window.KL_T(k)) || fallback;
   try{
     const q = query(collection(db,'tournaments'), where('visibility','==','public'));
     onSnapshot(q, snap=>{
-      if(snap.empty){ el.innerHTML = `<p class="muted">${tr('index.empty','Ainda não há torneios públicos. <a href="criar-torneio.html">Cria o primeiro.</a>')}</p>`; return; }
-      el.innerHTML = '';
-      snap.forEach(d=>{
-        const t = d.data();
-        const card = document.createElement('a');
-        card.href = 'torneio.html?id=' + d.id;
-        card.className = 't-card';
-        const btnLabel = t.status === 'inscricoes' ? tr('torneios.joinBtn','Inscrever') : tr('index.viewBtn','Ver');
-        card.innerHTML = `<span class="badge badge-open">${t.status || 'inscrições'}</span><h3>${t.name}</h3><span class="muted">${t.game||''} · ${t.teamSize}v${t.teamSize} · ${tr('torneios.upTo','até')} ${t.maxTeams} ${tr('torneios.teamsWord','equipas')}</span>${t.organizerDisplayName ? '<span style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-family:\'IBM Plex Mono\';font-size:0.68rem;letter-spacing:0.5px;color:var(--gold);text-transform:uppercase;"><span style="font-size:0.9rem;">👑</span>'+t.organizerDisplayName+'</span>' : ''}<button class="btn ${t.status === 'inscricoes' ? 'btn-accent' : 'btn-outline'} btn-sm" style="margin-top:10px;display:block;">${btnLabel}</button>`;
-        el.appendChild(card);
-      });
+      lastPublicDocs = snap.docs.map(d=>({id:d.id, data:d.data()}));
+      renderPublicList();
     }, ()=>{ el.innerHTML = `<p class="muted">${tr('index.fallback','Liga o teu projeto Firebase em firebase.js para ver torneios reais.')}</p>`; });
   }catch(e){ el.innerHTML = `<p class="muted">${tr('index.fallback','Liga o teu projeto Firebase em firebase.js para ver torneios reais.')}</p>`; }
 }
 loadPublic();
+// as datas agendadas de inscrição não disparam eventos do Firestore quando a
+// hora chega, por isso volta a desenhar a lista periodicamente (sem reabrir
+// a subscrição) para os cartões refletirem a janela de inscrições agendada.
+setInterval(renderPublicList, 20000);
 
 document.getElementById('code-go').addEventListener('click', async function(){
   const err = document.getElementById('code-error');

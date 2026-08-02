@@ -75,6 +75,9 @@
 <div id="not-found" class="not-found" style="display:none;"><p class="muted" data-i18n="sala.notFound">Esta sala não existe ou o torneio foi eliminado.</p></div>
 
 <div id="room" style="display:none;">
+  <div style="padding:14px 5vw 0;">
+    <a id="rt-bracket-link" href="#" class="btn btn-outline btn-sm" data-i18n="sala.backToBracketBtn">← Ir para as brackets</a>
+  </div>
   <div class="room-top">
     <div class="room-team-name" id="rt-name-a">—</div>
     <div class="room-status-box">
@@ -159,12 +162,17 @@
       <button class="btn btn-sm btn-danger" id="rt-admin-fb-reset" data-i18n="sala.resetDecision">Redefinir decisão</button>
     </div>
     <p class="muted" style="font-size:0.78rem;margin-bottom:8px;" data-i18n="sala.fixScore">Corrigir pontuação manualmente:</p>
-    <div style="display:flex;gap:10px;align-items:center;">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <input type="number" id="rt-score-a" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
       <span class="muted">—</span>
       <input type="number" id="rt-score-b" style="width:70px;padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);" min="0"/>
       <button class="btn btn-outline btn-sm" id="rt-score-save" data-i18n="sala.save">Guardar</button>
       <button class="btn btn-gold btn-sm" id="rt-admin-force-finish" data-i18n="sala.forceFinish">Forçar fim do jogo</button>
+    </div>
+    <p class="muted" style="font-size:0.78rem;margin:18px 0 8px;" data-i18n="sala.declareWinnerHint">Ou decide já quem venceu todo o confronto (ignora a pontuação do jogo atual):</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-danger" data-declarewin="A"><span id="rt-declare-a"></span> <span data-i18n="sala.won">venceu</span></button>
+      <button class="btn btn-sm btn-danger" data-declarewin="B"><span id="rt-declare-b"></span> <span data-i18n="sala.won">venceu</span></button>
     </div>
   </div>
 </div>
@@ -244,6 +252,17 @@ function myCaptainTeam(){
   const capB = players.find(p => p.id === teamB?.captainPlayerId);
   if(capA && capA.uid === currentUser.uid) return 'A';
   if(capB && capB.uid === currentUser.uid) return 'B';
+  // Fallback: se a equipa não tem capitão válido definido (ex: equipa montada
+  // manualmente pelo organizador, ou o capitão saiu), qualquer membro da equipa
+  // pode propor o resultado — para o botão "equipa X venceu" nunca ficar escondido.
+  if(!capA && teamA){
+    const memberA = (teamA.players||[]).map(pid=>players.find(p=>p.id===pid)).find(p=>p && p.uid===currentUser.uid);
+    if(memberA) return 'A';
+  }
+  if(!capB && teamB){
+    const memberB = (teamB.players||[]).map(pid=>players.find(p=>p.id===pid)).find(p=>p && p.uid===currentUser.uid);
+    if(memberB) return 'B';
+  }
   return null;
 }
 function isInMatch(){ return !!myTeamId(); }
@@ -258,6 +277,7 @@ onAuthStateChanged(auth, async function(user){
   renderAll();
 });
 
+document.getElementById('rt-bracket-link').href = 'torneio.html?id=' + tId;
 onSnapshot(tRef, snap=>{ if(!snap.exists()){ document.getElementById('not-found').style.display='block'; return; } tournament = {id:snap.id, ...snap.data()}; document.getElementById('room').style.display='block'; computeClubAccess(); renderAll(); });
 onSnapshot(teamsCol, snap=>{ teams = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
 onSnapshot(playersCol, snap=>{ players = snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); });
@@ -394,6 +414,37 @@ async function chooseRps(mySide, jogada){
   }
 }
 
+// Avança o vencedor para o confronto seguinte e, em eliminação dupla, também
+// manda o perdedor para a bracket de perdedores (loserNextMatchId/loserNextSlot,
+// preenchidos na criação da bracket) — usado em todos os sítios que decidem um confronto.
+// Em eliminação dupla, a "grande final" (gf0) junta o campeão da bracket de
+// vencedores com o campeão da bracket de perdedores. Se for este último a
+// vencer, ainda não tem duas derrotas — por isso ativa-se uma segunda partida
+// decisiva (gf1, "reset"). Se o campeão da bracket de vencedores vencer logo à
+// primeira, o reset nunca é preciso.
+async function maybeActivateGrandFinalReset(m, winnerId){
+  if(m.id !== 'gf0' || m.bracket !== 'grand-final') return;
+  const resetRef = doc(db,'tournaments',tId,'matches','gf1');
+  if(winnerId === m.teamBId){
+    await updateDoc(resetRef, { teamAId: m.teamAId, teamBId: m.teamBId, dormant: false });
+  } else {
+    await updateDoc(resetRef, { status: 'terminado', skipped: true, dormant: false });
+  }
+}
+
+async function advanceMatchResult(m, winnerId){
+  const loserId = winnerId === m.teamAId ? m.teamBId : m.teamAId;
+  if(m.nextMatchId){
+    const field = m.nextSlot === 'A' ? 'teamAId' : 'teamBId';
+    await updateDoc(doc(db,'tournaments',tId,'matches',m.nextMatchId), { [field]: winnerId });
+  }
+  if(m.loserNextMatchId && loserId){
+    const field = m.loserNextSlot === 'A' ? 'teamAId' : 'teamBId';
+    await updateDoc(doc(db,'tournaments',tId,'matches',m.loserNextMatchId), { [field]: loserId });
+  }
+  await maybeActivateGrandFinalReset(m, winnerId);
+}
+
 async function proposeResult(winnerTeam, scoreA, scoreB){
   const myUid = currentUser.uid;
   await updateDoc(matchRef, {
@@ -415,6 +466,19 @@ async function disputeResult(){
   await updateDoc(matchRef, { 'currentGame.resultProposal': null, 'currentGame.disputed': true });
 }
 
+// Organizador declara diretamente quem venceu o confronto inteiro, sem depender
+// da pontuação do jogo em curso — útil quando os capitães não concordam ou
+// quando o organizador precisa de corrigir/decidir o resultado manualmente.
+async function forceDeclareMatchWinner(side){
+  const winnerId = side === 'A' ? match.teamAId : match.teamBId;
+  if(!winnerId) return;
+  await updateDoc(matchRef, {
+    winnerId, status: 'terminado',
+    'currentGame.resultProposal': null, 'currentGame.disputed': false
+  });
+  await advanceMatchResult(match, winnerId);
+}
+
 async function finalizeGame(gameOverride){
   const g = gameOverride || match.currentGame;
   const scoreA = g.scoreA || 0, scoreB = g.scoreB || 0;
@@ -427,10 +491,7 @@ async function finalizeGame(gameOverride){
   if(newGamesWonA >= majority || newGamesWonB >= majority){
     const winnerId = newGamesWonA >= majority ? match.teamAId : match.teamBId;
     await updateDoc(matchRef, { gamesWonA: newGamesWonA, gamesWonB: newGamesWonB, winnerId, status: 'terminado' });
-    if(match.nextMatchId){
-      const field = match.nextSlot === 'A' ? 'teamAId' : 'teamBId';
-      await updateDoc(doc(db,'tournaments',tId,'matches',match.nextMatchId), { [field]: winnerId });
-    }
+    await advanceMatchResult(match, winnerId);
   } else {
     const nextFirstBan = g.firstBanTeamId === match.teamAId ? match.teamBId : match.teamAId;
     await updateDoc(matchRef, {
@@ -638,6 +699,16 @@ function renderAll(){
   if(isAdmin() && !finished && ready){
     document.getElementById('rt-admin-team-a').textContent = teamName(match.teamAId);
     document.getElementById('rt-admin-team-b').textContent = teamName(match.teamBId);
+    document.getElementById('rt-declare-a').textContent = teamName(match.teamAId);
+    document.getElementById('rt-declare-b').textContent = teamName(match.teamBId);
+    adminSection.querySelectorAll('[data-declarewin]').forEach(btn=>{
+      btn.onclick = function(){
+        const side = btn.dataset.declarewin;
+        const name = side === 'A' ? teamName(match.teamAId) : teamName(match.teamBId);
+        if(!confirm(T('sala.confirmDeclareWinner','Declarar ') + name + T('sala.confirmDeclareWinner2',' vencedor deste confronto?'))) return;
+        forceDeclareMatchWinner(side);
+      };
+    });
     adminSection.querySelectorAll('[data-adminfb]').forEach(btn=>{
       btn.onclick = async function(){
         const winnerTeam = btn.dataset.adminfb === 'A' ? match.teamAId : match.teamBId;
