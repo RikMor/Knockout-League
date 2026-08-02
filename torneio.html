@@ -1633,16 +1633,19 @@ async function generateBracket(readyTeams){
       });
     }
     // "Bye" = confronto da 1ª ronda com só uma equipa (a outra vaga não existe).
-    // Em vez de criar um jogo falso "Equipa X vs Bye", a equipa avança logo
-    // diretamente para a ronda seguinte — assim a Ronda 1 só mostra os confrontos reais.
+    // A equipa continua a aparecer na Ronda 1 (com "passagem automática") e o
+    // resultado já fica resolvido — mas TODA a gente começa na Ronda 1, ninguém
+    // é "teleportado" logo para a Ronda 2 por ter tido um bye.
     if(rounds.length > 1){
-      rounds[0] = rounds[0].filter(m => {
+      rounds[0].forEach(m => {
         const isBye = (m.teamAId && !m.teamBId) || (!m.teamAId && m.teamBId);
-        if(!isBye) return true;
+        if(!isBye) return;
         const winnerId = m.teamAId || m.teamBId;
+        m.winnerId = winnerId;
+        m.status = 'terminado';
+        m.bye = true;
         const target = rounds[1].find(t => t.id === m.nextMatchId);
         if(target) target[m.nextSlot === 'A' ? 'teamAId' : 'teamBId'] = winnerId;
-        return false;
       });
     }
     plan = rounds.flat();
@@ -1743,12 +1746,12 @@ async function generateBracket(readyTeams){
       bracket: m.bracket || (tournament.bracketType === 'round-robin' ? 'round-robin' : 'single'),
       dormant: m.dormant || false,
       teamAId: m.teamAId || null, teamBId: m.teamBId || null,
-      winnerId: null,
+      winnerId: m.winnerId || null,
       bestOf: tournament.bestOf || 1,
       pointsToWin: tournament.pointsToWin || null,
       gamesWonA: 0, gamesWonB: 0,
       currentGame: { index: 0, firstBanTeamId: null, firstBanMethod: null, mapsBanned: [], mapPicked: null, scoreA: 0, scoreB: 0, pending: null, rpsChoiceA: null, rpsChoiceB: null, resultProposal: null, disputed: false },
-      serverInfo: null, status: 'por-jogar',
+      serverInfo: null, status: m.status || 'por-jogar', bye: m.bye || false,
       nextMatchId: m.nextMatchId || null, nextSlot: m.nextSlot || null,
       loserNextMatchId: m.loserNextMatchId || null, loserNextSlot: m.loserNextSlot || null
     });
