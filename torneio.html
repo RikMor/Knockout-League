@@ -283,6 +283,12 @@
     <button class="btn btn-accent" id="cfg-save-btn" style="margin-bottom:40px;" data-i18n="cfg.save">Guardar alterações</button>
     <p class="form-error" id="cfg-msg" style="display:none;"></p>
 
+    <div id="cfg-finish-box" style="border-top:1px solid var(--line);padding-top:24px;display:none;">
+      <h3 style="margin-bottom:10px;" data-i18n="cfg.finish.title">Terminar torneio</h3>
+      <p class="muted" style="margin-bottom:14px;font-size:0.85rem;" data-i18n="cfg.finish.text">Fecha o torneio (deixa de estar "Em curso") sem apagar nada. As equipas, jogadores e partidas ficam guardados, e os jogadores registados ganham as estatísticas desta sala no perfil (torneios jogados, vitórias e derrotas).</p>
+      <button class="btn btn-gold" id="cfg-finish-btn" data-i18n="cfg.finish.btn">Terminar torneio</button>
+    </div>
+
     <div style="border-top:1px solid var(--line);padding-top:24px;">
       <h3 style="margin-bottom:10px;color:var(--danger);" data-i18n="cfg.danger.title">Zona perigosa</h3>
       <p class="muted" style="margin-bottom:14px;font-size:0.85rem;" data-i18n="cfg.danger.text">Termina o torneio permanentemente — apaga a sala, as equipas, os jogadores e as partidas. Não pode ser desfeito.</p>
@@ -377,7 +383,7 @@ document.getElementById('match-modal-close').addEventListener('click', function(
 </script>
 
 <script type="module">
-import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, onSnapshot, query, where, orderBy, arrayUnion, arrayRemove } from './firebase.js';
+import { auth, db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, onSnapshot, query, where, orderBy, arrayUnion, arrayRemove, increment } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -620,6 +626,7 @@ function renderConfig(){
   cfgSetSelected('cfg-pill-joinmode', tournament.joinMode || 'both');
   document.getElementById('cfg-banmaps').checked = !!tournament.mapBanEnabled;
   document.getElementById('cfg-end-btn').style.display = isAdmin() ? 'inline-flex' : 'none';
+  document.getElementById('cfg-finish-box').style.display = (isAdmin() && tournament.status === 'em-curso') ? 'block' : 'none';
   document.getElementById('cfg-bracket-type-hint').textContent = bracketGenerated() ? T('t.cfg.bracketTypeHint','(já gerada — muda com cuidado e usa "Regenerar bracket" na aba Bracket)') : '';
 }
 
@@ -680,6 +687,64 @@ document.getElementById('cfg-end-btn').addEventListener('click', async function(
   }catch(e){
     alert(T('t.cfg.errDelete','Erro ao eliminar: ') + e.message);
     btn.disabled = false; btn.textContent = T('cfg.danger.btn','Terminar e eliminar este torneio');
+  }
+});
+
+document.getElementById('cfg-finish-btn').addEventListener('click', async function(){
+  if(!isAdmin() || tournament.status !== 'em-curso') return;
+  if(!confirm(T('t.cfg.confirmFinish','Terminar este torneio agora? Deixa de aparecer como "Em curso" — nada é apagado, e os jogadores registados recebem as estatísticas desta sala no perfil (torneios, vitórias e derrotas).'))) return;
+  const btn = this;
+  btn.disabled = true; btn.textContent = T('t.cfg.finishing','A terminar...');
+  try{
+    const [pSnap, mSnap] = await Promise.all([getDocs(playersCol), getDocs(matchesCol)]);
+    const freshPlayers = pSnap.docs.map(d=>({id:d.id, ...d.data()}));
+    const freshMatches = mSnap.docs.map(d=>({id:d.id, ...d.data()}));
+
+    const playersByTeam = {};
+    freshPlayers.forEach(p => { if(p.teamId){ (playersByTeam[p.teamId] = playersByTeam[p.teamId] || []).push(p); } });
+
+    // Só conta partidas a sério (as duas equipas presentes, terminada, sem ser bye/skip)
+    const tally = {}; // uid -> { vitorias, derrotas }
+    const bump = (uid, field) => {
+      if(!uid) return;
+      tally[uid] = tally[uid] || { vitorias: 0, derrotas: 0 };
+      tally[uid][field]++;
+    };
+    freshMatches.forEach(m => {
+      if(m.status !== 'terminado' || m.bye || m.skipped || !m.teamAId || !m.teamBId || !m.winnerId) return;
+      const loserTeamId = m.winnerId === m.teamAId ? m.teamBId : m.teamAId;
+      (playersByTeam[m.winnerId] || []).forEach(p => bump(p.uid, 'vitorias'));
+      (playersByTeam[loserTeamId] || []).forEach(p => bump(p.uid, 'derrotas'));
+    });
+
+    // "Torneios jogados" conta para todos os jogadores registados que chegaram a
+    // estar numa equipa (não conta quem ficou só na pool sem nunca ser colocado)
+    const participantUids = new Set();
+    freshPlayers.forEach(p => { if(p.uid && p.teamId) participantUids.add(p.uid); });
+
+    let failed = 0;
+    for(const uid of participantUids){
+      const t = tally[uid] || { vitorias: 0, derrotas: 0 };
+      try{
+        await updateDoc(doc(db,'users',uid), {
+          'stats.torneios': increment(1),
+          'stats.vitorias': increment(t.vitorias),
+          'stats.derrotas': increment(t.derrotas)
+        });
+      }catch(e){ failed++; }
+    }
+
+    await updateDoc(tRef, { status: 'terminado', endedAt: new Date().toISOString() });
+
+    if(failed > 0){
+      alert(T('t.cfg.finishedPartial1','Torneio terminado, mas não foi possível guardar as estatísticas de ')+failed+T('t.cfg.finishedPartial2',' jogador(es) — verifica se as regras do Firestore (firestore.rules) já permitem ao organizador atualizar o campo "stats" de users/{uid} e publica-as de novo.'));
+    } else {
+      alert(T('t.cfg.finished','Torneio terminado. As estatísticas dos jogadores registados foram atualizadas no perfil.'));
+    }
+  }catch(e){
+    alert(T('t.cfg.errFinish','Erro ao terminar o torneio: ') + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = T('cfg.finish.btn','Terminar torneio');
   }
 });
 
@@ -891,7 +956,7 @@ document.getElementById('clan-select-close').addEventListener('click', function(
 });
 
 function renderAdminControls(){
-  document.getElementById('admin-team-controls').style.display = isAdmin() ? 'flex' : 'none';
+  document.getElementById('admin-team-controls').style.display = (isAdmin() && tournament.status !== 'terminado') ? 'flex' : 'none';
   document.getElementById('maps-admin').style.display = isAdmin() && !bracketGenerated() ? 'block' : 'none';
   document.getElementById('roulette-btn').style.display = (isAdmin() && tournament.assignMode === 'roulette') ? 'inline-flex' : 'none';
   document.getElementById('rps-btn').style.display = (isAdmin() && tournament.assignMode === 'rps') ? 'inline-flex' : 'none';
@@ -899,6 +964,8 @@ function renderAdminControls(){
   if(tournament.status === 'inscricoes'){
     genBtn.textContent = T('t.checkin.closeBtn','Fechar inscrições e pedir check-in');
   } else if(tournament.draftMode === 'captains' && tournament.draftPhase && !bracketGenerated()){
+    genBtn.textContent = T('t.genBracket','Gerar bracket');
+  } else if((tournament.bracketDrawMode === 'seed' || tournament.bracketDrawMode === 'manual') && tournament.seedingPhase && !bracketGenerated()){
     genBtn.textContent = T('t.genBracket','Gerar bracket');
   } else {
     genBtn.textContent = T('torneio.startTournament','Começar torneio');
@@ -1145,6 +1212,11 @@ function renderTeams(){
     hintEl.textContent = tournament.bracketDrawMode === 'manual'
       ? T('t.team.hintManualGen','Ajusta as posições e usa "Regenerar bracket" (aba Bracket) para aplicar — posição 1 joga contra a 2, a 3 contra a 4, etc.')
       : T('t.team.hintSeedGen','Ajusta as seeds e usa "Regenerar bracket" (aba Bracket) para aplicar.');
+  } else if(showSeed && isAdmin() && tournament.seedingPhase && !bracketGenerated()){
+    // equipas já fechadas, à espera que o organizador defina as posições antes
+    // de a bracket poder ser gerada pela primeira vez
+    hintEl.style.display = 'block';
+    hintEl.textContent = T('t.team.hintSeedBeforeGen','Define a ordem das equipas abaixo e clica em "Guardar". Só depois clica em "Gerar bracket" para criar os confrontos com essa configuração.');
   } else {
     hintEl.style.display = 'none';
   }
@@ -1483,10 +1555,24 @@ document.getElementById('gen-bracket-btn').addEventListener('click', async funct
   const readyTeams = freshTeams.filter(t => (t.players||[]).length === tournament.teamSize);
 
   if(readyTeams.length < 2){ alert(T('t.start.needTwoTeams','Precisas de pelo menos 2 equipas completas para começar.')); return; }
+
+  // Nos modos "por seed" e "manual" a bracket depende diretamente da ordem que o
+  // organizador definir na tabela "Posições na bracket" — por isso a bracket NÃO
+  // pode ser gerada logo neste clique. Este clique só fecha a composição das
+  // equipas e entra numa fase de "definir posições"; só depois de o organizador
+  // arrastar/guardar a ordem que quer e clicar outra vez em "Gerar bracket" é que
+  // os confrontos são mesmo criados, já com essa configuração.
+  if((tournament.bracketDrawMode === 'seed' || tournament.bracketDrawMode === 'manual') && !tournament.seedingPhase){
+    await updateDoc(tRef, { seedingPhase: true });
+    document.querySelector('.tab-btn[data-tab="equipas"]').click();
+    alert(T('t.start.seedNow','Equipas fechadas. Agora define a ordem das equipas na tabela "Posições na bracket" e clica em "Guardar". Quando estiveres satisfeito, volta a clicar em "Gerar bracket" para criar os confrontos com essa configuração.'));
+    return;
+  }
+
   if(!confirm(T('t.start.confirm1','Começar o torneio agora com ')+readyTeams.length+T('t.start.confirm2',' equipas? Não será possível voltar atrás.'))) return;
 
   await generateBracket(readyTeams);
-  await updateDoc(tRef, { status: 'em-curso' });
+  await updateDoc(tRef, { status: 'em-curso', seedingPhase: false });
   document.querySelector('.tab-btn[data-tab="bracket"]').click();
 });
 
@@ -1540,28 +1626,53 @@ async function resolveAutomaticByes(){
   if(_resolvingByes) return;
   _resolvingByes = true;
   try{
-    const pendingFor = (matchId, slot) => matches.some(src => src.status !== 'terminado' && (
+    // Trabalha sobre uma cópia LOCAL das partidas e repete o algoritmo até não
+    // haver mais mudanças, em vez de dar só uma passagem por chamada. Uma única
+    // passagem só resolvia um "nível" de byes de cada vez (precisava de vários
+    // ciclos de onSnapshot para cascatas de byes seguidos — bye a alimentar bye
+    // a alimentar bye), e com números de equipas que geram essas cascatas (muito
+    // comum com número ímpar de equipas, mas também com pares que não são
+    // potência de 2) as equipas seguintes ficavam "presas" à espera de um
+    // adversário que nunca mais aparecia — pareciam ter desaparecido da bracket.
+    // Agora resolve tudo o que der para resolver numa só chamada.
+    const local = matches.map(m => ({ ...m }));
+    const byId = {}; local.forEach(m => { byId[m.id] = m; });
+    const pendingFor = (matchId, slot) => local.some(src => src.status !== 'terminado' && (
       (src.nextMatchId === matchId && src.nextSlot === slot) ||
       (src.loserNextMatchId === matchId && src.loserNextSlot === slot)
     ));
-    for(const m of matches){
-      if(m.status === 'terminado' || m.dormant) continue;
-      const hasA = !!m.teamAId, hasB = !!m.teamBId;
-      if(hasA && hasB) continue;
-      if(!hasA && !hasB){
-        if(!pendingFor(m.id,'A') && !pendingFor(m.id,'B')){
-          await updateDoc(doc(matchesCol, m.id), { status: 'terminado', winnerId: null, skipped: true });
+    const writes = [];
+    let changed = true, guard = 0;
+    while(changed && guard < 100){
+      changed = false; guard++;
+      for(const m of local){
+        if(m.status === 'terminado' || m.dormant) continue;
+        const hasA = !!m.teamAId, hasB = !!m.teamBId;
+        if(hasA && hasB) continue;
+        if(!hasA && !hasB){
+          if(!pendingFor(m.id,'A') && !pendingFor(m.id,'B')){
+            m.status = 'terminado'; m.winnerId = null; m.skipped = true;
+            writes.push({ id: m.id, data: { status: 'terminado', winnerId: null, skipped: true } });
+            changed = true;
+          }
+          continue;
         }
-        continue;
+        const missingSlot = hasA ? 'B' : 'A';
+        if(pendingFor(m.id, missingSlot)) continue;
+        const winnerId = hasA ? m.teamAId : m.teamBId;
+        m.status = 'terminado'; m.winnerId = winnerId; m.bye = true;
+        writes.push({ id: m.id, data: { winnerId, status: 'terminado', bye: true } });
+        // um "bye" não teve adversário real, por isso não há perdedor para mandar para a bracket de perdedores
+        if(m.nextMatchId){
+          const field = m.nextSlot === 'A' ? 'teamAId' : 'teamBId';
+          const target = byId[m.nextMatchId];
+          if(target){ target[field] = winnerId; writes.push({ id: target.id, data: { [field]: winnerId } }); }
+        }
+        changed = true;
       }
-      const missingSlot = hasA ? 'B' : 'A';
-      if(pendingFor(m.id, missingSlot)) continue;
-      const winnerId = hasA ? m.teamAId : m.teamBId;
-      await updateDoc(doc(matchesCol, m.id), { winnerId, status: 'terminado', bye: true });
-      if(m.nextMatchId){
-        await updateDoc(doc(matchesCol, m.nextMatchId), { [m.nextSlot === 'A' ? 'teamAId' : 'teamBId']: winnerId });
-      }
-      // um "bye" não teve adversário real, por isso não há perdedor para mandar para a bracket de perdedores
+    }
+    for(const w of writes){
+      await updateDoc(doc(matchesCol, w.id), w.data);
     }
   } finally { _resolvingByes = false; }
 }
@@ -2190,7 +2301,7 @@ function renderRegenBox(){
   const box = document.getElementById('regen-bracket-box');
   const btn = document.getElementById('regen-bracket-btn');
   const warn = document.getElementById('regen-bracket-warn');
-  box.style.display = (isAdmin() && bracketGenerated()) ? 'block' : 'none';
+  box.style.display = (isAdmin() && bracketGenerated() && tournament.status !== 'terminado') ? 'block' : 'none';
   if(anyMatchStarted()){
     btn.className = 'btn btn-danger btn-sm';
     btn.textContent = T('t.regen.restart','Reiniciar bracket (há resultados que se vão perder)');
